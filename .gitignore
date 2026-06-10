@@ -45,3 +45,4 @@ coverage/
 *.tgz
 *.tar.gz
 __pycache__/
+site.zip
