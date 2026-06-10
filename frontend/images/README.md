@@ -1,14 +1,17 @@
 # Imagens da FG Empreendimentos
 
-Coloque aqui as fotos oficiais dos empreendimentos FG com os seguintes nomes:
+Faça upload das 4 fotos com exatamente estes nomes:
 
-| Arquivo | Empreendimento | Onde encontrar |
-|---------|---------------|----------------|
-| `one-tower.jpg` | One Tower (fachada/exterior) | instagram.com/fgempreendimentos |
-| `blue-view.jpg` | Blue View Tower | fgempreendimentos.com.br |
-| `fg-tower.jpg` | FG Tower (render) | fgempreendimentos.com.br |
+| Arquivo | Foto | Onde aparece no site |
+|---------|------|---------------------|
+| `bc-skyline.jpg` | Vista aérea da praia de BC (foto 2) | Hero + Seção Sobre |
+| `one-tower-piscina.jpg` | One Tower com piscina (foto 3) | Card "Horizon One Tower" |
+| `marambaia-tower.jpg` | Torres gêmeas render com marina (foto 1) | Card "Reserva Atlântica" |
+| `one-tower-noite.jpg` | One Tower show de luzes noturno (foto 4) | Card "Lumière Penthouse" |
 
-## Observações
-- Formato: JPG ou PNG
-- Tamanho recomendado: mínimo 800×600px
-- Enquanto as imagens não estiverem presentes, o site usa fotos de fallback automaticamente
+## Como fazer upload pelo GitHub
+
+1. Acesse: https://github.com/pedro03376-droid/Litwinski/upload/claude/optimistic-goldberg-waoobu/frontend/images
+2. Arraste as 4 fotos
+3. Clique "Commit changes"
+4. O site atualiza automaticamente em ~1 minuto
