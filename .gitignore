@@ -1,0 +1,46 @@
+# Environment
+.env
+.env.local
+.env.production
+
+# Node
+node_modules/
+dist/
+*.js.map
+
+# Flutter
+mobile/.dart_tool/
+mobile/.flutter-plugins
+mobile/.flutter-plugins-dependencies
+mobile/.packages
+mobile/build/
+mobile/android/.gradle
+mobile/android/local.properties
+mobile/android/key.properties
+mobile/ios/.symlinks/
+mobile/ios/Pods/
+mobile/ios/Flutter/flutter_export_environment.sh
+mobile/.pub-cache/
+
+# IDE
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+.DS_Store
+
+# Docker volumes
+docker/ssl/
+uploads/
+
+# Logs
+*.log
+logs/
+
+# Test coverage
+coverage/
+
+# Build artifacts
+*.tgz
+*.tar.gz
