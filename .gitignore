@@ -44,3 +44,4 @@ coverage/
 # Build artifacts
 *.tgz
 *.tar.gz
+__pycache__/
