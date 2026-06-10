@@ -149,6 +149,7 @@
       object-fit: cover;
       object-position: center 60%;
       filter: brightness(0.45) saturate(0.7);
+      display: block;
     }
     .hero-skyline svg {
       position: absolute; inset: 0;
@@ -359,18 +360,20 @@
     /* Gradient placeholder for "photo" */
     .prop-image {
       position: absolute; inset: 0;
-      overflow: hidden;
-      transition: transform 0.8s var(--ease-out);
-    }
-    .prop-card:hover .prop-image { transform: scale(1.06); }
-    .prop-image img {
-      width: 100%; height: 100%;
-      object-fit: cover;
-      object-position: center;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
       filter: brightness(0.75) saturate(0.85);
-      transition: filter 0.8s var(--ease-out);
+      transition: transform 0.8s var(--ease-out), filter 0.8s var(--ease-out);
     }
-    .prop-card:hover .prop-image img { filter: brightness(0.65) saturate(0.9); }
+    .prop-card:hover .prop-image {
+      transform: scale(1.06);
+      filter: brightness(0.65) saturate(0.9);
+    }
+    .prop-image-1 { background-image: url('https://picsum.photos/seed/tower1/900/1200'); }
+    .prop-image-2 { background-image: url('https://picsum.photos/seed/tower2/800/1000'); }
+    .prop-image-3 { background-image: url('https://picsum.photos/seed/penthouse/800/1000'); }
+    .prop-image img { display: none; }
 
     /* Simulated building shapes inside cards */
     .prop-shape {
@@ -442,6 +445,7 @@
       object-fit: cover;
       object-position: center;
       filter: brightness(0.35) saturate(0.6);
+      display: block;
     }
     /* Abstract city lines overlay */
     .lifestyle-visual::before {
@@ -834,7 +838,7 @@
     <!-- Skyline atmosphere -->
     <div class="hero-skyline" aria-hidden="true">
       <img
-        src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1920&q=80"
+        src="https://picsum.photos/seed/bcnight/1920/1080"
         alt=""
         fetchpriority="high"
       />
@@ -1124,7 +1128,7 @@
   <section id="lifestyle" aria-labelledby="lifestyle-heading">
     <div class="lifestyle-visual" aria-hidden="true">
       <img
-        src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?auto=format&fit=crop&w=1920&q=80"
+        src="https://picsum.photos/seed/bcbeach/1200/800"
         alt=""
         loading="lazy"
       />
