@@ -3,6 +3,10 @@
     "21st-magic": {
       "command": "npx",
       "args": ["-y", "@21st-dev/magic@0.1.0"]
+    },
+    "higgsfield": {
+      "type": "http",
+      "url": "https://mcp.higgsfield.ai/mcp"
     }
   }
 }
