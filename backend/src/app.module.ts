@@ -17,6 +17,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ImportModule } from './modules/import/import.module';
 import { SeasonsModule } from './modules/seasons/seasons.module';
 import { CompetitionsModule } from './modules/competitions/competitions.module';
+import { ImageGenerationModule } from './modules/image-generation/image-generation.module';
 import { databaseConfig } from './config/database.config';
 
 @Module({
@@ -43,6 +44,7 @@ import { databaseConfig } from './config/database.config';
     ImportModule,
     SeasonsModule,
     CompetitionsModule,
+    ImageGenerationModule,
   ],
 })
 export class AppModule {}
