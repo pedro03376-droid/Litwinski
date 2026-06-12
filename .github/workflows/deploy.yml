@@ -1,10 +1,11 @@
-name: Deploy FG Imobiliária
+name: Deploy GK Hub
 
 on:
   push:
     branches:
       - main
       - claude/optimistic-goldberg-waoobu
+      - claude/exciting-einstein-daneaq
     paths:
       - 'frontend/**'
 
