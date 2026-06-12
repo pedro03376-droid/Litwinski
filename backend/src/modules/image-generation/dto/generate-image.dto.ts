@@ -5,6 +5,6 @@ export class GenerateImageDto {
   @ApiProperty({ example: 'Um carro de corrida vermelho em alta velocidade' })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(500)
+  @MaxLength(4000)
   prompt: string;
 }
