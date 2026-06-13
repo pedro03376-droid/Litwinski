@@ -719,6 +719,7 @@
                 <th>Interceptações</th>
                 <th>Distribuições</th>
                 <th>Posicionamento</th>
+                <th>Nota</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -1085,42 +1086,52 @@
       </div>
       <div id="tab-defesas" class="tab-content active">
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Defesas Altas Dir.</label><input class="form-input" id="s-dad" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Defesas Altas Esq.</label><input class="form-input" id="s-dae" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Defesas Baixas Dir.</label><input class="form-input" id="s-dbd" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Defesas Baixas Esq.</label><input class="form-input" id="s-dbe" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Defesa Central</label><input class="form-input" id="s-dc" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Defesas Altas Dir.</label><input class="form-input" id="s-dad" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Defesas Altas Esq.</label><input class="form-input" id="s-dae" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Defesas Baixas Dir.</label><input class="form-input" id="s-dbd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Defesas Baixas Esq.</label><input class="form-input" id="s-dbe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Defesa Central</label><input class="form-input" id="s-dc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0"></div>
         </div>
       </div>
       <div id="tab-gols" class="tab-content">
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Gols Dentro da Área</label><input class="form-input" id="s-gda" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Gols Fora da Área</label><input class="form-input" id="s-gfa" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Gols Penalti</label><input class="form-input" id="s-gpe" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Gols Falta</label><input class="form-input" id="s-gfl" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Gols Dentro da Área</label><input class="form-input" id="s-gda" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Gols Fora da Área</label><input class="form-input" id="s-gfa" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Gols Penalti</label><input class="form-input" id="s-gpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Gols Falta</label><input class="form-input" id="s-gfl" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
       <div id="tab-distrib" class="tab-content">
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Distribuição Pé Certo</label><input class="form-input" id="s-dpc" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Distribuição Pé Errado</label><input class="form-input" id="s-dpe" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Distribuição Mão Certa</label><input class="form-input" id="s-dmc" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Distribuição Mão Errada</label><input class="form-input" id="s-dme" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Distribuição Pé Certo</label><input class="form-input" id="s-dpc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Distribuição Pé Errado</label><input class="form-input" id="s-dpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Distribuição Mão Certa</label><input class="form-input" id="s-dmc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Distribuição Mão Errada</label><input class="form-input" id="s-dme" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
       <div id="tab-outros" class="tab-content">
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Interceptações</label><input class="form-input" id="s-int" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Interceptações</label><input class="form-input" id="s-int" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Posicionamento Esq.</label><input class="form-input" id="s-pose" type="number" min="0" value="0"></div>
           <div class="form-group"><label class="form-label">Posicionamento Dir.</label><input class="form-input" id="s-posd" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Saídas do Gol</label><input class="form-input" id="s-sai" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Saídas do Gol</label><input class="form-input" id="s-sai" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group full">
-            <label class="form-label">Nota Geral (0–10)</label>
-            <input class="form-input" id="s-nota" type="number" min="0" max="10" step="0.1" placeholder="7.5">
+            <label class="form-label" style="display:flex;align-items:center;gap:8px;">
+              Substituir nota automática
+              <span style="font-size:11px;color:var(--muted);font-weight:400;">(deixe em branco para usar o cálculo automático)</span>
+            </label>
+            <input class="form-input" id="s-nota" type="number" min="0" max="10" step="0.1" placeholder="Ex: 8.5 — sobrepõe o cálculo" oninput="atualizarNotaPreview()">
           </div>
         </div>
       </div>
+    </div>
+    <!-- Preview da nota calculada -->
+    <div id="nota-preview" style="display:flex;align-items:center;gap:12px;padding:14px 20px;background:var(--bg);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;color:var(--muted);font-weight:500;">NOTA DA PARTIDA</span>
+      <span id="nota-preview-badge" style="font-size:22px;font-weight:800;color:var(--primary);">—</span>
+      <span id="nota-preview-label" style="font-size:12px;color:var(--muted);"></span>
+      <span id="nota-preview-tipo" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modal-scout')">Cancelar</button>
@@ -1213,16 +1224,25 @@ function switchTab(btn, tabId) {
 // ═══════════════════════════════════════════════════════════
 // PERFORMANCE CALC
 // ═══════════════════════════════════════════════════════════
-function calcPerformance(scout) {
+function calcPerformanceAuto(scout) {
   const totalDef = (+scout.dad||0) + (+scout.dae||0) + (+scout.dbd||0) + (+scout.dbe||0) + (+scout.dc||0);
-  const gols = (+scout.gda||0) + (+scout.gfa||0) + (+scout.gpe||0) + (+scout.gfl||0);
-  const dist = (+scout.dpc||0) + (+scout.dmc||0);
-  const distErr = (+scout.dpe||0) + (+scout.dme||0);
-  const nota = scout.nota ? parseFloat(scout.nota) : null;
-  if (nota !== null) return nota;
+  const gols     = (+scout.gda||0) + (+scout.gfa||0) + (+scout.gpe||0) + (+scout.gfl||0);
   if (totalDef + gols === 0) return null;
-  const ratio = totalDef / Math.max(totalDef + gols, 1);
-  return Math.min(10, Math.round(ratio * 10 * 10) / 10);
+  // Base: taxa de defesa → até 8 pontos
+  const base = (totalDef / (totalDef + gols)) * 8;
+  // Bônus distribuição → até 1 ponto
+  const distCerto = (+scout.dpc||0) + (+scout.dmc||0);
+  const distTotal = distCerto + (+scout.dpe||0) + (+scout.dme||0);
+  const distBonus = distTotal > 0 ? (distCerto / distTotal) : 0.5;
+  // Bônus tático (interceptações + saídas) → até 1 ponto
+  const tatBonus = Math.min(1, ((+scout.int||0) + (+scout.sai||0)) * 0.15);
+  return Math.min(10, Math.round((base + distBonus + tatBonus) * 10) / 10);
+}
+
+function calcPerformance(scout) {
+  const nota = scout.nota ? parseFloat(scout.nota) : null;
+  if (nota !== null && !isNaN(nota)) return nota;
+  return calcPerformanceAuto(scout);
 }
 
 function classifyPerf(score) {
@@ -1447,6 +1467,30 @@ function renderPartidas() {
 // ═══════════════════════════════════════════════════════════
 // SCOUT
 // ═══════════════════════════════════════════════════════════
+function atualizarNotaPreview() {
+  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+  const s = {};
+  fields.forEach(f => { s[f] = document.getElementById('s-'+f)?.value || 0; });
+  const notaManual = document.getElementById('s-nota')?.value;
+  if (notaManual && !isNaN(parseFloat(notaManual))) { s.nota = notaManual; }
+  const nota = calcPerformance(s);
+  const badge = document.getElementById('nota-preview-badge');
+  const lbl   = document.getElementById('nota-preview-label');
+  const tipo  = document.getElementById('nota-preview-tipo');
+  if (!badge) return;
+  if (nota === null) {
+    badge.textContent = '—'; lbl.textContent = 'Insira dados para calcular'; tipo.textContent = '';
+    badge.style.color = 'var(--muted)';
+    return;
+  }
+  const { label, cls } = classifyPerf(nota);
+  badge.textContent = nota;
+  lbl.textContent = label;
+  tipo.textContent = notaManual ? 'nota manual' : 'calculada automaticamente';
+  const colors = { 'badge-elite': '#00D4FF', 'badge-excelente': '#00C853', 'badge-boa': '#69F0AE', 'badge-regular': '#FFB300', 'badge-dev': '#FF3D57' };
+  badge.style.color = colors[cls] || 'var(--primary)';
+}
+
 function salvarScout() {
   const goalkeeperId = document.getElementById('scout-goleira').value;
   if (!goalkeeperId) { toast('Selecione a goleira', 'error'); return; }
@@ -1478,6 +1522,7 @@ function editarScout(id) {
   const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
   fields.forEach(f => { const el = document.getElementById('s-'+f); if(el) el.value = s[f] || 0; });
   openModal('modal-scout');
+  atualizarNotaPreview();
 }
 
 function excluirScout(id) {
@@ -1494,7 +1539,7 @@ function renderScouts() {
   const scouts = DB.scouts;
   const tbody = document.getElementById('tbody-scouts');
   if (!scouts.length) {
-    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><p>Nenhum scout registrado.</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><p>Nenhum scout registrado.</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = scouts.map(s => {
@@ -1504,6 +1549,12 @@ function renderScouts() {
     const totalGols = (+s.gda||0)+(+s.gfa||0)+(+s.gpe||0)+(+s.gfl||0);
     const totalDist = (+s.dpc||0)+(+s.dpe||0)+(+s.dmc||0)+(+s.dme||0);
     const pos = (+s.pose||0)+(+s.posd||0);
+    const nota = calcPerformance(s);
+    const { label, cls } = classifyPerf(nota);
+    const isManual = s.nota && !isNaN(parseFloat(s.nota));
+    const notaHtml = nota !== null
+      ? `<span class="badge ${cls}" title="${isManual ? 'Nota manual' : 'Calculada automaticamente'}">${nota} <small style="opacity:.7">${label}</small></span>`
+      : '<span style="color:var(--muted)">—</span>';
     return `<tr>
       <td><strong>${gk ? gk.nome : '—'}</strong></td>
       <td>${pt ? `${pt.adversario}${pt.data?' ('+formatDate(pt.data)+')':''}` : '—'}</td>
@@ -1514,6 +1565,7 @@ function renderScouts() {
       <td>${s.int || 0}</td>
       <td>${totalDist}</td>
       <td>${pos}</td>
+      <td>${notaHtml}</td>
       <td>
         <div class="td-actions">
           <button class="btn btn-ghost btn-sm" onclick="editarScout('${s.id}')">Editar</button>
@@ -1939,6 +1991,7 @@ document.querySelector('[onclick="openModal(\'modal-scout\')"]')?.addEventListen
   const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   fields.forEach(f => { const el=document.getElementById('s-'+f); if(el) el.value=0; });
   document.getElementById('s-nota').value='';
+  atualizarNotaPreview();
 });
 
 // Responsive menu button
