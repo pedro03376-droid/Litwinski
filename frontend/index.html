@@ -703,6 +703,22 @@
     .mc-log-item { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
     .mc-log-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 
+    /* ── MC Placar buttons ── */
+    .mc-placar-btn {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 26px; height: 26px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      transition: all .15s;
+      font-family: var(--font);
+    }
+    .mc-placar-btn:hover { border-color: var(--border-h); color: var(--text); background: var(--card-2); }
+    .mc-placar-btn:active { transform: scale(.9); }
+
     /* ── PWA / Offline ── */
     .offline-banner {
       position: fixed;
@@ -984,25 +1000,73 @@
             <select class="form-select" id="mc-partida" onchange="mcOnPartidaChange()"><option value="">Selecionar…</option></select>
           </div>
           <div class="form-group" style="margin:0;">
-            <label class="form-label">Goleira</label>
+            <label class="form-label">Goleira em Campo</label>
             <select class="form-select" id="mc-goleira"><option value="">Selecionar…</option></select>
           </div>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:flex-end;">
             <button class="btn btn-success" id="mc-btn-timer" onclick="mcToggleTimer()" style="white-space:nowrap;">▶ Iniciar</button>
             <button class="btn btn-danger" onclick="mcEncerrar()" style="white-space:nowrap;">⏹ Encerrar</button>
           </div>
         </div>
-        <!-- Timer + placar -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <div id="mc-timer" style="font-size:36px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--primary);letter-spacing:2px;">00:00</div>
+
+        <!-- Timer + Período + Placar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+          <!-- Timer -->
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div id="mc-timer" style="font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--primary);letter-spacing:3px;">00:00</div>
             <div id="mc-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);"></div>
           </div>
-          <div style="text-align:center;">
-            <div style="font-size:11px;color:var(--muted);margin-bottom:2px;" id="mc-adv-label">—</div>
-            <div style="font-size:13px;font-weight:600;" id="mc-score-label">—</div>
+
+          <!-- Período badge -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+            <div id="mc-periodo-badge" style="font-size:11px;font-weight:700;background:rgba(0,212,255,.1);color:var(--primary);border:1px solid rgba(0,212,255,.3);border-radius:6px;padding:5px 14px;letter-spacing:.8px;text-align:center;">1º TEMPO</div>
+            <button class="btn btn-ghost btn-sm" id="mc-btn-2t" onclick="mcIniciarSegundoTempo()" style="display:none;font-size:11px;padding:4px 10px;">⏩ Ir para 2º Tempo</button>
           </div>
-          <button class="btn btn-ghost btn-sm" onclick="mcDesfazer()" id="mc-btn-undo" style="opacity:.5;" disabled>↩ Desfazer</button>
+
+          <!-- Placar ao vivo -->
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;">Nós</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button onclick="mcAjustarPlacar('nos',-1)" class="mc-placar-btn">−</button>
+                <span id="mc-score-nos" style="font-size:32px;font-weight:800;color:var(--success);min-width:36px;text-align:center;line-height:1;">0</span>
+                <button onclick="mcAjustarPlacar('nos',1)" class="mc-placar-btn" style="color:var(--success);">+</button>
+              </div>
+            </div>
+            <div style="font-size:22px;font-weight:700;color:var(--muted);">×</div>
+            <div style="text-align:center;">
+              <div style="font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px;" id="mc-adv-label">Adversário</div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <button onclick="mcAjustarPlacar('adv',-1)" class="mc-placar-btn">−</button>
+                <span id="mc-score-adv" style="font-size:32px;font-weight:800;color:var(--error);min-width:36px;text-align:center;line-height:1;">0</span>
+                <button onclick="mcAjustarPlacar('adv',1)" class="mc-placar-btn" style="color:var(--error);">+</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Ações secundárias -->
+          <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+            <button class="btn btn-ghost btn-sm" onclick="mcTrocarGoleira()" style="color:var(--warning);border-color:rgba(255,179,0,.35);white-space:nowrap;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+              Trocar Goleira
+            </button>
+            <button class="btn btn-ghost btn-sm" onclick="mcDesfazer()" id="mc-btn-undo" style="opacity:.5;" disabled>↩ Desfazer</button>
+          </div>
+        </div>
+
+        <!-- Painel Trocar Goleira -->
+        <div id="mc-trocar-painel" style="display:none;margin-top:12px;padding:12px;background:rgba(255,179,0,.06);border:1px solid rgba(255,179,0,.25);border-radius:10px;">
+          <div style="font-size:12px;font-weight:700;color:var(--warning);margin-bottom:8px;">🔄 Substituição de Goleira</div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <select class="form-select" id="mc-nova-goleira" style="flex:1;"></select>
+            <button class="btn btn-sm" onclick="mcConfirmarTroca()" style="background:var(--warning);color:#000;font-weight:700;white-space:nowrap;">Confirmar Troca</button>
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('mc-trocar-painel').style.display='none'">Cancelar</button>
+          </div>
+        </div>
+
+        <!-- Goleiras em jogo -->
+        <div id="mc-gk-info" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">
+          <span style="font-weight:600;color:var(--text);">Goleiras no jogo:</span> <span id="mc-gk-info-list"></span>
         </div>
       </div>
 
@@ -3378,12 +3442,18 @@ let mcLog = [];
 let mcTimerInterval = null;
 let mcSeconds = 0;
 let mcRunning = false;
+let mcPeriodo = 1;
+let mcPlacar = { nos: 0, adv: 0 };
+let mcGkSegmentos = []; // [{gkId, periodo, data:{...}}]
 
 function mcReset() {
   MC_FIELDS.forEach(f => mcData[f] = 0);
   mcLog = [];
   mcSeconds = 0;
   mcRunning = false;
+  mcPeriodo = 1;
+  mcPlacar = { nos: 0, adv: 0 };
+  mcGkSegmentos = [];
   if (mcTimerInterval) { clearInterval(mcTimerInterval); mcTimerInterval = null; }
 }
 mcReset();
@@ -3403,17 +3473,20 @@ function mcOnPartidaChange() {
   const pId = document.getElementById('mc-partida')?.value;
   const p = DB.partidas.find(x=>x.id===pId);
   const advLbl = document.getElementById('mc-adv-label');
-  const scoreLbl = document.getElementById('mc-score-label');
   if (p) {
-    if (advLbl) advLbl.textContent = 'vs ' + p.adversario;
-    if (scoreLbl) scoreLbl.textContent = `${p.gf ?? '0'} × ${p.gc ?? '0'}`;
+    if (advLbl) advLbl.textContent = p.adversario;
+    // Pre-fill score from partida
+    mcPlacar.nos = p.gf ?? 0;
+    mcPlacar.adv = p.gc ?? 0;
+    const el = id => document.getElementById(id);
+    if (el('mc-score-nos')) el('mc-score-nos').textContent = mcPlacar.nos;
+    if (el('mc-score-adv')) el('mc-score-adv').textContent = mcPlacar.adv;
     if (p.goalkeeperId) {
       const sel = document.getElementById('mc-goleira');
       if (sel) sel.value = p.goalkeeperId;
     }
   } else {
-    if (advLbl) advLbl.textContent = '—';
-    if (scoreLbl) scoreLbl.textContent = '—';
+    if (advLbl) advLbl.textContent = 'Adversário';
   }
 }
 
@@ -3426,14 +3499,18 @@ function mcFormatTime(sec) {
 function mcToggleTimer() {
   const btn = document.getElementById('mc-btn-timer');
   const dot = document.getElementById('mc-status-dot');
+  const btn2t = document.getElementById('mc-btn-2t');
   if (mcRunning) {
     clearInterval(mcTimerInterval); mcTimerInterval=null; mcRunning=false;
-    if (btn) btn.textContent='▶ Continuar';
+    if (btn) btn.innerHTML='▶ Continuar';
     if (dot) dot.style.background='var(--warning)';
+    // Show 2T button when paused (only if still on 1T)
+    if (btn2t && mcPeriodo === 1) btn2t.style.display='inline-flex';
   } else {
     mcRunning=true;
-    if (btn) btn.textContent='⏸ Pausar';
+    if (btn) btn.innerHTML='⏸ Pausar';
     if (dot) { dot.style.background='var(--error)'; dot.style.animation='none'; }
+    if (btn2t) btn2t.style.display='none';
     mcTimerInterval=setInterval(()=>{
       mcSeconds++;
       const el=document.getElementById('mc-timer');
@@ -3445,12 +3522,11 @@ function mcToggleTimer() {
 function mcEvento(key, label, tipo) {
   mcData[key] = (mcData[key]||0)+1;
   const timeStr = mcFormatTime(mcSeconds);
-  mcLog.unshift({ key, label, tipo, time:timeStr });
+  mcLog.unshift({ key, label, tipo, time:timeStr, periodo: mcPeriodo });
   mcUpdateCounters();
   mcUpdateLog();
   const undoBtn = document.getElementById('mc-btn-undo');
   if (undoBtn) { undoBtn.disabled=false; undoBtn.style.opacity='1'; }
-  // Flash visual
   event?.currentTarget?.classList.add('mc-flash');
   setTimeout(()=>event?.currentTarget?.classList.remove('mc-flash'),200);
 }
@@ -3482,37 +3558,172 @@ function mcUpdateLog() {
   const el = document.getElementById('mc-log');
   if (!el) return;
   if (!mcLog.length) { el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px 0;">Nenhum evento registrado</div>'; return; }
-  const colors = { def:'#00D4FF', gol:'#FF3D57', dist:'#FFB300', out:'#69F0AE' };
-  el.innerHTML = mcLog.slice(0,30).map((e,i)=>`
-    <div class="mc-log-item" style="opacity:${i===0?1:Math.max(0.4,1-i*0.05)}">
+  const colors = { def:'#00D4FF', gol:'#FF3D57', dist:'#FFB300', out:'#69F0AE', 'placar-nos':'#00E676', 'placar-adv':'#FF3D57', sub:'#FFB300', periodo:'rgba(255,255,255,.2)' };
+  el.innerHTML = mcLog.slice(0,50).map((e,i)=>{
+    if (e.tipo === 'periodo') return `<div style="text-align:center;padding:6px 0;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
+    const ptBadge = e.periodo ? `<span style="font-size:9px;font-weight:700;background:${e.periodo===1?'rgba(0,212,255,.1)':'rgba(255,179,0,.1)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;">${e.periodo}T</span>` : '';
+    return `<div class="mc-log-item" style="opacity:${i===0?1:Math.max(0.35,1-i*0.05)}">
       <div class="mc-log-dot" style="background:${colors[e.tipo]||'var(--muted)'};"></div>
-      <span style="color:var(--muted);font-variant-numeric:tabular-nums;">${e.time}</span>
-      <span style="font-weight:${i===0?700:400};">${e.label}</span>
-    </div>`).join('');
+      <span style="color:var(--muted);font-variant-numeric:tabular-nums;font-size:11px;">${e.time}</span>
+      ${ptBadge}
+      <span style="font-weight:${i===0?700:400};flex:1;">${e.label}</span>
+    </div>`;
+  }).join('');
+}
+
+// ── Placar ao vivo ──────────────────────────────────────
+function mcAjustarPlacar(team, delta) {
+  mcPlacar[team] = Math.max(0, (mcPlacar[team]||0) + delta);
+  const elNos = document.getElementById('mc-score-nos');
+  const elAdv = document.getElementById('mc-score-adv');
+  if (elNos) elNos.textContent = mcPlacar.nos;
+  if (elAdv) elAdv.textContent = mcPlacar.adv;
+  const timeStr = mcFormatTime(mcSeconds);
+  const lbl = team === 'nos'
+    ? (delta > 0 ? '⚽ Gol Nosso' : '↩ Gol Nosso Anulado')
+    : (delta > 0 ? '⚽ Gol Adversário' : '↩ Gol Adversário Anulado');
+  mcLog.unshift({ key:'_placar', label: lbl, tipo: team==='nos'?'placar-nos':'placar-adv', time: timeStr, periodo: mcPeriodo });
+  mcUpdateLog();
+}
+
+// ── Segundo tempo ────────────────────────────────────────
+function mcIniciarSegundoTempo() {
+  if (mcPeriodo === 2) return;
+  if (!confirm('Iniciar 2º Tempo?\nO cronômetro será zerado e os eventos da goleira atual serão salvos como 1º Tempo.')) return;
+  // Snapshot current GK as 1T
+  mcSnapshotGkSegmento('1T');
+  mcPeriodo = 2;
+  // Reset timer + counters for new period
+  if (mcRunning) mcToggleTimer();
+  mcSeconds = 0;
+  document.getElementById('mc-timer').textContent = '00:00';
+  MC_FIELDS.forEach(f => mcData[f] = 0);
+  mcUpdateCounters();
+  // Update periodo badge
+  const badge = document.getElementById('mc-periodo-badge');
+  if (badge) {
+    badge.textContent = '2º TEMPO';
+    badge.style.background = 'rgba(255,179,0,.1)';
+    badge.style.color = 'var(--warning)';
+    badge.style.borderColor = 'rgba(255,179,0,.3)';
+  }
+  document.getElementById('mc-btn-2t').style.display = 'none';
+  mcLog.unshift({ key:'_periodo', label:'─── 2º Tempo ───', tipo:'periodo', time:'00:00', periodo:2 });
+  mcUpdateLog();
+  toast('2º Tempo iniciado — cronômetro zerado!', 'info');
+}
+
+// ── Troca de goleira ─────────────────────────────────────
+function mcSnapshotGkSegmento(periodoLabel) {
+  const gkId = document.getElementById('mc-goleira')?.value;
+  if (!gkId) return;
+  const segData = {};
+  MC_FIELDS.forEach(f => segData[f] = mcData[f] || 0);
+  mcGkSegmentos.push({ gkId, periodoLabel: periodoLabel || `${mcPeriodo}T`, data: segData });
+  // Show info
+  mcUpdateGkInfo();
+}
+
+function mcUpdateGkInfo() {
+  if (!mcGkSegmentos.length) return;
+  const infoEl = document.getElementById('mc-gk-info');
+  const listEl = document.getElementById('mc-gk-info-list');
+  if (!infoEl || !listEl) return;
+  const goleiras = DB.goleiras;
+  listEl.textContent = mcGkSegmentos.map(s => {
+    const gk = goleiras.find(g => g.id === s.gkId);
+    return `${gk?.nome || '—'} (${s.periodoLabel})`;
+  }).join(' → ');
+  infoEl.style.display = 'block';
+}
+
+function mcTrocarGoleira() {
+  const goleiras = DB.goleiras;
+  const atualId = document.getElementById('mc-goleira')?.value;
+  const outras = goleiras.filter(g => g.id !== atualId);
+  if (!outras.length) { toast('Não há outras goleiras cadastradas','error'); return; }
+  // Populate nova goleira select
+  const sel = document.getElementById('mc-nova-goleira');
+  if (sel) sel.innerHTML = outras.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
+  document.getElementById('mc-trocar-painel').style.display = 'block';
+}
+
+function mcConfirmarTroca() {
+  const novaId = document.getElementById('mc-nova-goleira')?.value;
+  if (!novaId) return;
+  const goleiras = DB.goleiras;
+  const novaGk = goleiras.find(g => g.id === novaId);
+  // Snapshot current GK
+  mcSnapshotGkSegmento(`${mcPeriodo}T`);
+  // Reset stats for new GK
+  MC_FIELDS.forEach(f => mcData[f] = 0);
+  mcUpdateCounters();
+  // Switch GK select
+  const sel = document.getElementById('mc-goleira');
+  if (sel) sel.value = novaId;
+  // Log substitution
+  const timeStr = mcFormatTime(mcSeconds);
+  mcLog.unshift({ key:'_sub', label:`🔄 Entra: ${novaGk?.nome||'Nova GK'}`, tipo:'sub', time:timeStr, periodo:mcPeriodo });
+  mcUpdateLog();
+  document.getElementById('mc-trocar-painel').style.display = 'none';
+  toast(`Goleira alterada para ${novaGk?.nome||'—'}!`, 'success');
 }
 
 function mcEncerrar() {
   const gkId = document.getElementById('mc-goleira')?.value;
   const pId  = document.getElementById('mc-partida')?.value;
   if (!gkId) { toast('Selecione a goleira antes de encerrar','error'); return; }
-  const totalEvents = MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
-  if (totalEvents === 0) { toast('Nenhum evento registrado','error'); return; }
-  if (!confirm(`Encerrar o jogo e salvar ${totalEvents} evento(s) como Scout?`)) return;
+  // Build final segments (include current GK's data)
+  const finalSegmentos = [...mcGkSegmentos];
+  const totalCurrentEvents = MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
+  if (totalCurrentEvents > 0 || finalSegmentos.length === 0) {
+    const curData = {};
+    MC_FIELDS.forEach(f => curData[f] = mcData[f] || 0);
+    finalSegmentos.push({ gkId, periodoLabel: `${mcPeriodo}T`, data: curData });
+  }
+  const totalAll = finalSegmentos.reduce((a,s)=>a+MC_FIELDS.reduce((b,f)=>b+(s.data[f]||0),0),0);
+  if (totalAll === 0 && finalSegmentos.length === 0) { toast('Nenhum evento registrado','error'); return; }
+  if (!confirm(`Encerrar o jogo e salvar ${finalSegmentos.length} scout(s)?`)) return;
 
   if (mcRunning) mcToggleTimer();
   const scouts = DB.scouts;
-  const obj = { id: uid(), goalkeeperId: gkId, partidaId: pId || '' };
-  MC_FIELDS.forEach(f => { obj[f] = mcData[f] || 0; });
-  scouts.push(obj);
+
+  // Save one scout per segment
+  finalSegmentos.forEach(seg => {
+    const obj = { id: uid(), goalkeeperId: seg.gkId, partidaId: pId || '', periodo: seg.periodoLabel };
+    MC_FIELDS.forEach(f => { obj[f] = seg.data[f] || 0; });
+    scouts.push(obj);
+    cloudSet('scouts', obj);
+  });
   DB.saveScouts(scouts);
-  cloudSet('scouts', obj);
-  toast('Scout salvo com sucesso!','success');
+
+  // Update partida score if set
+  if (pId) {
+    const partidas = DB.partidas;
+    const pIdx = partidas.findIndex(p=>p.id===pId);
+    if (pIdx !== -1) {
+      partidas[pIdx].gf = mcPlacar.nos;
+      partidas[pIdx].gc = mcPlacar.adv;
+      DB.savePartidas(partidas);
+      cloudSet('partidas', partidas[pIdx]);
+    }
+  }
+
+  toast(`${finalSegmentos.length} scout(s) salvos com sucesso!`, 'success');
+  // Reset UI
   mcReset();
   mcUpdateCounters();
   mcUpdateLog();
   document.getElementById('mc-timer').textContent='00:00';
-  document.getElementById('mc-btn-timer').textContent='▶ Iniciar';
+  document.getElementById('mc-btn-timer').innerHTML='▶ Iniciar';
   document.getElementById('mc-status-dot').style.background='var(--muted)';
+  document.getElementById('mc-score-nos').textContent='0';
+  document.getElementById('mc-score-adv').textContent='0';
+  document.getElementById('mc-btn-2t').style.display='none';
+  document.getElementById('mc-trocar-painel').style.display='none';
+  document.getElementById('mc-gk-info').style.display='none';
+  const badge = document.getElementById('mc-periodo-badge');
+  if (badge) { badge.textContent='1º TEMPO'; badge.style.background='rgba(0,212,255,.1)'; badge.style.color='var(--primary)'; badge.style.borderColor='rgba(0,212,255,.3)'; }
   const undoBtn = document.getElementById('mc-btn-undo');
   if (undoBtn) { undoBtn.disabled=true; undoBtn.style.opacity='.5'; }
   navigate('scout');
