@@ -1438,11 +1438,58 @@
 
     <!-- ══ HEATMAP ══ -->
     <div id="page-heatmap" class="page">
-      <div class="card-header" style="margin-bottom:16px;">
-        <span style="font-size:14px;color:var(--muted)">Heatmap Inteligente da Quadra</span>
-        <select class="form-select" id="heatmap-gk" style="width:240px;" onchange="renderHeatmap()">
-          <option value="">Todas as goleiras</option>
-        </select>
+      <!-- Filtros do Heatmap -->
+      <div class="card" style="margin-bottom:20px;padding:20px 24px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;">
+          <span class="card-title" style="flex-shrink:0;">Heatmap Inteligente</span>
+          <!-- Grupo de filtros -->
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <!-- Goleira -->
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Goleira</span>
+              <select class="form-select" id="heatmap-gk" style="min-width:160px;" onchange="hmFilterChange()">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <!-- Temporada -->
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Temporada</span>
+              <select class="form-select" id="hm-filter-temporada" style="min-width:110px;" onchange="hmFilterChange()">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <!-- Competição -->
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Competição</span>
+              <select class="form-select" id="hm-filter-comp" style="min-width:150px;" onchange="hmFilterChange()">
+                <option value="">Todas</option>
+              </select>
+            </div>
+            <!-- Adversário -->
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Adversário</span>
+              <select class="form-select" id="hm-filter-adv" style="min-width:150px;" onchange="hmFilterChange()">
+                <option value="">Todos</option>
+              </select>
+            </div>
+            <!-- Período rápido -->
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Período</span>
+              <div style="display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--radius);padding:3px;">
+                <button id="hm-per-all"  class="btn btn-sm" style="padding:5px 10px;border-radius:7px;font-size:11px;background:var(--card);color:var(--text);" onclick="setHmPeriodo('all')">Todos</button>
+                <button id="hm-per-10"   class="btn btn-sm" style="padding:5px 10px;border-radius:7px;font-size:11px;background:none;color:var(--muted);" onclick="setHmPeriodo('10')">Últ. 10</button>
+                <button id="hm-per-5"    class="btn btn-sm" style="padding:5px 10px;border-radius:7px;font-size:11px;background:none;color:var(--muted);" onclick="setHmPeriodo('5')">Últ. 5</button>
+              </div>
+            </div>
+            <!-- Limpar filtros -->
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span style="font-size:10px;font-weight:600;color:transparent;letter-spacing:.8px;">.</span>
+              <button class="btn btn-ghost btn-sm" onclick="limparFiltrosHm()">Limpar</button>
+            </div>
+          </div>
+        </div>
+        <!-- Badge de resumo dos filtros ativos -->
+        <div id="hm-filter-summary" style="margin-top:12px;display:none;font-size:12px;color:var(--muted);"></div>
       </div>
       <!-- Abas -->
       <div class="tabs" style="margin-bottom:16px;">
@@ -1473,8 +1520,8 @@
           <div class="card-header"><span class="card-title">Gols Sofridos por Zona</span></div>
           <div class="heatmap-court" id="court-gols"></div>
           <div style="display:flex;justify-content:center;gap:16px;margin-top:10px;font-size:11px;color:var(--muted);">
-            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(255,61,87,.5);"></span> menos</span>
-            <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:rgba(255,61,87,1);"></span> mais</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(239,68,68,.5);"></span> menos</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:rgba(239,68,68,1);"></span> mais</span>
           </div>
         </div>
       </div>
@@ -3793,9 +3840,108 @@ function switchHmTab(btn, tabId) {
   if (tabId === 'hm-distrib') renderDistribChart();
 }
 
-function renderHeatmap() {
+// ── Heatmap filter state ──────────────────────────────────
+let hmPeriodo = 'all';
+
+function populateHmFilters() {
+  const partidas = DB.partidas;
   const gkId = document.getElementById('heatmap-gk')?.value || '';
-  const scouts = aggScouts(gkId);
+
+  // Temporadas (anos distintos)
+  const anos = [...new Set(partidas.map(p => (p.data||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b-a);
+  const selTemp = document.getElementById('hm-filter-temporada');
+  const curTemp = selTemp?.value;
+  if (selTemp) { selTemp.innerHTML = '<option value="">Todas</option>' + anos.map(a=>`<option value="${a}"${a===curTemp?' selected':''}>${a}</option>`).join(''); }
+
+  // Competições
+  const comps = [...new Set(partidas.map(p=>p.competicao).filter(Boolean))].sort();
+  const selComp = document.getElementById('hm-filter-comp');
+  const curComp = selComp?.value;
+  if (selComp) { selComp.innerHTML = '<option value="">Todas</option>' + comps.map(c=>`<option value="${c}"${c===curComp?' selected':''}>${c}</option>`).join(''); }
+
+  // Adversários (filtrados pela GK atual para relevância)
+  let scouts = DB.scouts;
+  if (gkId) scouts = scouts.filter(s=>s.goalkeeperId===gkId);
+  const pIds = new Set(scouts.map(s=>s.partidaId).filter(Boolean));
+  const advPartidas = partidas.filter(p=>pIds.size===0||pIds.has(p.id));
+  const advs = [...new Set(advPartidas.map(p=>p.adversario).filter(Boolean))].sort();
+  const selAdv = document.getElementById('hm-filter-adv');
+  const curAdv = selAdv?.value;
+  if (selAdv) { selAdv.innerHTML = '<option value="">Todos</option>' + advs.map(a=>`<option value="${a}"${a===curAdv?' selected':''}>${a}</option>`).join(''); }
+}
+
+function setHmPeriodo(val) {
+  hmPeriodo = val;
+  ['all','10','5'].forEach(v => {
+    const btn = document.getElementById('hm-per-'+v);
+    if (!btn) return;
+    if (v === val) { btn.style.background='var(--card)'; btn.style.color='var(--text)'; }
+    else           { btn.style.background='none';       btn.style.color='var(--muted)'; }
+  });
+  renderHeatmap();
+}
+
+function hmFilterChange() {
+  populateHmFilters(); // re-populate adversários when GK changes
+  renderHeatmap();
+}
+
+function limparFiltrosHm() {
+  const ids = ['heatmap-gk','hm-filter-temporada','hm-filter-comp','hm-filter-adv'];
+  ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  setHmPeriodo('all');
+}
+
+function aggScoutsHeatmap() {
+  const gkId    = document.getElementById('heatmap-gk')?.value || '';
+  const temp    = document.getElementById('hm-filter-temporada')?.value || '';
+  const comp    = document.getElementById('hm-filter-comp')?.value || '';
+  const adv     = document.getElementById('hm-filter-adv')?.value || '';
+  const partidas = DB.partidas;
+
+  // Build filtered partida ID set
+  let filteredPartidas = partidas;
+  if (temp) filteredPartidas = filteredPartidas.filter(p=>(p.data||'').startsWith(temp));
+  if (comp) filteredPartidas = filteredPartidas.filter(p=>p.competicao===comp);
+  if (adv)  filteredPartidas = filteredPartidas.filter(p=>p.adversario===adv);
+
+  // Apply período (últimos N) — sort by date desc and take first N
+  if (hmPeriodo !== 'all') {
+    const n = +hmPeriodo;
+    filteredPartidas = [...filteredPartidas].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,n);
+  }
+  const pIds = new Set(filteredPartidas.map(p=>p.id));
+
+  let scouts = DB.scouts;
+  if (gkId) scouts = scouts.filter(s=>s.goalkeeperId===gkId);
+  // Apply partida filters only if any active
+  if (temp||comp||adv||hmPeriodo!=='all') {
+    scouts = scouts.filter(s=>!s.partidaId||pIds.has(s.partidaId));
+  }
+
+  // Update summary badge
+  const summary = document.getElementById('hm-filter-summary');
+  if (summary) {
+    const active = [];
+    if (gkId) { const g=DB.goleiras.find(g=>g.id===gkId); if(g) active.push(`Goleira: <strong>${g.nome}</strong>`); }
+    if (temp) active.push(`Temporada: <strong>${temp}</strong>`);
+    if (comp) active.push(`Competição: <strong>${comp}</strong>`);
+    if (adv)  active.push(`Adversário: <strong>${adv}</strong>`);
+    if (hmPeriodo!=='all') active.push(`Período: <strong>últimos ${hmPeriodo} jogos</strong>`);
+    if (active.length) {
+      summary.innerHTML = `<span style="color:var(--primary);font-weight:600;margin-right:6px;">Filtros ativos:</span>${active.join(' · ')} <span style="color:var(--muted);margin-left:4px;">(${scouts.length} scout${scouts.length!==1?'s':''})</span>`;
+      summary.style.display = 'block';
+    } else {
+      summary.style.display = 'none';
+    }
+  }
+
+  return scouts;
+}
+
+function renderHeatmap() {
+  populateHmFilters();
+  const scouts = aggScoutsHeatmap();
   const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
 
   const defGrid = [
@@ -3811,9 +3957,9 @@ function renderHeatmap() {
   // Chutes recebidos = defesas + gols por zona
   const chutesGrid = defGrid.map((row,r) => row.map((v,c) => v + golGrid[r][c]));
 
-  drawCourt('court-chutes', chutesGrid, '200,150,255');
-  drawCourt('court-defesas', defGrid, '0,212,255');
-  drawCourt('court-gols', golGrid, '255,61,87');
+  drawCourt('court-chutes', chutesGrid, '139,92,246');
+  drawCourt('court-defesas', defGrid, '59,130,246');
+  drawCourt('court-gols', golGrid, '239,68,68');
   renderDistribChart(scouts);
 
   const stats = [
@@ -3833,8 +3979,7 @@ function renderHeatmap() {
 }
 
 function renderDistribChart(scouts) {
-  const gkId = document.getElementById('heatmap-gk')?.value || '';
-  const sc = scouts || aggScouts(gkId);
+  const sc = scouts || aggScoutsHeatmap();
   const sum = k => sc.reduce((a,s)=>a+(+s[k]||0),0);
   const dpc=sum('dpc'), dpe=sum('dpe'), dmc=sum('dmc'), dme=sum('dme');
   const totalPe=dpc+dpe, totalMao=dmc+dme;
