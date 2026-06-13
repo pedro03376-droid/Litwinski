@@ -1405,7 +1405,7 @@
           <div style="height:200px;"><canvas id="chart-perfil-evol"></canvas></div>
         </div>
         <!-- Histórico de partidas -->
-        <div class="card">
+        <div class="card" style="margin-bottom:20px;">
           <div class="card-header"><span class="card-title">Histórico de Partidas</span></div>
           <div class="table-wrap">
             <table>
@@ -1413,6 +1413,13 @@
               <tbody id="perfil-historico-tbody"></tbody>
             </table>
           </div>
+        </div>
+        <!-- Botão Análise -->
+        <div style="display:flex;justify-content:center;margin-bottom:8px;">
+          <button class="btn btn-primary" style="padding:14px 36px;font-size:15px;letter-spacing:.3px;box-shadow:var(--glow-primary);" onclick="abrirAnalise()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/><path d="M3.05 11a9 9 0 1 0 .5-2.3"/></svg>
+            Analisar Desempenho
+          </button>
         </div>
       </div>
       <div id="perfil-empty" style="color:var(--muted);font-size:14px;padding:40px 0;">Selecione uma goleira para ver o perfil completo.</div>
@@ -1838,6 +1845,26 @@
         Usar esta foto
       </button>
     </div>
+  </div>
+</div>
+
+<!-- ══ MODAL ANÁLISE DE DESEMPENHO ══ -->
+<div class="modal-backdrop" id="modal-analise">
+  <div class="modal" style="max-width:780px;max-height:92vh;">
+    <div class="modal-header" style="background:linear-gradient(135deg,rgba(0,212,255,.08),rgba(123,47,190,.08));">
+      <div>
+        <span class="modal-title" id="analise-title">Análise de Desempenho</span>
+        <div id="analise-subtitle" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="exportarAnalisePDF()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exportar PDF
+        </button>
+        <button class="modal-close" onclick="closeModal('modal-analise')">&times;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="analise-body" style="padding:24px;"></div>
   </div>
 </div>
 
@@ -3231,6 +3258,293 @@ function renderPerfil() {
       <td>${nota !== null ? `<span class="badge ${cls}">${nota}</span>` : '—'}</td>
     </tr>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// ANÁLISE DE DESEMPENHO
+// ═══════════════════════════════════════════════════════════
+let analiseGkId = null;
+
+function abrirAnalise() {
+  const sel = document.getElementById('perfil-gk-select');
+  const gkId = sel?.value || analiseGkId;
+  if (!gkId) { toast('Selecione uma goleira no Perfil primeiro', 'error'); return; }
+  gerarAnalise(gkId);
+}
+
+function gerarAnalise(gkId) {
+  analiseGkId = gkId;
+  const gk      = DB.goleiras.find(g => g.id === gkId);
+  const scouts   = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  const partidas = DB.partidas;
+  if (!gk) return;
+  if (scouts.length < 1) { toast('Sem scouts registrados para análise', 'error'); return; }
+
+  // ── Aggregate raw stats ─────────────────────────────────
+  const sum = k => scouts.reduce((a,s) => a + (+s[k]||0), 0);
+  const totalDef   = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc');
+  const totalEsq   = sum('esq');
+  const totalGols  = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+  const golArea    = sum('gda');
+  const golFora    = sum('gfa');
+  const golPen     = sum('gpe');
+  const golFalt    = sum('gfl');
+  const defAlta    = sum('dad')+sum('dae');
+  const defBaixa   = sum('dbd')+sum('dbe');
+  const defCentral = sum('dc');
+  const distPeCert = sum('dpc'); const distPeErr = sum('dpe');
+  const distMaoCert= sum('dmc'); const distMaoErr= sum('dme');
+  const distCertas = distPeCert + distMaoCert;
+  const distTotal  = distCertas + distPeErr + distMaoErr;
+  const totalInt   = sum('int');
+  const totalSai   = sum('sai');
+  const totalPos   = sum('pose') + sum('posd');
+  const nPartidas  = Math.max(1, [...new Set(scouts.map(s=>s.partidaId).filter(Boolean))].length || scouts.length);
+  const avgNota    = avgPerformance(gkId);
+
+  // ── Derived metrics ─────────────────────────────────────
+  const taxaDef   = (totalDef + totalGols) > 0 ? totalDef / (totalDef + totalGols) : null;
+  const taxaDist  = distTotal > 0 ? distCertas / distTotal : null;
+  const taxaDistPe= (distPeCert+distPeErr) > 0 ? distPeCert/(distPeCert+distPeErr) : null;
+  const taxaDistMao=(distMaoCert+distMaoErr)>0 ? distMaoCert/(distMaoCert+distMaoErr) : null;
+  const gkPerGame = v => (v / nPartidas).toFixed(1);
+
+  // ── Evolution trend ──────────────────────────────────────
+  const sorted = [...scouts].sort((a,b)=>{
+    const pa=partidas.find(p=>p.id===a.partidaId), pb=partidas.find(p=>p.id===b.partidaId);
+    return (pa?.data||'').localeCompare(pb?.data||'');
+  });
+  let tendencia = 'estável', tendenciaDelta = 0, tendenciaClasse = '→';
+  if (sorted.length >= 3) {
+    const half = Math.ceil(sorted.length / 2);
+    const prim = sorted.slice(0,half).map(calcPerformance).filter(n=>n!==null);
+    const ult  = sorted.slice(-half).map(calcPerformance).filter(n=>n!==null);
+    if (prim.length && ult.length) {
+      const avgP = prim.reduce((a,b)=>a+b,0)/prim.length;
+      const avgU = ult.reduce((a,b)=>a+b,0)/ult.length;
+      tendenciaDelta = +(avgU - avgP).toFixed(2);
+      if (tendenciaDelta >= 1.0)       { tendencia='excelente'; tendenciaClasse='↑↑'; }
+      else if (tendenciaDelta >= 0.3)  { tendencia='crescente'; tendenciaClasse='↑'; }
+      else if (tendenciaDelta <= -1.0) { tendencia='queda acentuada'; tendenciaClasse='↓↓'; }
+      else if (tendenciaDelta < -0.3)  { tendencia='queda'; tendenciaClasse='↓'; }
+    }
+  }
+
+  // ── Consistency (std deviation of scores) ───────────────
+  const notas = scouts.map(calcPerformance).filter(n=>n!==null);
+  let consistencia = null;
+  if (notas.length >= 2) {
+    const avg = notas.reduce((a,b)=>a+b,0)/notas.length;
+    const std = Math.sqrt(notas.reduce((a,n)=>a+(n-avg)**2,0)/notas.length);
+    consistencia = Math.max(0, Math.min(10, 10 - std * 2));
+  }
+
+  // ── Classify each dimension ──────────────────────────────
+  function classifyRate(rate, excelente=.85, bom=.70, regular=.55) {
+    if (rate === null) return { label:'Sem dados', color:'var(--muted)', score: null };
+    if (rate >= excelente) return { label:'Excelente', color:'var(--success)', score: rate*10 };
+    if (rate >= bom)       return { label:'Boa',       color:'var(--primary)', score: rate*10 };
+    if (rate >= regular)   return { label:'Regular',   color:'var(--warning)', score: rate*10 };
+    return                        { label:'A melhorar', color:'var(--error)',  score: rate*10 };
+  }
+  const clDef  = classifyRate(taxaDef, .85, .70, .55);
+  const clDist = classifyRate(taxaDist, .80, .65, .50);
+  const clNota = avgNota !== null
+    ? (avgNota>=8.5?{label:'Elite',color:'#FFB300'}:avgNota>=7?{label:'Excelente',color:'var(--success)'}:avgNota>=5.5?{label:'Boa',color:'var(--primary)'}:avgNota>=4?{label:'Regular',color:'var(--warning)'}:{label:'Em Desenvolvimento',color:'var(--error)'})
+    : {label:'Sem dados',color:'var(--muted)'};
+
+  // ── Pontos fortes ────────────────────────────────────────
+  const forcas = [];
+  if (taxaDef !== null && taxaDef >= .80) forcas.push({ icon:'🛡️', texto:`Alta taxa de defesa (${(taxaDef*100).toFixed(0)}%) — intercepta a maioria dos chutes recebidos` });
+  if (taxaDist !== null && taxaDist >= .75) forcas.push({ icon:'🎯', texto:`Distribuição precisa (${(taxaDist*100).toFixed(0)}% de acerto) — controla bem a bola com pé e mão` });
+  if (totalInt / nPartidas >= 1.5) forcas.push({ icon:'✊', texto:`Alta frequência de interceptações (${gkPerGame(totalInt)}/jogo) — antecipa bem as jogadas` });
+  if (totalSai / nPartidas >= 1.0) forcas.push({ icon:'🚀', texto:`Ativa nas saídas (${gkPerGame(totalSai)}/jogo) — reduz o espaço para o atacante` });
+  if (defBaixa > defAlta && totalDef > 3) forcas.push({ icon:'🔽', texto:'Mais eficiente em defesas baixas — boa cobertura de solo e ângulos fechados' });
+  if (defAlta > defBaixa && totalDef > 3) forcas.push({ icon:'⬆️', texto:'Destaque em defesas altas — boa envergadura e leitura de trajetórias aéreas' });
+  if (tendencia === 'crescente' || tendencia === 'excelente') forcas.push({ icon:'📈', texto:`Evolução técnica ${tendencia} (${tendenciaDelta>0?'+':''}${tendenciaDelta} pts) — consistente progresso` });
+  if (consistencia !== null && consistencia >= 7.5) forcas.push({ icon:'🎖️', texto:`Alta consistência (${consistencia.toFixed(1)}/10) — desempenho equilibrado entre as partidas` });
+  if (totalEsq > 0 && totalDef > 0) forcas.push({ icon:'🏹', texto:`${totalEsq} esquadro(s) registrado(s) — reações de alto nível demonstradas` });
+
+  // ── Pontos de melhoria ───────────────────────────────────
+  const melhorias = [];
+  if (taxaDef !== null && taxaDef < .70) melhorias.push({ icon:'🎯', texto:`Taxa de defesa de ${(taxaDef*100).toFixed(0)}% — foco em leitura de trajetória e posicionamento no gol` });
+  if (taxaDistPe !== null && taxaDistPe < .65) melhorias.push({ icon:'🦵', texto:`Distribuição de pé com ${(taxaDistPe*100).toFixed(0)}% de precisão — priorizar treino de lançamentos curtos e médios` });
+  if (taxaDistMao !== null && taxaDistMao < .65) melhorias.push({ icon:'🤲', texto:`Distribuição de mão com ${(taxaDistMao*100).toFixed(0)}% de precisão — trabalhar arremessos e controle de potência` });
+  if (golPen > 0 && totalGols > 0 && golPen/totalGols > .30) melhorias.push({ icon:'⚠️', texto:`${golPen} gol(is) de pênalti sofrido(s) — desenvolver leitura de cobranças e trabalho psicológico` });
+  if (totalInt / nPartidas < 0.5 && nPartidas >= 3) melhorias.push({ icon:'👀', texto:'Poucas interceptações por jogo — trabalhar antecipação e saída de linha' });
+  if (tendencia === 'queda' || tendencia === 'queda acentuada') melhorias.push({ icon:'📉', texto:`Tendência de ${tendencia} recente (${tendenciaDelta} pts) — revisar carga de treino e aspectos técnicos` });
+  if (consistencia !== null && consistencia < 5) melhorias.push({ icon:'📊', texto:`Inconsistência de desempenho (${consistencia.toFixed(1)}/10) — criar rotina pré-jogo e trabalho mental` });
+  if (golArea / Math.max(1,totalGols) > .60 && totalGols >= 2) melhorias.push({ icon:'📍', texto:`${((golArea/totalGols)*100).toFixed(0)}% dos gols sofridos dentro da área — melhorar posicionamento e fechamento de ângulo` });
+
+  // ── Recomendações técnicas ───────────────────────────────
+  const recs = [];
+  if (taxaDef !== null && taxaDef < .75) recs.push('Treino específico de posicionamento: cone de gol e exercícios de ângulo com chutes de longa e curta distância');
+  if (taxaDistPe !== null && taxaDistPe < .70) recs.push('Circuito de distribuição de pé: lançamentos para alvo fixo em 3 distâncias (5m, 10m, 15m), meta de 75% de precisão');
+  if (taxaDistMao !== null && taxaDistMao < .70) recs.push('Série de arremessos guiados: trabalho com parceiro ou tela de alvo, enfatizando precisão antes de potência');
+  if (totalSai / nPartidas < 0.8) recs.push('Exercícios de saída de gol: 1v1 com atacante, decisão de quando sair ou ficar no gol — pelo menos 2× por semana');
+  if (tendenciaDelta < 0) recs.push('Revisão de vídeo das últimas partidas em conjunto com o treinador para identificar padrões de erro');
+  if (golPen > 2) recs.push('Treino de pênaltis: estudo de cobradores (lateralidade, posição do pé), 20 min no final de cada sessão');
+  recs.push('Registro de feedback pós-treino: diário técnico semanal para acompanhar evolução qualitativa');
+  if (consistencia !== null && consistencia < 6) recs.push('Implantação de rotina de aquecimento mental (respiração + visualização) nos 30min pré-partida');
+  if (totalInt / nPartidas < 1) recs.push('Jogo de antecipação: exercícios de leitura de passes e saída antecipada para cruzamentos e bolas na área');
+
+  // ── Resumo executivo ─────────────────────────────────────
+  const nivel = clNota.label;
+  const defStr = taxaDef !== null ? `taxa de defesa de ${(taxaDef*100).toFixed(0)}%` : 'dados de defesa em coleta';
+  const distStr = taxaDist !== null ? `precisão de distribuição de ${(taxaDist*100).toFixed(0)}%` : 'distribuição em desenvolvimento';
+  const resumo = `${gk.nome} apresenta nível de desempenho classificado como <strong>${nivel}</strong>, com nota média de <strong>${avgNota !== null ? avgNota.toFixed(1) : '—'}/10</strong> ao longo de <strong>${nPartidas} partida(s)</strong> analisada(s). `
+    + `A goleira registra ${defStr}, ${distStr} e média de <strong>${gkPerGame(totalDef)} defesas por jogo</strong>. `
+    + `A tendência de evolução é <strong>${tendencia}</strong>${Math.abs(tendenciaDelta) > 0.1 ? ` (${tendenciaDelta > 0 ? '+' : ''}${tendenciaDelta} pts)` : ''}.`
+    + (forcas.length ? ` Seus principais pontos fortes são ${forcas.slice(0,2).map(f=>f.texto.split('—')[0].toLowerCase()).join(' e ')}.` : '');
+
+  // ── Build HTML report ────────────────────────────────────
+  const tendCorColor = tendencia.includes('crescente')||tendencia==='excelente' ? 'var(--success)' : tendencia.includes('queda') ? 'var(--error)' : 'var(--warning)';
+
+  const html = `
+  <div id="analise-pdf-content">
+    <!-- Header: Nota geral + Classificação -->
+    <div style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center;margin-bottom:24px;padding:20px;background:linear-gradient(135deg,rgba(0,212,255,.06),rgba(123,47,190,.06));border:1px solid rgba(0,212,255,.15);border-radius:14px;">
+      <div style="text-align:center;">
+        <div style="font-size:52px;font-weight:900;line-height:1;color:${clNota.color};text-shadow:0 0 30px ${clNota.color}40;">${avgNota !== null ? avgNota.toFixed(1) : '—'}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:1px;margin-top:4px;">NOTA GERAL</div>
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;">Nível de Desempenho</div>
+        <div style="font-size:22px;font-weight:800;color:${clNota.color};">${nivel}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;">${nPartidas} partida(s) · ${scouts.length} scout(s) · Gerado em ${new Date().toLocaleDateString('pt-BR')}</div>
+      </div>
+      <div style="text-align:center;padding:12px 20px;background:rgba(0,0,0,.2);border-radius:10px;">
+        <div style="font-size:28px;font-weight:800;color:${tendCorColor};">${tendenciaClasse}</div>
+        <div style="font-size:10px;color:var(--muted);letter-spacing:.5px;margin-top:2px;">EVOLUÇÃO</div>
+        <div style="font-size:11px;font-weight:600;color:${tendCorColor};margin-top:2px;">${tendencia}</div>
+      </div>
+    </div>
+
+    <!-- Resumo executivo -->
+    <div style="background:rgba(255,255,255,.03);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:20px;font-size:13px;line-height:1.7;color:var(--text);">${resumo}</div>
+
+    <!-- Métricas principais: 4 cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;">
+      ${[
+        { label:'Taxa de Defesa', val: taxaDef !== null ? (taxaDef*100).toFixed(0)+'%' : '—', sub: totalDef+' defesas / '+(totalGols)+' gols', color: clDef.color },
+        { label:'Precisão Distrib.', val: taxaDist !== null ? (taxaDist*100).toFixed(0)+'%' : '—', sub: distCertas+' certas / '+distTotal+' total', color: clDist.color },
+        { label:'Def. por Jogo', val: gkPerGame(totalDef), sub: totalEsq+' esquadro(s)', color:'var(--primary)' },
+        { label:'Consistência', val: consistencia !== null ? consistencia.toFixed(1)+'/10' : '—', sub: notas.length+' notas registradas', color: consistencia !== null && consistencia >= 7 ? 'var(--success)' : 'var(--warning)' },
+      ].map(m=>`
+        <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
+          <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">${m.label}</div>
+          <div style="font-size:26px;font-weight:800;color:${m.color};line-height:1;">${m.val}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:4px;">${m.sub}</div>
+        </div>`).join('')}
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <!-- Pontos Fortes -->
+      <div style="background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.2);border-radius:12px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--success);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">✅ Pontos Fortes</div>
+        ${(forcas.length ? forcas.slice(0,4) : [{icon:'➕',texto:'Continue acumulando partidas para identificar padrões de força'}]).map(f=>`
+          <div style="display:flex;gap:8px;margin-bottom:9px;font-size:12px;line-height:1.5;">
+            <span style="flex-shrink:0;">${f.icon}</span>
+            <span style="color:var(--text);">${f.texto}</span>
+          </div>`).join('')}
+      </div>
+      <!-- Pontos de Melhoria -->
+      <div style="background:rgba(255,179,0,.04);border:1px solid rgba(255,179,0,.2);border-radius:12px;padding:16px;">
+        <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">⚠️ A Desenvolver</div>
+        ${(melhorias.length ? melhorias.slice(0,4) : [{icon:'💪',texto:'Manter o ritmo atual e continuar evoluindo nas métricas já consolidadas'}]).map(m=>`
+          <div style="display:flex;gap:8px;margin-bottom:9px;font-size:12px;line-height:1.5;">
+            <span style="flex-shrink:0;">${m.icon}</span>
+            <span style="color:var(--text);">${m.texto}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Análise por zona de defesa -->
+    <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px;">🗺️ Distribuição por Zona</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        ${[
+          { zona:'Altas', val:defAlta, pct: totalDef>0?(defAlta/totalDef*100).toFixed(0):0, color:'#00D4FF' },
+          { zona:'Centrais', val:defCentral, pct: totalDef>0?(defCentral/totalDef*100).toFixed(0):0, color:'#7B2FBE' },
+          { zona:'Baixas', val:defBaixa, pct: totalDef>0?(defBaixa/totalDef*100).toFixed(0):0, color:'#00E676' },
+        ].map(z=>`
+          <div style="text-align:center;">
+            <div style="font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.5px;margin-bottom:6px;">${z.zona.toUpperCase()}</div>
+            <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:6px;">
+              <div style="height:100%;width:${z.pct}%;background:${z.color};border-radius:3px;transition:width .6s;"></div>
+            </div>
+            <div style="font-size:18px;font-weight:800;color:${z.color};">${z.val}</div>
+            <div style="font-size:10px;color:var(--muted);">${z.pct}% das defesas</div>
+          </div>`).join('')}
+      </div>
+      ${totalGols > 0 ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">
+        <span style="font-weight:600;color:var(--text);">Gols sofridos por tipo: </span>
+        Dentro da área: <strong>${golArea}</strong> · Fora: <strong>${golFora}</strong> · Pênalti: <strong>${golPen}</strong> · Falta: <strong>${golFalt}</strong>
+      </div>` : ''}
+    </div>
+
+    <!-- Recomendações técnicas -->
+    <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--primary);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📋 Recomendações Técnicas</div>
+      ${recs.slice(0,5).map((r,i)=>`
+        <div style="display:flex;gap:10px;margin-bottom:10px;font-size:12px;line-height:1.5;">
+          <span style="width:20px;height:20px;border-radius:50%;background:var(--primary);color:#000;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span>
+          <span style="color:var(--text);">${r}</span>
+        </div>`).join('')}
+    </div>
+  </div>`;
+
+  document.getElementById('analise-title').textContent = `Análise — ${gk.nome}`;
+  document.getElementById('analise-subtitle').textContent = `${gk.equipe||'Equipe não informada'} · ${gk.categoria||'Categoria não informada'}`;
+  document.getElementById('analise-body').innerHTML = html;
+  openModal('modal-analise');
+}
+
+function exportarAnalisePDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const gkId = analiseGkId;
+  const gk = gkId ? DB.goleiras.find(g=>g.id===gkId) : null;
+
+  doc.setFillColor(7,7,15); doc.rect(0,0,210,297,'F');
+  doc.setTextColor(238,238,248);
+  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text('GK Hub — Análise de Desempenho', 15, 20);
+  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(90,90,122);
+  doc.text(gk ? `${gk.nome} · ${gk.equipe||'—'} · ${gk.categoria||'—'}` : '—', 15, 28);
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, 15, 34);
+
+  // Render the analise body as text using autoTable
+  const scouts = gkId ? DB.scouts.filter(s=>s.goalkeeperId===gkId) : [];
+  const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
+  const avgNota = gkId ? avgPerformance(gkId) : null;
+  const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc');
+  const totalGols= sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+  const distCertas=sum('dpc')+sum('dmc'); const distTotal=distCertas+sum('dpe')+sum('dme');
+  const taxaDef = (totalDef+totalGols)>0 ? totalDef/(totalDef+totalGols) : null;
+  const taxaDist = distTotal>0 ? distCertas/distTotal : null;
+  const nP = Math.max(1,[...new Set(scouts.map(s=>s.partidaId).filter(Boolean))].length||scouts.length);
+
+  doc.autoTable({
+    startY: 42,
+    head:[['Métrica','Valor','Avaliação']],
+    body:[
+      ['Nota Geral', avgNota!==null?avgNota.toFixed(1)+'/10':'—', avgNota>=8.5?'Elite':avgNota>=7?'Excelente':avgNota>=5.5?'Boa':avgNota>=4?'Regular':'Em Desenvolvimento'],
+      ['Taxa de Defesa', taxaDef!==null?(taxaDef*100).toFixed(0)+'%':'—', taxaDef>=.85?'Excelente':taxaDef>=.70?'Boa':taxaDef>=.55?'Regular':'A melhorar'],
+      ['Precisão Distribuição', taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—', taxaDist>=.80?'Excelente':taxaDist>=.65?'Boa':'A melhorar'],
+      ['Total Defesas', totalDef.toString(), (totalDef/nP).toFixed(1)+'/jogo'],
+      ['Gols Sofridos', totalGols.toString(), (totalGols/nP).toFixed(1)+'/jogo'],
+      ['Interceptações', sum('int').toString(), (sum('int')/nP).toFixed(1)+'/jogo'],
+      ['Saídas', sum('sai').toString(), (sum('sai')/nP).toFixed(1)+'/jogo'],
+      ['Partidas Analisadas', nP.toString(), scouts.length+' scout(s)'],
+    ],
+    styles:{ textColor:[238,238,248], fillColor:[19,19,36], lineColor:[30,30,58] },
+    headStyles:{ fillColor:[0,212,255], textColor:[0,0,0], fontStyle:'bold' },
+    alternateRowStyles:{ fillColor:[26,26,48] },
+    theme:'grid'
+  });
+  doc.save(`analise_${gk?.nome?.replace(/\s+/g,'_')||'goleira'}_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('PDF exportado!','success');
 }
 
 // ═══════════════════════════════════════════════════════════
