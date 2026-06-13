@@ -9,6 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <style>
     :root {
@@ -381,6 +385,11 @@
       cursor: crosshair;
       inset: 0;
     }
+    .hm-grid { position:absolute; inset:0; display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr); }
+    .hm-cell { display:flex; align-items:center; justify-content:center; flex-direction:column; border:1px solid rgba(255,255,255,.06); font-size:11px; font-weight:700; color:#fff; transition:background .3s; position:relative; }
+    .hm-cell span.lbl { font-size:9px; font-weight:500; opacity:.75; margin-top:2px; }
+    .hm-goal { position:absolute; top:25%; bottom:25%; width:6px; background:rgba(255,255,255,.5); border-radius:2px; }
+    .hm-goal.left { left:0; } .hm-goal.right { right:0; }
 
     /* ── Performance bars ── */
     .perf-bar-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
@@ -504,6 +513,14 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Performance
     </div>
+    <div class="nav-item" data-page="heatmap" onclick="navigate('heatmap')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+      Heatmap
+    </div>
+    <div class="nav-item" data-page="relatorios" onclick="navigate('relatorios')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Relatórios PDF
+    </div>
     <div class="nav-section-label">Dados</div>
     <div class="nav-item" data-page="importar" onclick="navigate('importar')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -513,8 +530,18 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       Exportar Excel
     </div>
+    <div class="nav-item" data-page="config" onclick="navigate('config')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><circle cx="12" cy="12" r="3"/><path d="M19 5l-7 7"/></svg>
+      Nuvem (Firebase)
+    </div>
   </nav>
-  <div class="sidebar-footer">GK Hub v1.0 &copy; 2026</div>
+  <div class="sidebar-footer">
+    <div id="cloud-status" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+      <span id="cloud-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
+      <span id="cloud-label" style="font-size:11px;">Nuvem: offline</span>
+    </div>
+    GK Hub v1.0 &copy; 2026
+  </div>
 </aside>
 
 <!-- Main -->
@@ -803,6 +830,104 @@
       </div>
     </div>
 
+    <!-- ══ HEATMAP ══ -->
+    <div id="page-heatmap" class="page">
+      <div class="card-header" style="margin-bottom:16px;">
+        <span style="font-size:14px;color:var(--muted)">Mapa de calor da quadra — defesas e gols sofridos</span>
+        <select class="form-select" id="heatmap-gk" style="width:240px;" onchange="renderHeatmap()">
+          <option value="">Todas as goleiras</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Defesas (zonas)</span></div>
+          <div class="heatmap-court" id="court-defesas"></div>
+          <div style="display:flex;justify-content:center;gap:16px;margin-top:14px;font-size:11px;color:var(--muted);">
+            <span>Goleira defende o gol à esquerda →</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Gols Sofridos (zonas)</span></div>
+          <div class="heatmap-court" id="court-gols"></div>
+          <div style="display:flex;justify-content:center;gap:16px;margin-top:14px;font-size:11px;color:var(--muted);">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(255,61,87,.7);"></span> menos</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:rgba(255,61,87,1);"></span> mais</span>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header"><span class="card-title">Resumo por zona</span></div>
+        <div id="heatmap-summary" class="table-wrap"></div>
+      </div>
+    </div>
+
+    <!-- ══ RELATÓRIOS PDF ══ -->
+    <div id="page-relatorios" class="page">
+      <div class="card" style="max-width:620px;">
+        <div class="card-header"><span class="card-title">Gerar Relatórios em PDF</span></div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Gere relatórios profissionais prontos para imprimir ou compartilhar.</p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
+            <div>
+              <div style="font-weight:600;font-size:14px;">Relatório Geral</div>
+              <div style="color:var(--muted);font-size:12px;">Todas as goleiras, partidas e ranking de performance</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="pdfGeral()">Gerar PDF</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
+            <div style="flex:1;">
+              <div style="font-weight:600;font-size:14px;margin-bottom:8px;">Relatório Individual</div>
+              <select class="form-select" id="pdf-gk-select"><option value="">Selecione a goleira…</option></select>
+            </div>
+            <button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="pdfIndividual()">Gerar PDF</button>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
+            <div>
+              <div style="font-weight:600;font-size:14px;">Relatório de Partidas</div>
+              <div style="color:var(--muted);font-size:12px;">Histórico completo de jogos com resultados</div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="pdfPartidas()">Gerar PDF</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CONFIG FIREBASE ══ -->
+    <div id="page-config" class="page">
+      <div class="card" style="max-width:680px;">
+        <div class="card-header"><span class="card-title">Sincronização na Nuvem (Firebase)</span></div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Conecte um projeto Firebase gratuito para salvar seus dados na nuvem e acessá-los de qualquer dispositivo.</p>
+        <details style="margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
+          <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--primary);">📖 Como obter as credenciais (passo a passo)</summary>
+          <ol style="margin:12px 0 0 18px;font-size:12px;color:var(--muted);line-height:1.9;">
+            <li>Acesse <strong>console.firebase.google.com</strong> e faça login com sua conta Google</li>
+            <li>Clique em <strong>"Adicionar projeto"</strong> e dê um nome (ex: gkhub)</li>
+            <li>No menu lateral, vá em <strong>Build → Firestore Database → Criar banco de dados</strong> (modo de teste)</li>
+            <li>Vá em <strong>Configurações do projeto (⚙️) → Seus aplicativos → ícone Web (&lt;/&gt;)</strong></li>
+            <li>Registre o app e copie o objeto <strong>firebaseConfig</strong> que aparece</li>
+            <li>Cole o conteúdo abaixo e clique em Conectar</li>
+          </ol>
+        </details>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">Cole aqui seu firebaseConfig (o objeto { apiKey: ... })</label>
+          <textarea class="form-textarea" id="fb-config" style="min-height:160px;font-family:monospace;font-size:12px;" placeholder='{
+  "apiKey": "...",
+  "authDomain": "...",
+  "projectId": "...",
+  "storageBucket": "...",
+  "messagingSenderId": "...",
+  "appId": "..."
+}'></textarea>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn btn-primary" onclick="conectarFirebase()">Conectar</button>
+          <button class="btn btn-ghost" onclick="desconectarFirebase()">Desconectar</button>
+          <button class="btn btn-success" id="btn-sync" onclick="sincronizarNuvem()" style="display:none;">↑↓ Sincronizar agora</button>
+        </div>
+        <div id="fb-status" style="margin-top:16px;font-size:13px;"></div>
+      </div>
+    </div>
+
   </div><!-- /content -->
 </main>
 
@@ -1036,7 +1161,8 @@ let chartPerf = null, chartEvolucao = null;
 const pageTitles = {
   dashboard: 'Dashboard', goleiras: 'Goleiras',
   partidas: 'Partidas', scout: 'Scout de Jogo',
-  performance: 'Performance', importar: 'Importar Excel'
+  performance: 'Performance', importar: 'Importar Excel',
+  heatmap: 'Heatmap', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)'
 };
 
 function navigate(page) {
@@ -1051,6 +1177,9 @@ function navigate(page) {
   if (page === 'partidas') renderPartidas();
   if (page === 'scout') renderScouts();
   if (page === 'performance') renderPerformance();
+  if (page === 'heatmap') renderHeatmap();
+  if (page === 'relatorios') updateSelects();
+  if (page === 'config') renderConfigStatus();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1157,6 +1286,7 @@ function salvarGoleira() {
     goleiras.push(obj);
   }
   DB.saveGoleiras(goleiras);
+  cloudSet('goleiras', editingId.goleira ? goleiras.find(g=>g.id===editingId.goleira) : obj);
   closeModal('modal-goleira');
   renderGoleiras();
   updateGoleiraSelects();
@@ -1185,6 +1315,7 @@ function excluirGoleira(id) {
   if (!confirm('Excluir esta goleira? Os scouts e dados associados também serão removidos.')) return;
   DB.saveGoleiras(DB.goleiras.filter(g => g.id !== id));
   DB.saveScouts(DB.scouts.filter(s => s.goalkeeperId !== id));
+  cloudDelete('goleiras', id);
   renderGoleiras();
   updateGoleiraSelects();
   toast('Goleira excluída.', 'info');
@@ -1248,6 +1379,7 @@ function salvarPartida() {
     partidas.push(obj);
   }
   DB.savePartidas(partidas);
+  cloudSet('partidas', editingId.partida ? partidas.find(p=>p.id===editingId.partida) : obj);
   closeModal('modal-partida');
   renderPartidas();
   toast(editingId.partida ? 'Partida atualizada!' : 'Partida cadastrada!', 'success');
@@ -1274,6 +1406,7 @@ function editarPartida(id) {
 function excluirPartida(id) {
   if (!confirm('Excluir esta partida?')) return;
   DB.savePartidas(DB.partidas.filter(p => p.id !== id));
+  cloudDelete('partidas', id);
   renderPartidas();
   toast('Partida excluída.', 'info');
 }
@@ -1336,6 +1469,7 @@ function salvarScout() {
     scouts.push(obj);
   }
   DB.saveScouts(scouts);
+  cloudSet('scouts', editingId.scout ? scouts.find(s=>s.id===editingId.scout) : obj);
   closeModal('modal-scout');
   renderScouts();
   toast('Scout salvo!', 'success');
@@ -1356,6 +1490,7 @@ function editarScout(id) {
 function excluirScout(id) {
   if (!confirm('Excluir este scout?')) return;
   DB.saveScouts(DB.scouts.filter(s => s.id !== id));
+  cloudDelete('scouts', id);
   renderScouts();
   toast('Scout excluído.', 'info');
 }
@@ -1558,11 +1693,16 @@ function updateGoleiraSelects() {
     const el = document.getElementById(id);
     if (el) el.innerHTML = opts;
   });
+  const hmEl = document.getElementById('heatmap-gk');
+  if (hmEl) { const v = hmEl.value; hmEl.innerHTML = `<option value="">Todas as goleiras</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join(''); hmEl.value = v; }
+  const pdfEl = document.getElementById('pdf-gk-select');
+  if (pdfEl) pdfEl.innerHTML = `<option value="">Selecione a goleira…</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
   const partidas = DB.partidas;
   const popts = `<option value="">Selecionar…</option>` + partidas.map(p => `<option value="${p.id}">${p.adversario}${p.data?' ('+formatDate(p.data)+')':''}</option>`).join('');
   const spt = document.getElementById('scout-partida');
   if (spt) spt.innerHTML = popts;
 }
+const updateSelects = updateGoleiraSelects;
 
 // ═══════════════════════════════════════════════════════════
 // EXCEL IMPORT
@@ -1814,9 +1954,254 @@ window.addEventListener('resize', () => {
   document.getElementById('menu-btn').style.display = window.innerWidth<=768?'flex':'none';
 });
 
+// ═══════════════════════════════════════════════════════════
+// HEATMAP
+// ═══════════════════════════════════════════════════════════
+function aggScouts(gkId) {
+  let scouts = DB.scouts;
+  if (gkId) scouts = scouts.filter(s => s.goalkeeperId === gkId);
+  return scouts;
+}
+function renderHeatmap() {
+  const gkId = document.getElementById('heatmap-gk')?.value || '';
+  const scouts = aggScouts(gkId);
+  // Zonas de defesa: mapeadas numa grade 3x3 (a goleira defende o gol à esquerda)
+  const sum = (k) => scouts.reduce((a,s)=>a+(+s[k]||0),0);
+  // Defesas por zona [linha][coluna] linha 0=topo
+  const defGrid = [
+    [sum('dae'), 0, 0],   // alta esquerda
+    [sum('dbe')+sum('dc'), sum('int'), sum('esq')], // baixa esq + central / interceptações / esquadros
+    [sum('dbd'), 0, 0],   // baixa direita
+  ];
+  // ajuste: também distribuímos defesas altas direita
+  defGrid[0][0] = sum('dae');
+  defGrid[2][0] = sum('dbd');
+  defGrid[0][1] = sum('dad'); // alta dir mais ao centro-topo
+  defGrid[1][0] = sum('dbe')+sum('dc');
+  defGrid[1][1] = sum('int');
+  defGrid[1][2] = sum('esq');
+  defGrid[2][1] = sum('posd')+sum('pose');
+  const golGrid = [
+    [Math.round(sum('gda')*0.4), Math.round(sum('gfa')*0.5), 0],
+    [Math.round(sum('gda')*0.2), sum('gpe'), sum('gfl')],
+    [Math.round(sum('gda')*0.4), Math.round(sum('gfa')*0.5), 0],
+  ];
+  drawCourt('court-defesas', defGrid, '0,212,255');
+  drawCourt('court-gols', golGrid, '255,61,87');
+  // Resumo
+  const stats = [
+    ['Defesas Altas', sum('dad')+sum('dae')],
+    ['Defesas Baixas', sum('dbd')+sum('dbe')],
+    ['Defesa Central', sum('dc')],
+    ['Interceptações', sum('int')],
+    ['Esquadros', sum('esq')],
+    ['Gols Dentro da Área', sum('gda')],
+    ['Gols Fora da Área', sum('gfa')],
+    ['Gols de Pênalti', sum('gpe')],
+  ];
+  document.getElementById('heatmap-summary').innerHTML = `<table><thead><tr><th>Métrica</th><th>Total</th></tr></thead><tbody>${stats.map(([k,v])=>`<tr><td>${k}</td><td><strong>${v}</strong></td></tr>`).join('')}</tbody></table>`;
+}
+function drawCourt(id, grid, rgb) {
+  const court = document.getElementById(id);
+  if (!court) return;
+  const max = Math.max(1, ...grid.flat());
+  let html = `<div class="hm-goal left"></div><div class="hm-goal right"></div><div class="hm-grid">`;
+  for (let r=0;r<3;r++) for (let c=0;c<3;c++) {
+    const v = grid[r][c];
+    const intensity = v/max;
+    const bg = v>0 ? `rgba(${rgb},${0.15+intensity*0.7})` : 'transparent';
+    html += `<div class="hm-cell" style="background:${bg};">${v>0?v:''}</div>`;
+  }
+  html += `</div>`;
+  court.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════
+// PDF REPORTS
+// ═══════════════════════════════════════════════════════════
+function pdfHeader(doc, title) {
+  doc.setFillColor(13,13,26);
+  doc.rect(0,0,210,28,'F');
+  doc.setTextColor(0,212,255);
+  doc.setFontSize(20); doc.setFont(undefined,'bold');
+  doc.text('GK Hub', 14, 14);
+  doc.setTextColor(180,180,200);
+  doc.setFontSize(9); doc.setFont(undefined,'normal');
+  doc.text('Goalkeeper Performance Platform', 14, 21);
+  doc.setTextColor(40,40,40);
+  doc.setFontSize(14); doc.setFont(undefined,'bold');
+  doc.text(title, 14, 40);
+  doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(120,120,120);
+  doc.text('Gerado em ' + new Date().toLocaleString('pt-BR'), 14, 46);
+}
+function pdfGeral() {
+  if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Relatório Geral');
+  const goleiras = DB.goleiras;
+  if (!goleiras.length) { toast('Nenhuma goleira cadastrada','error'); return; }
+  const rows = goleiras.map(g => {
+    const avg = avgPerformance(g.id); const { label } = classifyPerf(avg);
+    return [g.nome, g.equipe||'-', g.categoria||'-', avg!==null?avg:'-', avg!==null?label:'-'];
+  });
+  doc.autoTable({ startY: 52, head: [['Goleira','Equipe','Categoria','Nota','Classificação']], body: rows,
+    headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
+  doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
+  doc.text('Resumo', 14, doc.lastAutoTable.finalY + 12);
+  doc.autoTable({ startY: doc.lastAutoTable.finalY + 16,
+    body: [['Total de goleiras', goleiras.length],['Partidas', DB.partidas.length],['Scouts', DB.scouts.length]],
+    styles: { fontSize: 9 } });
+  doc.save('gkhub_relatorio_geral.pdf');
+  toast('PDF gerado!','success');
+}
+function pdfIndividual() {
+  const gkId = document.getElementById('pdf-gk-select').value;
+  if (!gkId) { toast('Selecione uma goleira','error'); return; }
+  const gk = DB.goleiras.find(g=>g.id===gkId);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Relatório Individual — ' + gk.nome);
+  const scouts = DB.scouts.filter(s=>s.goalkeeperId===gkId);
+  const avg = avgPerformance(gkId); const { label } = classifyPerf(avg);
+  doc.autoTable({ startY: 52, head: [['Dado','Valor']], body: [
+    ['Nome', gk.nome],['Equipe', gk.equipe||'-'],['Categoria', gk.categoria||'-'],
+    ['Altura', gk.altura?gk.altura+' cm':'-'],['Peso', gk.peso?gk.peso+' kg':'-'],
+    ['Pé dominante', gk.pe||'-'],['Performance média', avg!==null?avg+' ('+label+')':'sem dados'],
+    ['Partidas com scout', scouts.length],
+  ], headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
+  if (scouts.length) {
+    const sum = (k)=>scouts.reduce((a,s)=>a+(+s[k]||0),0);
+    doc.text('Estatísticas acumuladas', 14, doc.lastAutoTable.finalY + 12);
+    doc.autoTable({ startY: doc.lastAutoTable.finalY + 16, head: [['Métrica','Total']], body: [
+      ['Defesas Altas', sum('dad')+sum('dae')],['Defesas Baixas', sum('dbd')+sum('dbe')],
+      ['Defesa Central', sum('dc')],['Interceptações', sum('int')],['Esquadros', sum('esq')],
+      ['Gols sofridos', sum('gda')+sum('gfa')+sum('gpe')+sum('gfl')],
+    ], headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
+  }
+  doc.save('gkhub_'+gk.nome.replace(/\s/g,'_')+'.pdf');
+  toast('PDF gerado!','success');
+}
+function pdfPartidas() {
+  const partidas = DB.partidas;
+  if (!partidas.length) { toast('Nenhuma partida registrada','error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Relatório de Partidas');
+  const gkMap = Object.fromEntries(DB.goleiras.map(g=>[g.id,g.nome]));
+  const rows = [...partidas].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(p => {
+    const r = p.gf>p.gc?'V':p.gf<p.gc?'D':'E';
+    return [p.data?formatDate(p.data):'-', p.adversario, p.competicao||'-', gkMap[p.goalkeeperId]||'-', `${r} ${p.gf}x${p.gc}`];
+  });
+  doc.autoTable({ startY: 52, head: [['Data','Adversário','Competição','Goleira','Resultado']], body: rows,
+    headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
+  doc.save('gkhub_partidas.pdf');
+  toast('PDF gerado!','success');
+}
+
+// ═══════════════════════════════════════════════════════════
+// FIREBASE CLOUD SYNC
+// ═══════════════════════════════════════════════════════════
+let fbApp = null, fbDb = null;
+function setCloudStatus(connected, label) {
+  const dot = document.getElementById('cloud-dot');
+  const lbl = document.getElementById('cloud-label');
+  if (dot) dot.style.background = connected ? 'var(--success)' : 'var(--muted)';
+  if (lbl) lbl.textContent = 'Nuvem: ' + (label || (connected?'conectada':'offline'));
+}
+function initFirebaseFromStorage() {
+  const saved = localStorage.getItem('gkhub_fbconfig');
+  if (!saved) return;
+  try { startFirebase(JSON.parse(saved)); } catch(e) { console.warn('Firebase init falhou', e); }
+}
+function startFirebase(config) {
+  if (!window.firebase) throw new Error('SDK Firebase não carregado');
+  if (fbApp) { try { fbApp.delete(); } catch(e){} fbApp = null; }
+  fbApp = firebase.initializeApp(config);
+  fbDb = firebase.firestore();
+  setCloudStatus(true, 'conectada');
+  const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
+  // Escuta mudanças em tempo real
+  ['goleiras','partidas','scouts'].forEach(col => {
+    fbDb.collection(col).onSnapshot(snap => {
+      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      DB.save(col, data);
+      // re-render página atual
+      const active = document.querySelector('.page.active')?.id?.replace('page-','');
+      if (active) {
+        if (active==='goleiras') renderGoleiras();
+        if (active==='partidas') renderPartidas();
+        if (active==='scout') renderScouts();
+        if (active==='dashboard') refreshDashboard();
+        if (active==='performance') renderPerformance();
+        if (active==='heatmap') renderHeatmap();
+      }
+      updateGoleiraSelects();
+    }, err => { console.warn(err); setCloudStatus(false,'erro'); });
+  });
+}
+function conectarFirebase() {
+  const raw = document.getElementById('fb-config').value.trim();
+  if (!raw) { toast('Cole as credenciais do Firebase','error'); return; }
+  let config;
+  try {
+    // aceita objeto JS ou JSON
+    config = raw.startsWith('{') && raw.includes('"') ? JSON.parse(raw) : (0,eval)('('+raw+')');
+  } catch(e) { toast('Configuração inválida: '+e.message,'error'); return; }
+  try {
+    startFirebase(config);
+    localStorage.setItem('gkhub_fbconfig', JSON.stringify(config));
+    document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Conectado! Sincronizando dados…</span>';
+    sincronizarNuvem();
+    toast('Firebase conectado!','success');
+  } catch(e) { toast('Erro ao conectar: '+e.message,'error'); document.getElementById('fb-status').innerHTML = '<span style="color:var(--error)">✗ '+e.message+'</span>'; }
+}
+function desconectarFirebase() {
+  if (fbApp) { try { fbApp.delete(); } catch(e){} }
+  fbApp = null; fbDb = null;
+  localStorage.removeItem('gkhub_fbconfig');
+  setCloudStatus(false,'offline');
+  const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'none';
+  document.getElementById('fb-status').innerHTML = '<span style="color:var(--muted)">Desconectado.</span>';
+  toast('Firebase desconectado','info');
+}
+async function sincronizarNuvem() {
+  if (!fbDb) { toast('Conecte ao Firebase primeiro','error'); return; }
+  try {
+    // Envia dados locais para a nuvem (merge)
+    for (const col of ['goleiras','partidas','scouts']) {
+      const items = DB.load(col);
+      for (const item of items) {
+        const { id, ...rest } = item;
+        await fbDb.collection(col).doc(String(id)).set(rest, { merge: true });
+      }
+    }
+    document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Dados sincronizados com a nuvem!</span>';
+    toast('Sincronizado!','success');
+  } catch(e) { toast('Erro: '+e.message,'error'); }
+}
+// Salva 1 item na nuvem (chamado após criar/editar)
+function cloudSet(col, item) {
+  if (!fbDb) return;
+  const { id, ...rest } = item;
+  fbDb.collection(col).doc(String(id)).set(rest, { merge: true }).catch(e=>console.warn(e));
+}
+function cloudDelete(col, id) {
+  if (!fbDb) return;
+  fbDb.collection(col).doc(String(id)).delete().catch(e=>console.warn(e));
+}
+function renderConfigStatus() {
+  const saved = localStorage.getItem('gkhub_fbconfig');
+  if (saved && fbDb) {
+    document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Conectado e sincronizando.</span>';
+    document.getElementById('btn-sync').style.display = 'inline-flex';
+  }
+}
+
 // INIT
 updateGoleiraSelects();
 refreshDashboard();
+initFirebaseFromStorage();
 </script>
 </body>
 </html>
