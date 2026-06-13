@@ -865,10 +865,12 @@
 
     <!-- ══ RELATÓRIOS PDF ══ -->
     <div id="page-relatorios" class="page">
-      <div class="card" style="max-width:620px;">
+      <div class="card" style="max-width:680px;">
         <div class="card-header"><span class="card-title">Gerar Relatórios em PDF</span></div>
         <p style="color:var(--muted);font-size:13px;margin-bottom:20px;">Gere relatórios profissionais prontos para imprimir ou compartilhar.</p>
         <div style="display:flex;flex-direction:column;gap:12px;">
+
+          <!-- Geral -->
           <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
             <div>
               <div style="font-weight:600;font-size:14px;">Relatório Geral</div>
@@ -876,6 +878,8 @@
             </div>
             <button class="btn btn-primary btn-sm" onclick="pdfGeral()">Gerar PDF</button>
           </div>
+
+          <!-- Individual -->
           <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
             <div style="flex:1;">
               <div style="font-weight:600;font-size:14px;margin-bottom:8px;">Relatório Individual</div>
@@ -883,6 +887,18 @@
             </div>
             <button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="pdfIndividual()">Gerar PDF</button>
           </div>
+
+          <!-- Por Competição -->
+          <div style="padding:14px;border:1px solid var(--primary);border-radius:10px;background:rgba(0,212,255,.04);">
+            <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Relatório por Competição</div>
+            <div style="color:var(--muted);font-size:12px;margin-bottom:12px;">Partidas, resultados e performance das goleiras em uma competição específica</div>
+            <div style="display:flex;gap:10px;align-items:center;">
+              <select class="form-select" id="pdf-comp-select" style="flex:1;"><option value="">Selecione a competição…</option></select>
+              <button class="btn btn-primary btn-sm" onclick="pdfCompeticao()">Gerar PDF</button>
+            </div>
+          </div>
+
+          <!-- Todas as Partidas -->
           <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
             <div>
               <div style="font-weight:600;font-size:14px;">Relatório de Partidas</div>
@@ -890,6 +906,7 @@
             </div>
             <button class="btn btn-primary btn-sm" onclick="pdfPartidas()">Gerar PDF</button>
           </div>
+
         </div>
       </div>
     </div>
@@ -1211,7 +1228,7 @@ function navigate(page) {
   if (page === 'scout') renderScouts();
   if (page === 'performance') renderPerformance();
   if (page === 'heatmap') renderHeatmap();
-  if (page === 'relatorios') updateSelects();
+  if (page === 'relatorios') { updateSelects(); updateCompSelect(); }
   if (page === 'config') renderConfigStatus();
 }
 
@@ -2240,6 +2257,101 @@ function pdfPartidas() {
   doc.autoTable({ startY: 52, head: [['Data','Adversário','Competição','Goleira','Resultado']], body: rows,
     headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
   doc.save('gkhub_partidas.pdf');
+  toast('PDF gerado!','success');
+}
+
+function updateCompSelect() {
+  const comps = [...new Set(DB.partidas.map(p => p.competicao || '').filter(Boolean))].sort();
+  const el = document.getElementById('pdf-comp-select');
+  if (!el) return;
+  el.innerHTML = '<option value="">Selecione a competição…</option>' +
+    comps.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function pdfCompeticao() {
+  const comp = document.getElementById('pdf-comp-select').value;
+  if (!comp) { toast('Selecione uma competição', 'error'); return; }
+  const partidas = DB.partidas.filter(p => (p.competicao || '') === comp);
+  if (!partidas.length) { toast('Nenhuma partida nesta competição', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Relatório — ' + comp);
+  const goleiras = DB.goleiras;
+  const gkMap = Object.fromEntries(goleiras.map(g => [g.id, g.nome]));
+  const scouts = DB.scouts;
+
+  // ── Tabela de partidas ──
+  doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
+  doc.text('Partidas', 14, 52);
+  const rowsP = [...partidas].sort((a,b) => (a.data||'').localeCompare(b.data||'')).map(p => {
+    const gkNome = gkMap[p.goalkeeperId] || '—';
+    const gk2Nome = p.gk2Id ? (gkMap[p.gk2Id] || '—') : '';
+    const gkCell = gk2Nome ? `${gkNome} (${p.periodo1||'1ºT'}) / ${gk2Nome} (${p.periodo2||'2ºT'})` : gkNome;
+    const r = p.gf > p.gc ? 'V' : p.gf < p.gc ? 'D' : 'E';
+    const ptScouts = scouts.filter(s => s.partidaId === p.id);
+    const def = ptScouts.reduce((a,s) => a+(+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0), 0);
+    return [p.data ? formatDate(p.data) : '—', p.adversario, gkCell, `${r} ${p.gf}×${p.gc}`, def || '—', p.gc ?? '—'];
+  });
+  doc.autoTable({
+    startY: 56,
+    head: [['Data','Adversário','Goleira(s)','Resultado','Defesas','G. Sofr.']],
+    body: rowsP,
+    headStyles: { fillColor: [30,30,53], textColor: [0,212,255] },
+    styles: { fontSize: 8 },
+    columnStyles: { 2: { cellWidth: 60 } }
+  });
+
+  // ── Performance das goleiras nesta competição ──
+  const gkIds = [...new Set([
+    ...partidas.map(p => p.goalkeeperId).filter(Boolean),
+    ...partidas.map(p => p.gk2Id).filter(Boolean)
+  ])];
+  const rowsGK = gkIds.map(gkId => {
+    const gk = goleiras.find(g => g.id === gkId);
+    if (!gk) return null;
+    const ptIds = partidas.filter(p => p.goalkeeperId === gkId || p.gk2Id === gkId).map(p => p.id);
+    const sc = scouts.filter(s => s.goalkeeperId === gkId && ptIds.includes(s.partidaId));
+    const notas = sc.map(calcPerformance).filter(n => n !== null);
+    const avg = notas.length ? Math.round((notas.reduce((a,b)=>a+b,0)/notas.length)*10)/10 : null;
+    const { label } = classifyPerf(avg);
+    const totalDef = sc.reduce((a,s)=>a+(+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0),0);
+    const totalGols = sc.reduce((a,s)=>a+(+s.gda||0)+(+s.gfa||0)+(+s.gpe||0)+(+s.gfl||0),0);
+    return [gk.nome, ptIds.length, sc.length, totalDef, totalGols, avg ?? '—', avg ? label : '—'];
+  }).filter(Boolean);
+
+  if (rowsGK.length) {
+    const y = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
+    doc.text('Performance das Goleiras nesta Competição', 14, y);
+    doc.autoTable({
+      startY: y + 4,
+      head: [['Goleira','Partidas','Scouts','Defesas','G. Sofr.','Nota Média','Classificação']],
+      body: rowsGK,
+      headStyles: { fillColor: [30,30,53], textColor: [0,212,255] },
+      styles: { fontSize: 8 }
+    });
+  }
+
+  // ── Resumo ──
+  const totalJogos = partidas.length;
+  const vitorias = partidas.filter(p => p.gf > p.gc).length;
+  const derrotas = partidas.filter(p => p.gf < p.gc).length;
+  const empates  = partidas.filter(p => p.gf === p.gc).length;
+  const y2 = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
+  doc.text('Resumo da Competição', 14, y2);
+  doc.autoTable({
+    startY: y2 + 4,
+    body: [
+      ['Partidas disputadas', totalJogos],
+      ['Vitórias', vitorias], ['Empates', empates], ['Derrotas', derrotas],
+      ['Aproveitamento', totalJogos ? Math.round(((vitorias + empates*0.5)/totalJogos)*100)+'%' : '—'],
+    ],
+    styles: { fontSize: 9 },
+    columnStyles: { 0: { fontStyle: 'bold' } }
+  });
+
+  doc.save('gkhub_' + comp.replace(/\s+/g,'_') + '.pdf');
   toast('PDF gerado!','success');
 }
 
