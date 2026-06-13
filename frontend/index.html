@@ -504,6 +504,36 @@
     /* ── Heatmap tabs ── */
     .hm-tab { display:none; }
     .hm-tab.active { display:block; }
+
+    /* ── Match Center ── */
+    .mc-btn {
+      padding: 18px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      border-radius: 12px;
+      border: 2px solid;
+      cursor: pointer;
+      text-align: center;
+      transition: transform .08s, box-shadow .08s;
+      user-select: none;
+      font-family: var(--font);
+      letter-spacing: .2px;
+      line-height: 1.3;
+    }
+    .mc-btn:active { transform: scale(0.92); box-shadow: none !important; }
+    .mc-btn-def  { border-color:#00D4FF; background:rgba(0,212,255,.1); color:#00D4FF; }
+    .mc-btn-def:hover  { background:rgba(0,212,255,.2); }
+    .mc-btn-gol  { border-color:#FF3D57; background:rgba(255,61,87,.1); color:#FF3D57; }
+    .mc-btn-gol:hover  { background:rgba(255,61,87,.2); }
+    .mc-btn-dist { border-color:#FFB300; background:rgba(255,179,0,.1); color:#FFB300; }
+    .mc-btn-dist:hover { background:rgba(255,179,0,.2); }
+    .mc-btn-out  { border-color:#69F0AE; background:rgba(105,240,174,.1); color:#69F0AE; }
+    .mc-btn-out:hover  { background:rgba(105,240,174,.2); }
+    .mc-counter { text-align:center; padding:10px 6px; background:var(--bg); border-radius:8px; }
+    .mc-counter .val { font-size:28px; font-weight:800; line-height:1; }
+    .mc-counter .lbl { font-size:10px; color:var(--muted); margin-top:3px; text-transform:uppercase; letter-spacing:.5px; }
+    .mc-log-item { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
+    .mc-log-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   </style>
 </head>
 <body>
@@ -528,6 +558,11 @@
     <div class="nav-item" data-page="perfil" onclick="navigate('perfil')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
       Perfil
+    </div>
+    <div class="nav-item" data-page="matchcenter" onclick="navigate('matchcenter')" style="position:relative;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Match Center
+      <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;background:var(--error);color:#fff;border-radius:4px;padding:1px 5px;">AO VIVO</span>
     </div>
     <div class="nav-item" data-page="partidas" onclick="navigate('partidas')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
@@ -690,6 +725,104 @@
               <tr><td colspan="10"><div class="empty-state"><p>Nenhuma goleira cadastrada. Clique em "Nova Goleira" ou importe uma planilha.</p></div></td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ MATCH CENTER ══ -->
+    <div id="page-matchcenter" class="page">
+
+      <!-- Setup bar -->
+      <div class="card" style="margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Partida</label>
+            <select class="form-select" id="mc-partida" onchange="mcOnPartidaChange()"><option value="">Selecionar…</option></select>
+          </div>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Goleira</label>
+            <select class="form-select" id="mc-goleira"><option value="">Selecionar…</option></select>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-success" id="mc-btn-timer" onclick="mcToggleTimer()" style="white-space:nowrap;">▶ Iniciar</button>
+            <button class="btn btn-danger" onclick="mcEncerrar()" style="white-space:nowrap;">⏹ Encerrar</button>
+          </div>
+        </div>
+        <!-- Timer + placar -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="mc-timer" style="font-size:36px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--primary);letter-spacing:2px;">00:00</div>
+            <div id="mc-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);"></div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:2px;" id="mc-adv-label">—</div>
+            <div style="font-size:13px;font-weight:600;" id="mc-score-label">—</div>
+          </div>
+          <button class="btn btn-ghost btn-sm" onclick="mcDesfazer()" id="mc-btn-undo" style="opacity:.5;" disabled>↩ Desfazer</button>
+        </div>
+      </div>
+
+      <!-- Counters rápidos -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+        <div class="mc-counter"><div class="val" id="mc-c-def" style="color:var(--primary);">0</div><div class="lbl">Defesas</div></div>
+        <div class="mc-counter"><div class="val" id="mc-c-gol" style="color:var(--error);">0</div><div class="lbl">Gols Sofr.</div></div>
+        <div class="mc-counter"><div class="val" id="mc-c-dist" style="color:var(--warning);">0</div><div class="lbl">Distribuições</div></div>
+        <div class="mc-counter"><div class="val" id="mc-c-int" style="color:#69F0AE;">0</div><div class="lbl">Interceções</div></div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;">
+        <!-- Botões de eventos -->
+        <div>
+          <!-- Defesas -->
+          <div class="card" style="margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:700;color:var(--primary);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟦 Defesas</div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
+              <button class="mc-btn mc-btn-def" onclick="mcEvento('dad','Alta Dir.','def')">Alta<br>Direita</button>
+              <button class="mc-btn mc-btn-def" onclick="mcEvento('dae','Alta Esq.','def')">Alta<br>Esquerda</button>
+              <button class="mc-btn mc-btn-def" onclick="mcEvento('dc','Central','def')">Central</button>
+              <button class="mc-btn mc-btn-def" onclick="mcEvento('dbd','Baixa Dir.','def')">Baixa<br>Direita</button>
+              <button class="mc-btn mc-btn-def" onclick="mcEvento('dbe','Baixa Esq.','def')">Baixa<br>Esquerda</button>
+              <button class="mc-btn mc-btn-def" onclick="mcEvento('esq','Esquadro','def')">Esquadro</button>
+            </div>
+          </div>
+          <!-- Gols -->
+          <div class="card" style="margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:700;color:var(--error);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🔴 Gols Sofridos</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+              <button class="mc-btn mc-btn-gol" onclick="mcEvento('gda','Gol Área','gol')">Dentro<br>da Área</button>
+              <button class="mc-btn mc-btn-gol" onclick="mcEvento('gfa','Gol Fora','gol')">Fora<br>da Área</button>
+              <button class="mc-btn mc-btn-gol" onclick="mcEvento('gpe','Pênalti','gol')">Pênalti</button>
+              <button class="mc-btn mc-btn-gol" onclick="mcEvento('gfl','Falta','gol')">Falta</button>
+            </div>
+          </div>
+          <!-- Distribuição -->
+          <div class="card" style="margin-bottom:12px;">
+            <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟡 Distribuição</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+              <button class="mc-btn mc-btn-dist" onclick="mcEvento('dpc','Pé Certo','dist')">Pé<br>Certo</button>
+              <button class="mc-btn mc-btn-dist" onclick="mcEvento('dpe','Pé Errado','dist')">Pé<br>Errado</button>
+              <button class="mc-btn mc-btn-dist" onclick="mcEvento('dmc','Mão Certa','dist')">Mão<br>Certa</button>
+              <button class="mc-btn mc-btn-dist" onclick="mcEvento('dme','Mão Errada','dist')">Mão<br>Errada</button>
+            </div>
+          </div>
+          <!-- Outros -->
+          <div class="card">
+            <div style="font-size:11px;font-weight:700;color:#69F0AE;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟢 Outros</div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+              <button class="mc-btn mc-btn-out" onclick="mcEvento('int','Interceptação','out')">Interceção</button>
+              <button class="mc-btn mc-btn-out" onclick="mcEvento('sai','Saída','out')">Saída<br>do Gol</button>
+              <button class="mc-btn mc-btn-out" onclick="mcEvento('pose','Pos. Esq.','out')">Posic.<br>Esq.</button>
+              <button class="mc-btn mc-btn-out" onclick="mcEvento('posd','Pos. Dir.','out')">Posic.<br>Dir.</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Log de eventos -->
+        <div class="card" style="max-height:600px;overflow-y:auto;">
+          <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Log de Eventos</div>
+          <div id="mc-log" style="font-size:12px;">
+            <div style="color:var(--muted);text-align:center;padding:20px 0;">Nenhum evento registrado</div>
+          </div>
         </div>
       </div>
     </div>
@@ -1375,6 +1508,7 @@ let chartPerf = null, chartEvolucao = null;
 const pageTitles = {
   dashboard: 'Dashboard', goleiras: 'Goleiras',
   perfil: 'Perfil da Goleira', comparacao: 'Comparação Entre Goleiras',
+  matchcenter: 'Match Center — Ao Vivo',
   partidas: 'Partidas', scout: 'Scout de Jogo',
   performance: 'Performance', importar: 'Importar Excel',
   heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)'
@@ -1391,6 +1525,7 @@ function navigate(page) {
   if (page === 'goleiras') renderGoleiras();
   if (page === 'perfil') { updateGoleiraSelects(); renderPerfil(); }
   if (page === 'comparacao') { updateGoleiraSelects(); renderComparacao(); }
+  if (page === 'matchcenter') { mcPopulateSelects(); }
   if (page === 'partidas') renderPartidas();
   if (page === 'scout') renderScouts();
   if (page === 'performance') renderPerformance();
@@ -2859,6 +2994,155 @@ function pdfCompeticao() {
 
   doc.save('gkhub_' + comp.replace(/\s+/g,'_') + '.pdf');
   toast('PDF gerado!','success');
+}
+
+// ═══════════════════════════════════════════════════════════
+// MATCH CENTER — LIVE EVENT TRACKING
+// ═══════════════════════════════════════════════════════════
+const MC_FIELDS = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+let mcData = {};
+let mcLog = [];
+let mcTimerInterval = null;
+let mcSeconds = 0;
+let mcRunning = false;
+
+function mcReset() {
+  MC_FIELDS.forEach(f => mcData[f] = 0);
+  mcLog = [];
+  mcSeconds = 0;
+  mcRunning = false;
+  if (mcTimerInterval) { clearInterval(mcTimerInterval); mcTimerInterval = null; }
+}
+mcReset();
+
+function mcPopulateSelects() {
+  const goleiras = DB.goleiras;
+  const partidas = DB.partidas;
+  const opts = `<option value="">Selecionar…</option>` + goleiras.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
+  ['mc-goleira'].forEach(id => { const el=document.getElementById(id); if(el){el.innerHTML=opts;} });
+  const pEl = document.getElementById('mc-partida');
+  if (pEl) pEl.innerHTML = `<option value="">Selecionar…</option>` +
+    [...partidas].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(p =>
+      `<option value="${p.id}">${p.adversario}${p.data?' ('+formatDate(p.data)+')':''}</option>`).join('');
+}
+
+function mcOnPartidaChange() {
+  const pId = document.getElementById('mc-partida')?.value;
+  const p = DB.partidas.find(x=>x.id===pId);
+  const advLbl = document.getElementById('mc-adv-label');
+  const scoreLbl = document.getElementById('mc-score-label');
+  if (p) {
+    if (advLbl) advLbl.textContent = 'vs ' + p.adversario;
+    if (scoreLbl) scoreLbl.textContent = `${p.gf ?? '0'} × ${p.gc ?? '0'}`;
+    if (p.goalkeeperId) {
+      const sel = document.getElementById('mc-goleira');
+      if (sel) sel.value = p.goalkeeperId;
+    }
+  } else {
+    if (advLbl) advLbl.textContent = '—';
+    if (scoreLbl) scoreLbl.textContent = '—';
+  }
+}
+
+function mcFormatTime(sec) {
+  const m = String(Math.floor(sec/60)).padStart(2,'0');
+  const s = String(sec%60).padStart(2,'0');
+  return m+':'+s;
+}
+
+function mcToggleTimer() {
+  const btn = document.getElementById('mc-btn-timer');
+  const dot = document.getElementById('mc-status-dot');
+  if (mcRunning) {
+    clearInterval(mcTimerInterval); mcTimerInterval=null; mcRunning=false;
+    if (btn) btn.textContent='▶ Continuar';
+    if (dot) dot.style.background='var(--warning)';
+  } else {
+    mcRunning=true;
+    if (btn) btn.textContent='⏸ Pausar';
+    if (dot) { dot.style.background='var(--error)'; dot.style.animation='none'; }
+    mcTimerInterval=setInterval(()=>{
+      mcSeconds++;
+      const el=document.getElementById('mc-timer');
+      if(el) el.textContent=mcFormatTime(mcSeconds);
+    },1000);
+  }
+}
+
+function mcEvento(key, label, tipo) {
+  mcData[key] = (mcData[key]||0)+1;
+  const timeStr = mcFormatTime(mcSeconds);
+  mcLog.unshift({ key, label, tipo, time:timeStr });
+  mcUpdateCounters();
+  mcUpdateLog();
+  const undoBtn = document.getElementById('mc-btn-undo');
+  if (undoBtn) { undoBtn.disabled=false; undoBtn.style.opacity='1'; }
+  // Flash visual
+  event?.currentTarget?.classList.add('mc-flash');
+  setTimeout(()=>event?.currentTarget?.classList.remove('mc-flash'),200);
+}
+
+function mcDesfazer() {
+  if (!mcLog.length) return;
+  const last = mcLog.shift();
+  if (mcData[last.key] > 0) mcData[last.key]--;
+  mcUpdateCounters();
+  mcUpdateLog();
+  toast(`Desfeito: ${last.label}`, 'info');
+  const undoBtn = document.getElementById('mc-btn-undo');
+  if (undoBtn && !mcLog.length) { undoBtn.disabled=true; undoBtn.style.opacity='.5'; }
+}
+
+function mcUpdateCounters() {
+  const def = (mcData.dad||0)+(mcData.dae||0)+(mcData.dbd||0)+(mcData.dbe||0)+(mcData.dc||0)+(mcData.esq||0);
+  const gol = (mcData.gda||0)+(mcData.gfa||0)+(mcData.gpe||0)+(mcData.gfl||0);
+  const dist = (mcData.dpc||0)+(mcData.dpe||0)+(mcData.dmc||0)+(mcData.dme||0);
+  const int_ = mcData.int||0;
+  const el = id => document.getElementById(id);
+  if(el('mc-c-def'))  el('mc-c-def').textContent  = def;
+  if(el('mc-c-gol'))  el('mc-c-gol').textContent  = gol;
+  if(el('mc-c-dist')) el('mc-c-dist').textContent = dist;
+  if(el('mc-c-int'))  el('mc-c-int').textContent  = int_;
+}
+
+function mcUpdateLog() {
+  const el = document.getElementById('mc-log');
+  if (!el) return;
+  if (!mcLog.length) { el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px 0;">Nenhum evento registrado</div>'; return; }
+  const colors = { def:'#00D4FF', gol:'#FF3D57', dist:'#FFB300', out:'#69F0AE' };
+  el.innerHTML = mcLog.slice(0,30).map((e,i)=>`
+    <div class="mc-log-item" style="opacity:${i===0?1:Math.max(0.4,1-i*0.05)}">
+      <div class="mc-log-dot" style="background:${colors[e.tipo]||'var(--muted)'};"></div>
+      <span style="color:var(--muted);font-variant-numeric:tabular-nums;">${e.time}</span>
+      <span style="font-weight:${i===0?700:400};">${e.label}</span>
+    </div>`).join('');
+}
+
+function mcEncerrar() {
+  const gkId = document.getElementById('mc-goleira')?.value;
+  const pId  = document.getElementById('mc-partida')?.value;
+  if (!gkId) { toast('Selecione a goleira antes de encerrar','error'); return; }
+  const totalEvents = MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
+  if (totalEvents === 0) { toast('Nenhum evento registrado','error'); return; }
+  if (!confirm(`Encerrar o jogo e salvar ${totalEvents} evento(s) como Scout?`)) return;
+
+  if (mcRunning) mcToggleTimer();
+  const scouts = DB.scouts;
+  const obj = { id: uid(), goalkeeperId: gkId, partidaId: pId || '' };
+  MC_FIELDS.forEach(f => { obj[f] = mcData[f] || 0; });
+  scouts.push(obj);
+  DB.saveScouts(scouts);
+  cloudSet('scouts', obj);
+  toast('Scout salvo com sucesso!','success');
+  mcReset();
+  mcUpdateCounters();
+  mcUpdateLog();
+  document.getElementById('mc-timer').textContent='00:00';
+  document.getElementById('mc-btn-timer').textContent='▶ Iniciar';
+  document.getElementById('mc-status-dot').style.background='var(--muted)';
+  const undoBtn = document.getElementById('mc-btn-undo');
+  if (undoBtn) { undoBtn.disabled=true; undoBtn.style.opacity='.5'; }
+  navigate('scout');
 }
 
 // ═══════════════════════════════════════════════════════════
