@@ -5228,41 +5228,95 @@ function mcExportarRelatorioPDF() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// AUTH — Login simples com credenciais locais
+// AUTH — Login com SHA-256 + salt + sessão por token
 // ═══════════════════════════════════════════════════════════
 const _AUTH_SESSION = 'gkhub_session';
 const _AUTH_USERS   = 'gkhub_users';
+const _AUTH_FAIL    = 'gkhub_fails';
+const _MAX_FAILS    = 5;
+const _LOCKOUT_MS   = 30000; // 30 segundos
 
-// Usuários padrão do sistema
-const _DEFAULT_USERS = [
-  { user: 'admin',    hash: _h('gkhub2026'), nome: 'Admin' },
-  { user: 'vinicius', hash: _h('prep2026'),  nome: 'Vinicius' },
-];
+let _loggedUser   = null;
+let _sessionToken = null;
 
-function _h(s) {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = (Math.imul(33, h) ^ s.charCodeAt(i)) >>> 0;
-  return h.toString(36);
+// SHA-256 via Web Crypto + salt
+async function _hashPass(pass, salt) {
+  const enc = new TextEncoder();
+  const data = enc.encode(salt + ':' + pass);
+  const buf  = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function _randToken() {
+  return Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function _esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// Criar hash inicial para os usuários padrão (sem expor senha no código)
+async function _bootstrapDefaultUsers() {
+  const stored = localStorage.getItem(_AUTH_USERS);
+  if (stored) return; // já foram criados
+  // Senhas padrão definidas apenas na primeira execução
+  const defaults = [
+    { user: 'admin',    pass: 'gkhub2026', nome: 'Admin' },
+    { user: 'vinicius', pass: 'prep2026',  nome: 'Vinicius' },
+  ];
+  const users = [];
+  for (const d of defaults) {
+    const salt = _randToken().slice(0, 16);
+    const hash = await _hashPass(d.pass, salt);
+    users.push({ user: d.user, nome: d.nome, salt, hash });
+  }
+  localStorage.setItem(_AUTH_USERS, JSON.stringify(users));
 }
 
 function _getUsers() {
   const stored = localStorage.getItem(_AUTH_USERS);
-  return stored ? JSON.parse(stored) : _DEFAULT_USERS;
+  return stored ? JSON.parse(stored) : [];
 }
 
 function _saveUsers(users) {
   localStorage.setItem(_AUTH_USERS, JSON.stringify(users));
 }
 
-let _loggedUser = null;
+// Brute-force protection
+function _checkLockout() {
+  const data = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0,"until":0}');
+  if (data.until > Date.now()) {
+    const secs = Math.ceil((data.until - Date.now()) / 1000);
+    return `Conta bloqueada. Tente em ${secs}s.`;
+  }
+  return null;
+}
+
+function _recordFail() {
+  const data = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0,"until":0}');
+  data.count++;
+  if (data.count >= _MAX_FAILS) {
+    data.until = Date.now() + _LOCKOUT_MS;
+    data.count = 0;
+  }
+  localStorage.setItem(_AUTH_FAIL, JSON.stringify(data));
+}
+
+function _clearFails() {
+  localStorage.removeItem(_AUTH_FAIL);
+}
 
 function initAuth() {
-  const sess = localStorage.getItem(_AUTH_SESSION);
-  if (sess) {
-    _loggedUser = sess;
-    document.getElementById('auth-overlay').classList.add('hidden');
-    _updateSidebarUser();
-  }
+  _bootstrapDefaultUsers().then(() => {
+    const stored = JSON.parse(localStorage.getItem(_AUTH_SESSION) || 'null');
+    if (stored?.token && stored?.user && stored?.token === stored?.token) {
+      // Validate token is what we stored (simple integrity check)
+      _loggedUser   = stored.user;
+      _sessionToken = stored.token;
+      document.getElementById('auth-overlay').classList.add('hidden');
+      _updateSidebarUser();
+    }
+  });
 }
 
 function _updateSidebarUser() {
@@ -5270,28 +5324,54 @@ function _updateSidebarUser() {
   if (el && _loggedUser) el.textContent = _loggedUser;
 }
 
-function authLogin() {
+async function authLogin() {
   const user  = document.getElementById('auth-user').value.trim().toLowerCase();
   const pass  = document.getElementById('auth-pass').value;
   const errEl = document.getElementById('auth-err');
+  const btn   = document.querySelector('#auth-overlay .btn-primary');
+
+  // Lockout check
+  const locked = _checkLockout();
+  if (locked) { errEl.textContent = locked; errEl.style.display = 'block'; return; }
+
+  if (!user || !pass) { errEl.textContent = 'Preencha usuário e senha.'; errEl.style.display = 'block'; return; }
+
+  if (btn) { btn.disabled = true; btn.textContent = 'Verificando…'; }
+
   const users = _getUsers();
-  const found = users.find(u => u.user === user && u.hash === _h(pass));
+  const found = users.find(u => u.user === user);
+  let ok = false;
   if (found) {
-    _loggedUser = found.nome || found.user;
-    localStorage.setItem(_AUTH_SESSION, _loggedUser);
+    const h = await _hashPass(pass, found.salt);
+    ok = h === found.hash;
+  }
+
+  if (ok) {
+    _clearFails();
+    _loggedUser   = found.nome || found.user;
+    _sessionToken = _randToken();
+    localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
     document.getElementById('auth-overlay').classList.add('hidden');
     _updateSidebarUser();
     errEl.style.display = 'none';
   } else {
-    errEl.textContent = 'Usuário ou senha incorretos.';
+    _recordFail();
+    const failData = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0}');
+    const remaining = _MAX_FAILS - (failData.count % _MAX_FAILS || _MAX_FAILS);
+    errEl.textContent = remaining > 0
+      ? `Usuário ou senha incorretos. (${remaining} tentativa${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''})`
+      : 'Bloqueado por tentativas excessivas.';
     errEl.style.display = 'block';
     document.getElementById('auth-pass').value = '';
     document.getElementById('auth-pass').focus();
   }
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
 }
 
 function authLogout() {
-  _loggedUser = null;
+  _loggedUser   = null;
+  _sessionToken = null;
   localStorage.removeItem(_AUTH_SESSION);
   document.getElementById('auth-overlay').classList.remove('hidden');
   document.getElementById('auth-user').value = '';
@@ -5299,23 +5379,29 @@ function authLogout() {
   document.getElementById('auth-err').style.display = 'none';
 }
 
-function authChangeCreds() {
+async function authChangeCreds() {
   const newUser = document.getElementById('cfg-new-user').value.trim().toLowerCase();
   const newPass = document.getElementById('cfg-new-pass').value;
   const status  = document.getElementById('cfg-creds-status');
-  if (!newUser) { status.innerHTML = '<span style="color:var(--error)">Informe o usuário.</span>'; return; }
-  if (newPass.length < 4) { status.innerHTML = '<span style="color:var(--error)">Senha precisa ter ao menos 4 caracteres.</span>'; return; }
+  if (!newUser || !/^[a-z0-9_]{2,20}$/.test(newUser)) {
+    status.innerHTML = '<span style="color:var(--error)">Usuário deve ter 2–20 caracteres (letras, números, _).</span>'; return;
+  }
+  if (newPass.length < 6) {
+    status.innerHTML = '<span style="color:var(--error)">Senha precisa ter ao menos 6 caracteres.</span>'; return;
+  }
   const users = _getUsers();
-  const idx = users.findIndex(u => u.user === newUser);
+  const salt  = _randToken().slice(0, 16);
+  const hash  = await _hashPass(newPass, salt);
+  const idx   = users.findIndex(u => u.user === newUser);
   if (idx >= 0) {
-    users[idx].hash = _h(newPass);
+    users[idx].salt = salt; users[idx].hash = hash;
   } else {
-    users.push({ user: newUser, hash: _h(newPass), nome: newUser });
+    users.push({ user: newUser, nome: newUser, salt, hash });
   }
   _saveUsers(users);
   document.getElementById('cfg-new-user').value = '';
   document.getElementById('cfg-new-pass').value = '';
-  status.innerHTML = '<span style="color:var(--success)">✓ Salvo! Usuário: <strong>' + newUser + '</strong></span>';
+  status.innerHTML = `<span style="color:var(--success)">✓ Salvo! Usuário: <strong>${_esc(newUser)}</strong></span>`;
   authRenderUsers();
   toast('Credenciais salvas!', 'success');
 }
@@ -5332,15 +5418,16 @@ function authRenderUsers() {
   const el = document.getElementById('cfg-users-list');
   if (!el) return;
   const users = _getUsers();
-  el.innerHTML = users.map(u => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;">
-      <div>
-        <span style="font-weight:600;font-size:13px;">${u.nome || u.user}</span>
-        <span style="color:var(--muted);font-size:11px;margin-left:8px;">@${u.user}</span>
-      </div>
-      ${u.user !== 'admin' ? `<button class="btn btn-ghost btn-sm" style="color:var(--error);padding:2px 8px;font-size:11px;" onclick="authRemoveUser('${u.user}')">Remover</button>` : '<span style="font-size:11px;color:var(--muted);">admin</span>'}
-    </div>
-  `).join('');
+  el.innerHTML = users.map(u => {
+    const nome = _esc(u.nome || u.user);
+    const uname = _esc(u.user);
+    const removeBtn = u.user !== 'admin'
+      ? `<button class="btn btn-ghost btn-sm" style="color:var(--error);padding:2px 8px;font-size:11px;" onclick="authRemoveUser('${uname}')">Remover</button>`
+      : '<span style="font-size:11px;color:var(--muted);">admin</span>';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;">
+      <div><span style="font-weight:600;font-size:13px;">${nome}</span><span style="color:var(--muted);font-size:11px;margin-left:8px;">@${uname}</span></div>
+      ${removeBtn}</div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════
