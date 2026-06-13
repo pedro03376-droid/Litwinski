@@ -11,8 +11,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Firebase Realtime Database via REST API — no SDK needed -->
 
   <style>
     :root {
@@ -896,28 +895,22 @@
     <div id="page-config" class="page">
       <div class="card" style="max-width:680px;">
         <div class="card-header"><span class="card-title">Sincronização na Nuvem (Firebase)</span></div>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Conecte um projeto Firebase gratuito para salvar seus dados na nuvem e acessá-los de qualquer dispositivo.</p>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Cole a URL do seu banco de dados Firebase Realtime Database para salvar os dados na nuvem e acessá-los de qualquer dispositivo.</p>
         <details style="margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
-          <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--primary);">📖 Como obter as credenciais (passo a passo)</summary>
+          <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--primary);">📖 Como obter a URL do banco (passo a passo)</summary>
           <ol style="margin:12px 0 0 18px;font-size:12px;color:var(--muted);line-height:1.9;">
-            <li>Acesse <strong>console.firebase.google.com</strong> e faça login com sua conta Google</li>
-            <li>Clique em <strong>"Adicionar projeto"</strong> e dê um nome (ex: gkhub)</li>
-            <li>No menu lateral, vá em <strong>Build → Firestore Database → Criar banco de dados</strong> (modo de teste)</li>
-            <li>Vá em <strong>Configurações do projeto (⚙️) → Seus aplicativos → ícone Web (&lt;/&gt;)</strong></li>
-            <li>Registre o app e copie o objeto <strong>firebaseConfig</strong> que aparece</li>
-            <li>Cole o conteúdo abaixo e clique em Conectar</li>
+            <li>Acesse <strong>console.firebase.google.com</strong> e abra seu projeto</li>
+            <li>No menu lateral, vá em <strong>Build → Realtime Database</strong></li>
+            <li>Clique em <strong>"Criar banco de dados"</strong> (escolha <em>Modo de teste</em>)</li>
+            <li>Copie a URL que aparece no topo, no formato <code>https://seu-projeto-default-rtdb.firebaseio.com</code></li>
+            <li>Cole a URL abaixo e clique em <strong>Conectar</strong></li>
           </ol>
         </details>
         <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label">Cole aqui seu firebaseConfig (o objeto { apiKey: ... })</label>
-          <textarea class="form-textarea" id="fb-config" style="min-height:160px;font-family:monospace;font-size:12px;" placeholder='{
-  "apiKey": "...",
-  "authDomain": "...",
-  "projectId": "...",
-  "storageBucket": "...",
-  "messagingSenderId": "...",
-  "appId": "..."
-}'></textarea>
+          <label class="form-label">URL do Realtime Database</label>
+          <input class="form-input" id="fb-config" type="url"
+            placeholder="https://seu-projeto-default-rtdb.firebaseio.com"
+            style="font-family:monospace;font-size:13px;" />
         </div>
         <div style="display:flex;gap:10px;align-items:center;">
           <button class="btn btn-primary" onclick="conectarFirebase()">Conectar</button>
@@ -2100,101 +2093,131 @@ function pdfPartidas() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FIREBASE CLOUD SYNC
+// FIREBASE REALTIME DATABASE — REST API (sem SDK)
 // ═══════════════════════════════════════════════════════════
-let fbApp = null, fbDb = null;
+let rtdbUrl = null;
+
 function setCloudStatus(connected, label) {
   const dot = document.getElementById('cloud-dot');
   const lbl = document.getElementById('cloud-label');
   if (dot) dot.style.background = connected ? 'var(--success)' : 'var(--muted)';
-  if (lbl) lbl.textContent = 'Nuvem: ' + (label || (connected?'conectada':'offline'));
+  if (lbl) lbl.textContent = 'Nuvem: ' + (label || (connected ? 'conectada' : 'offline'));
 }
+
+function rtdbPath(path) {
+  return rtdbUrl + path + '.json';
+}
+
+async function rtdbGet(path) {
+  const res = await fetch(rtdbPath(path));
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+
+async function rtdbPut(path, data) {
+  const res = await fetch(rtdbPath(path), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+}
+
+async function rtdbDelete(path) {
+  await fetch(rtdbPath(path), { method: 'DELETE' });
+}
+
 function initFirebaseFromStorage() {
-  const saved = localStorage.getItem('gkhub_fbconfig');
+  const saved = localStorage.getItem('gkhub_rtdb_url');
   if (!saved) return;
-  try { startFirebase(JSON.parse(saved)); } catch(e) { console.warn('Firebase init falhou', e); }
-}
-function startFirebase(config) {
-  if (!window.firebase) throw new Error('SDK Firebase não carregado');
-  if (fbApp) { try { fbApp.delete(); } catch(e){} fbApp = null; }
-  fbApp = firebase.initializeApp(config);
-  fbDb = firebase.firestore();
+  rtdbUrl = saved;
   setCloudStatus(true, 'conectada');
   const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
-  // Escuta mudanças em tempo real
-  ['goleiras','partidas','scouts'].forEach(col => {
-    fbDb.collection(col).onSnapshot(snap => {
-      const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      DB.save(col, data);
-      // re-render página atual
-      const active = document.querySelector('.page.active')?.id?.replace('page-','');
-      if (active) {
-        if (active==='goleiras') renderGoleiras();
-        if (active==='partidas') renderPartidas();
-        if (active==='scout') renderScouts();
-        if (active==='dashboard') refreshDashboard();
-        if (active==='performance') renderPerformance();
-        if (active==='heatmap') renderHeatmap();
-      }
-      updateGoleiraSelects();
-    }, err => { console.warn(err); setCloudStatus(false,'erro'); });
-  });
+  const inp = document.getElementById('fb-config'); if (inp) inp.value = saved;
 }
-function conectarFirebase() {
-  const raw = document.getElementById('fb-config').value.trim();
-  if (!raw) { toast('Cole as credenciais do Firebase','error'); return; }
-  let config;
+
+async function conectarFirebase() {
+  const raw = document.getElementById('fb-config').value.trim().replace(/\/$/, '');
+  if (!raw || !raw.includes('firebaseio.com')) {
+    toast('Cole a URL do banco de dados (ex: https://seu-projeto-default-rtdb.firebaseio.com)', 'error');
+    return;
+  }
+  rtdbUrl = raw;
   try {
-    // aceita objeto JS ou JSON
-    config = raw.startsWith('{') && raw.includes('"') ? JSON.parse(raw) : (0,eval)('('+raw+')');
-  } catch(e) { toast('Configuração inválida: '+e.message,'error'); return; }
-  try {
-    startFirebase(config);
-    localStorage.setItem('gkhub_fbconfig', JSON.stringify(config));
+    await rtdbGet('/.json?shallow=true');
+    localStorage.setItem('gkhub_rtdb_url', raw);
+    setCloudStatus(true, 'conectada');
+    const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
     document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Conectado! Sincronizando dados…</span>';
-    sincronizarNuvem();
-    toast('Firebase conectado!','success');
-  } catch(e) { toast('Erro ao conectar: '+e.message,'error'); document.getElementById('fb-status').innerHTML = '<span style="color:var(--error)">✗ '+e.message+'</span>'; }
+    await sincronizarNuvem();
+    toast('Nuvem conectada!', 'success');
+  } catch(e) {
+    rtdbUrl = null;
+    toast('Não foi possível conectar. Verifique a URL e as regras do banco (modo de teste).', 'error');
+    document.getElementById('fb-status').innerHTML = '<span style="color:var(--error)">✗ Erro: ' + e.message + '</span>';
+  }
 }
+
 function desconectarFirebase() {
-  if (fbApp) { try { fbApp.delete(); } catch(e){} }
-  fbApp = null; fbDb = null;
-  localStorage.removeItem('gkhub_fbconfig');
-  setCloudStatus(false,'offline');
+  rtdbUrl = null;
+  localStorage.removeItem('gkhub_rtdb_url');
+  setCloudStatus(false, 'offline');
   const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'none';
   document.getElementById('fb-status').innerHTML = '<span style="color:var(--muted)">Desconectado.</span>';
-  toast('Firebase desconectado','info');
+  toast('Nuvem desconectada', 'info');
 }
+
 async function sincronizarNuvem() {
-  if (!fbDb) { toast('Conecte ao Firebase primeiro','error'); return; }
+  if (!rtdbUrl) { toast('Conecte à nuvem primeiro', 'error'); return; }
   try {
-    // Envia dados locais para a nuvem (merge)
-    for (const col of ['goleiras','partidas','scouts']) {
+    // Baixa dados da nuvem e mescla com local, depois envia tudo
+    for (const col of ['goleiras', 'partidas', 'scouts']) {
+      const remote = await rtdbGet('/' + col);
+      if (remote && typeof remote === 'object') {
+        const remoteItems = Object.entries(remote).map(([id, val]) => ({ id: isNaN(id) ? id : Number(id), ...val }));
+        const local = DB.load(col);
+        const merged = [...local];
+        for (const ri of remoteItems) {
+          if (!merged.find(l => String(l.id) === String(ri.id))) merged.push(ri);
+        }
+        DB.save(col, merged);
+      }
+      // Envia tudo para a nuvem
       const items = DB.load(col);
       for (const item of items) {
         const { id, ...rest } = item;
-        await fbDb.collection(col).doc(String(id)).set(rest, { merge: true });
+        await rtdbPut('/' + col + '/' + id, rest);
       }
     }
+    updateGoleiraSelects();
+    refreshDashboard();
+    const active = document.querySelector('.page.active')?.id?.replace('page-', '');
+    if (active === 'goleiras') renderGoleiras();
+    if (active === 'partidas') renderPartidas();
+    if (active === 'scout') renderScouts();
+    if (active === 'performance') renderPerformance();
+    if (active === 'heatmap') renderHeatmap();
     document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Dados sincronizados com a nuvem!</span>';
-    toast('Sincronizado!','success');
-  } catch(e) { toast('Erro: '+e.message,'error'); }
+    toast('Sincronizado!', 'success');
+  } catch(e) { toast('Erro na sincronização: ' + e.message, 'error'); }
 }
-// Salva 1 item na nuvem (chamado após criar/editar)
+
 function cloudSet(col, item) {
-  if (!fbDb) return;
+  if (!rtdbUrl) return;
   const { id, ...rest } = item;
-  fbDb.collection(col).doc(String(id)).set(rest, { merge: true }).catch(e=>console.warn(e));
+  rtdbPut('/' + col + '/' + id, rest).catch(e => console.warn('cloudSet', e));
 }
+
 function cloudDelete(col, id) {
-  if (!fbDb) return;
-  fbDb.collection(col).doc(String(id)).delete().catch(e=>console.warn(e));
+  if (!rtdbUrl) return;
+  rtdbDelete('/' + col + '/' + id).catch(e => console.warn('cloudDelete', e));
 }
+
 function renderConfigStatus() {
-  const saved = localStorage.getItem('gkhub_fbconfig');
-  if (saved && fbDb) {
+  const saved = localStorage.getItem('gkhub_rtdb_url');
+  if (saved && rtdbUrl) {
     document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Conectado e sincronizando.</span>';
-    document.getElementById('btn-sync').style.display = 'inline-flex';
+    const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
   }
 }
 
