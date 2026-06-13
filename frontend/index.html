@@ -653,6 +653,15 @@
           <div class="stat-value stat-cyan" id="stat-avg-perf">—</div>
           <div class="stat-sub">pontuação média</div>
         </div>
+      </div><!-- /stats-grid -->
+
+      <!-- Destaques do Treinador -->
+      <div id="dash-destaques" style="display:none;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+          <span style="font-size:13px;font-weight:700;color:var(--primary);letter-spacing:.5px;text-transform:uppercase;">Destaques da Temporada</span>
+          <div style="flex:1;height:1px;background:var(--border);"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;" id="dash-destaques-grid"></div>
       </div>
 
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
@@ -2097,6 +2106,97 @@ function refreshDashboard() {
   const allScores = goleiras.map(g => avgPerformance(g.id)).filter(s => s !== null);
   document.getElementById('stat-avg-perf').textContent = allScores.length ?
     (allScores.reduce((a,b)=>a+b,0)/allScores.length).toFixed(1) : '—';
+
+  // ── Destaques do Treinador ──
+  function gkScoutSum(gkId, keys) {
+    return scouts.filter(s=>s.goalkeeperId===gkId).reduce((a,s)=>a+keys.reduce((b,k)=>b+(+s[k]||0),0),0);
+  }
+  const gksComScout = goleiras.filter(g => scouts.some(s=>s.goalkeeperId===g.id));
+  const destaquesEl = document.getElementById('dash-destaques');
+  const destaquesGrid = document.getElementById('dash-destaques-grid');
+  if (gksComScout.length >= 1 && destaquesEl && destaquesGrid) {
+    // 1. Melhor da temporada
+    const melhorTemporada = [...gksComScout].sort((a,b)=>(avgPerformance(b.id)||0)-(avgPerformance(a.id)||0))[0];
+    // 2. Mais defesas
+    const maisDefesas = [...gksComScout].sort((a,b)=>
+      gkScoutSum(b.id,['dad','dae','dbd','dbe','dc'])-gkScoutSum(a.id,['dad','dae','dbd','dbe','dc']))[0];
+    // 3. Menos gols sofridos (apenas quem tem pelo menos 1 partida)
+    const menosGols = [...gksComScout].sort((a,b)=>
+      gkScoutSum(a.id,['gda','gfa','gpe','gfl'])-gkScoutSum(b.id,['gda','gfa','gpe','gfl']))[0];
+    // 4. Melhor distribuição
+    const melhorDist = [...gksComScout].sort((a,b)=>{
+      function acc(id){ const c=gkScoutSum(id,['dpc','dmc']); const t=c+gkScoutSum(id,['dpe','dme']); return t>0?c/t:0; }
+      return acc(b.id)-acc(a.id);
+    })[0];
+    // 5. Melhor evolução (diferença entre média das últimas 3 vs primeiras 3 partidas)
+    const melhorEvolucao = [...gksComScout].sort((a,b)=>{
+      function evol(id){
+        const sc=[...scouts.filter(s=>s.goalkeeperId===id)].sort((x,y)=>{
+          const px=partidas.find(p=>p.id===x.partidaId), py=partidas.find(p=>p.id===y.partidaId);
+          return (px?.data||'').localeCompare(py?.data||'');
+        });
+        if(sc.length<2) return 0;
+        const half=Math.ceil(sc.length/2);
+        const primeiros=sc.slice(0,half).map(calcPerformance).filter(n=>n!==null);
+        const ultimos=sc.slice(-half).map(calcPerformance).filter(n=>n!==null);
+        if(!primeiros.length||!ultimos.length) return 0;
+        return (ultimos.reduce((a,b)=>a+b,0)/ultimos.length)-(primeiros.reduce((a,b)=>a+b,0)/primeiros.length);
+      }
+      return evol(b.id)-evol(a.id);
+    })[0];
+
+    const destaques = [
+      { emoji:'🏆', titulo:'Melhor da Temporada', gk:melhorTemporada,
+        valor: avgPerformance(melhorTemporada?.id), unidade:'pts', color:'var(--warning)' },
+      { emoji:'🥊', titulo:'Mais Defesas', gk:maisDefesas,
+        valor: gkScoutSum(maisDefesas?.id,['dad','dae','dbd','dbe','dc']), unidade:'def', color:'var(--primary)' },
+      { emoji:'🔒', titulo:'Menos Gols Sofr.', gk:menosGols,
+        valor: gkScoutSum(menosGols?.id,['gda','gfa','gpe','gfl']), unidade:'gols', color:'var(--success)' },
+      { emoji:'🎯', titulo:'Melhor Distribuição', gk:melhorDist,
+        valor: (()=>{ const c=gkScoutSum(melhorDist?.id,['dpc','dmc']); const t=c+gkScoutSum(melhorDist?.id,['dpe','dme']); return t>0?Math.round(c/t*100)+'%':'—'; })(),
+        unidade:'precisão', color:'#FFB300' },
+      { emoji:'📈', titulo:'Melhor Evolução', gk:melhorEvolucao,
+        valor:(()=>{
+          if(!melhorEvolucao) return '—';
+          const sc=[...scouts.filter(s=>s.goalkeeperId===melhorEvolucao.id)].sort((x,y)=>{
+            const px=partidas.find(p=>p.id===x.partidaId), py=partidas.find(p=>p.id===y.partidaId);
+            return (px?.data||'').localeCompare(py?.data||'');
+          });
+          if(sc.length<2) return '—';
+          const half=Math.ceil(sc.length/2);
+          const primeiros=sc.slice(0,half).map(calcPerformance).filter(n=>n!==null);
+          const ultimos=sc.slice(-half).map(calcPerformance).filter(n=>n!==null);
+          if(!primeiros.length||!ultimos.length) return '—';
+          const delta=(ultimos.reduce((a,b)=>a+b,0)/ultimos.length)-(primeiros.reduce((a,b)=>a+b,0)/primeiros.length);
+          return (delta>=0?'+':'')+delta.toFixed(1);
+        })(),
+        unidade:'melhora', color:'#69F0AE' },
+    ];
+
+    destaquesGrid.innerHTML = destaques.map(d => {
+      if (!d.gk) return '';
+      const foto = d.gk.foto
+        ? `<img src="${d.gk.foto}" style="width:100%;height:100%;object-fit:cover;">`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:28px;height:28px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
+      return `<div onclick="verPerfil('${d.gk.id}')"
+        style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 12px;
+               text-align:center;transition:border-color .2s,transform .15s;"
+        onmouseover="this.style.borderColor='${d.color}';this.style.transform='translateY(-2px)'"
+        onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
+        <div style="font-size:22px;margin-bottom:8px;">${d.emoji}</div>
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">${d.titulo}</div>
+        <div style="width:52px;height:52px;border-radius:50%;border:2px solid ${d.color};background:var(--card-2);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
+          ${foto}
+        </div>
+        <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.gk.nome.split(' ')[0]}</div>
+        <div style="font-size:20px;font-weight:800;color:${d.color};margin-top:4px;">${d.valor}</div>
+        <div style="font-size:10px;color:var(--muted);">${d.unidade}</div>
+      </div>`;
+    }).join('');
+    destaquesEl.style.display = 'block';
+  } else if (destaquesEl) {
+    destaquesEl.style.display = 'none';
+  }
 
   // Recent GKs
   const recGk = document.getElementById('dash-recent-gk');
