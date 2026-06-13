@@ -479,6 +479,31 @@
 
     /* ── Checkbox ── */
     input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; }
+
+    /* ── GK Avatar / Photo ── */
+    .gk-avatar {
+      width: 100px; height: 100px; border-radius: 50%;
+      border: 3px solid var(--primary);
+      background: var(--card-2);
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; flex-shrink: 0;
+    }
+    .gk-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .gk-avatar-sm { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border); background: var(--card-2); display:flex; align-items:center; justify-content:center; overflow:hidden; flex-shrink:0; }
+    .gk-avatar-sm img { width:100%; height:100%; object-fit:cover; }
+
+    /* ── Comparison bar ── */
+    .comp-row { display:grid; grid-template-columns:1fr 80px 1fr; gap:8px; align-items:center; margin-bottom:12px; }
+    .comp-bar-wrap { height:8px; border-radius:4px; background:var(--border); overflow:hidden; }
+    .comp-bar-a { height:100%; border-radius:4px; background:var(--primary); transition:width .5s; }
+    .comp-bar-b { height:100%; border-radius:4px; background:var(--warning); transition:width .5s; }
+    .comp-val-a { text-align:right; font-weight:700; font-size:13px; color:var(--primary); }
+    .comp-val-b { font-weight:700; font-size:13px; color:var(--warning); }
+    .comp-label { font-size:11px; color:var(--muted); text-align:center; }
+
+    /* ── Heatmap tabs ── */
+    .hm-tab { display:none; }
+    .hm-tab.active { display:block; }
   </style>
 </head>
 <body>
@@ -500,6 +525,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Goleiras
     </div>
+    <div class="nav-item" data-page="perfil" onclick="navigate('perfil')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+      Perfil
+    </div>
     <div class="nav-item" data-page="partidas" onclick="navigate('partidas')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
       Partidas
@@ -511,6 +540,10 @@
     <div class="nav-item" data-page="performance" onclick="navigate('performance')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Performance
+    </div>
+    <div class="nav-item" data-page="comparacao" onclick="navigate('comparacao')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/><path d="M2 20h20"/></svg>
+      Comparação
     </div>
     <div class="nav-item" data-page="heatmap" onclick="navigate('heatmap')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
@@ -835,32 +868,156 @@
     <!-- ══ HEATMAP ══ -->
     <div id="page-heatmap" class="page">
       <div class="card-header" style="margin-bottom:16px;">
-        <span style="font-size:14px;color:var(--muted)">Mapa de calor da quadra — defesas e gols sofridos</span>
+        <span style="font-size:14px;color:var(--muted)">Heatmap Inteligente da Quadra</span>
         <select class="form-select" id="heatmap-gk" style="width:240px;" onchange="renderHeatmap()">
           <option value="">Todas as goleiras</option>
         </select>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+      <!-- Abas -->
+      <div class="tabs" style="margin-bottom:16px;">
+        <button class="tab-btn active" onclick="switchHmTab(this,'hm-chutes')">Chutes Recebidos</button>
+        <button class="tab-btn" onclick="switchHmTab(this,'hm-defesas')">Defesas</button>
+        <button class="tab-btn" onclick="switchHmTab(this,'hm-gols')">Gols Sofridos</button>
+        <button class="tab-btn" onclick="switchHmTab(this,'hm-distrib')">Distribuições</button>
+      </div>
+      <!-- Chutes Recebidos -->
+      <div id="hm-chutes" class="hm-tab active">
         <div class="card">
-          <div class="card-header"><span class="card-title">Defesas (zonas)</span></div>
-          <div class="heatmap-court" id="court-defesas"></div>
-          <div style="display:flex;justify-content:center;gap:16px;margin-top:14px;font-size:11px;color:var(--muted);">
-            <span>Goleira defende o gol à esquerda →</span>
-          </div>
+          <div class="card-header"><span class="card-title">Chutes Recebidos por Zona</span><span style="font-size:12px;color:var(--muted);">Defesas + Gols = total de finalizações</span></div>
+          <div class="heatmap-court" id="court-chutes"></div>
+          <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--muted);">← gol defendido | intensidade = volume de chutes</div>
         </div>
+      </div>
+      <!-- Defesas -->
+      <div id="hm-defesas" class="hm-tab">
         <div class="card">
-          <div class="card-header"><span class="card-title">Gols Sofridos (zonas)</span></div>
+          <div class="card-header"><span class="card-title">Defesas por Zona</span></div>
+          <div class="heatmap-court" id="court-defesas"></div>
+          <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--muted);">Azul = mais defesas nessa zona</div>
+        </div>
+      </div>
+      <!-- Gols Sofridos -->
+      <div id="hm-gols" class="hm-tab">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Gols Sofridos por Zona</span></div>
           <div class="heatmap-court" id="court-gols"></div>
-          <div style="display:flex;justify-content:center;gap:16px;margin-top:14px;font-size:11px;color:var(--muted);">
-            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(255,61,87,.7);"></span> menos</span>
+          <div style="display:flex;justify-content:center;gap:16px;margin-top:10px;font-size:11px;color:var(--muted);">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:50%;background:rgba(255,61,87,.5);"></span> menos</span>
             <span style="display:flex;align-items:center;gap:4px;"><span style="width:14px;height:14px;border-radius:50%;background:rgba(255,61,87,1);"></span> mais</span>
           </div>
         </div>
       </div>
+      <!-- Distribuições -->
+      <div id="hm-distrib" class="hm-tab">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Precisão de Distribuição</span></div>
+            <canvas id="chart-distrib" height="200"></canvas>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Detalhes</span></div>
+            <div id="distrib-detail" style="padding:8px 0;"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Resumo -->
       <div class="card" style="margin-top:20px;">
         <div class="card-header"><span class="card-title">Resumo por zona</span></div>
         <div id="heatmap-summary" class="table-wrap"></div>
       </div>
+    </div>
+
+    <!-- ══ PERFIL DA GOLEIRA ══ -->
+    <div id="page-perfil" class="page">
+      <div class="card" style="max-width:400px;margin-bottom:20px;">
+        <div class="card-header" style="margin-bottom:0;">
+          <span class="card-title">Perfil da Goleira</span>
+          <select class="form-select" id="perfil-gk-select" style="width:220px;" onchange="renderPerfil()">
+            <option value="">Selecione a goleira…</option>
+          </select>
+        </div>
+      </div>
+      <div id="perfil-content" style="display:none;">
+        <div style="display:grid;grid-template-columns:340px 1fr;gap:20px;align-items:start;margin-bottom:20px;">
+          <!-- Card info pessoal -->
+          <div class="card">
+            <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 16px;">
+              <div class="gk-avatar" id="perfil-foto" style="margin-bottom:14px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:48px;height:48px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+              </div>
+              <div id="perfil-nome" style="font-size:20px;font-weight:800;"></div>
+              <div id="perfil-sub" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+              <div id="perfil-badge" style="margin-top:10px;"></div>
+            </div>
+            <hr style="border-color:var(--border);margin:8px 0 14px;">
+            <div id="perfil-info-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;"></div>
+          </div>
+          <!-- Cards ranking + stats -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="card" id="perfil-ranking"></div>
+            <div class="card" id="perfil-stats"></div>
+          </div>
+        </div>
+        <!-- Evolução técnica -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header"><span class="card-title">Evolução Técnica</span><span id="perfil-evol-label" style="font-size:12px;color:var(--muted);"></span></div>
+          <div style="height:200px;"><canvas id="chart-perfil-evol"></canvas></div>
+        </div>
+        <!-- Histórico de partidas -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Histórico de Partidas</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Data</th><th>Adversário</th><th>Competição</th><th>Resultado</th><th>Defesas</th><th>G. Sofr.</th><th>Nota</th></tr></thead>
+              <tbody id="perfil-historico-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="perfil-empty" style="color:var(--muted);font-size:14px;padding:40px 0;">Selecione uma goleira para ver o perfil completo.</div>
+    </div>
+
+    <!-- ══ COMPARAÇÃO ══ -->
+    <div id="page-comparacao" class="page">
+      <div class="card" style="max-width:600px;margin-bottom:20px;">
+        <div class="card-header"><span class="card-title">Comparação Entre Goleiras</span></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" style="color:var(--primary);">Goleira A</label>
+            <select class="form-select" id="comp-gk1" onchange="renderComparacao()"><option value="">Selecionar…</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="color:var(--warning);">Goleira B</label>
+            <select class="form-select" id="comp-gk2" onchange="renderComparacao()"><option value="">Selecionar…</option></select>
+          </div>
+        </div>
+      </div>
+      <div id="comp-result" style="display:none;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+          <!-- Radar -->
+          <div class="card">
+            <div class="card-header"><span class="card-title">Radar de Habilidades</span></div>
+            <div style="height:300px;"><canvas id="chart-comp-radar"></canvas></div>
+          </div>
+          <!-- Barras comparativas -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Comparativo</span>
+              <div style="display:flex;gap:12px;font-size:11px;">
+                <span style="color:var(--primary);">■ <span id="comp-nome-a"></span></span>
+                <span style="color:var(--warning);">■ <span id="comp-nome-b"></span></span>
+              </div>
+            </div>
+            <div id="comp-bars" style="padding:8px 0;"></div>
+          </div>
+        </div>
+        <!-- Tabela de stats -->
+        <div class="card">
+          <div class="card-header"><span class="card-title">Estatísticas Detalhadas</span></div>
+          <div class="table-wrap"><table id="comp-table-detail"></table></div>
+        </div>
+      </div>
+      <div id="comp-empty" style="color:var(--muted);font-size:14px;padding:40px 0;">Selecione duas goleiras para comparar.</div>
     </div>
 
     <!-- ══ RELATÓRIOS PDF ══ -->
@@ -956,6 +1113,19 @@
     </div>
     <div class="modal-body">
       <div class="form-grid">
+        <div class="form-group full">
+          <label class="form-label">Foto da goleira</label>
+          <div style="display:flex;align-items:center;gap:16px;">
+            <div class="gk-avatar" id="gk-foto-preview" style="width:80px;height:80px;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:36px;height:36px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <input type="file" id="gk-foto-input" accept="image/*" style="display:none;" onchange="handleFotoUpload(this)">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('gk-foto-input').click()">Escolher foto</button>
+              <button type="button" class="btn btn-ghost btn-sm" style="color:var(--error);" onclick="clearFoto()">Remover foto</button>
+            </div>
+          </div>
+        </div>
         <div class="form-group full">
           <label class="form-label">Nome completo *</label>
           <input class="form-input" id="gk-nome" type="text" placeholder="Ex: Ana Silva">
@@ -1210,9 +1380,10 @@ let chartPerf = null, chartEvolucao = null;
 // ═══════════════════════════════════════════════════════════
 const pageTitles = {
   dashboard: 'Dashboard', goleiras: 'Goleiras',
+  perfil: 'Perfil da Goleira', comparacao: 'Comparação Entre Goleiras',
   partidas: 'Partidas', scout: 'Scout de Jogo',
   performance: 'Performance', importar: 'Importar Excel',
-  heatmap: 'Heatmap', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)'
+  heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)'
 };
 
 function navigate(page) {
@@ -1224,6 +1395,8 @@ function navigate(page) {
   document.getElementById('sidebar').classList.remove('open');
   if (page === 'dashboard') refreshDashboard();
   if (page === 'goleiras') renderGoleiras();
+  if (page === 'perfil') { updateGoleiraSelects(); renderPerfil(); }
+  if (page === 'comparacao') { updateGoleiraSelects(); renderComparacao(); }
   if (page === 'partidas') renderPartidas();
   if (page === 'scout') renderScouts();
   if (page === 'performance') renderPerformance();
@@ -1315,9 +1488,11 @@ function uid() { return Date.now() + Math.random().toString(36).slice(2, 7); }
 
 function openNovaGoleira() {
   editingId.goleira = null;
+  currentFotoBase64 = '';
   document.getElementById('modal-goleira-title').textContent = 'Nova Goleira';
   ['nome','nasc','num','altura','peso','equipe','obs'].forEach(f => document.getElementById('gk-'+f).value = '');
   ['categoria','pe','mao'].forEach(f => document.getElementById('gk-'+f).value = '');
+  clearFoto();
   openModal('modal-goleira');
 }
 
@@ -1325,6 +1500,7 @@ function salvarGoleira() {
   const nome = document.getElementById('gk-nome').value.trim();
   if (!nome) { toast('Informe o nome da goleira', 'error'); return; }
   const goleiras = DB.goleiras;
+  const existente = editingId.goleira ? goleiras.find(g=>g.id===editingId.goleira) : null;
   const obj = {
     id: editingId.goleira || uid(),
     nome, nasc: document.getElementById('gk-nasc').value,
@@ -1336,6 +1512,7 @@ function salvarGoleira() {
     pe: document.getElementById('gk-pe').value,
     mao: document.getElementById('gk-mao').value,
     obs: document.getElementById('gk-obs').value,
+    foto: currentFotoBase64 || (existente ? existente.foto : ''),
     criadoEm: editingId.goleira ? undefined : new Date().toISOString(),
   };
   if (editingId.goleira) {
@@ -1367,6 +1544,8 @@ function editarGoleira(id) {
   document.getElementById('gk-pe').value = g.pe || '';
   document.getElementById('gk-mao').value = g.mao || '';
   document.getElementById('gk-obs').value = g.obs || '';
+  currentFotoBase64 = g.foto || '';
+  updateFotoPreview(currentFotoBase64);
   openModal('modal-goleira');
 }
 
@@ -1403,6 +1582,7 @@ function renderGoleiras() {
       <td>${avg !== null ? `<span class="badge ${cls}">${label} (${avg})</span>` : '<span style="color:var(--muted)">—</span>'}</td>
       <td>
         <div class="td-actions">
+          <button class="btn btn-primary btn-sm" onclick="verPerfil('${g.id}')">Perfil</button>
           <button class="btn btn-ghost btn-sm" onclick="editarGoleira('${g.id}')">Editar</button>
           <button class="btn btn-danger btn-sm" onclick="excluirGoleira('${g.id}')">Excluir</button>
         </div>
@@ -1848,10 +2028,12 @@ function refreshDashboard() {
 function updateGoleiraSelects() {
   const goleiras = DB.goleiras;
   const opts = `<option value="">Selecionar…</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
-  ['match-goleira','match-gk2','scout-goleira'].forEach(id => {
+  ['match-goleira','match-gk2','scout-goleira','comp-gk1','comp-gk2'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { const v = el.value; el.innerHTML = opts; el.value = v; }
   });
+  const perfilEl = document.getElementById('perfil-gk-select');
+  if (perfilEl) { const v = perfilEl.value; perfilEl.innerHTML = `<option value="">Selecione a goleira…</option>` + goleiras.map(g=>`<option value="${g.id}">${g.nome}</option>`).join(''); perfilEl.value = v; }
   const hmEl = document.getElementById('heatmap-gk');
   if (hmEl) { const v = hmEl.value; hmEl.innerHTML = `<option value="">Todas as goleiras</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join(''); hmEl.value = v; }
   const pdfEl = document.getElementById('pdf-gk-select');
@@ -2123,34 +2305,322 @@ function aggScouts(gkId) {
   if (gkId) scouts = scouts.filter(s => s.goalkeeperId === gkId);
   return scouts;
 }
+// ═══════════════════════════════════════════════════════════
+// FOTO DA GOLEIRA
+// ═══════════════════════════════════════════════════════════
+let currentFotoBase64 = '';
+function handleFotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const max = 240;
+      const scale = Math.min(max/img.width, max/img.height, 1);
+      canvas.width = img.width * scale; canvas.height = img.height * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      currentFotoBase64 = canvas.toDataURL('image/jpeg', 0.75);
+      updateFotoPreview(currentFotoBase64);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function updateFotoPreview(src) {
+  const el = document.getElementById('gk-foto-preview');
+  if (!el) return;
+  el.innerHTML = src
+    ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;">`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:36px;height:36px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
+}
+function clearFoto() {
+  currentFotoBase64 = '';
+  updateFotoPreview('');
+  const inp = document.getElementById('gk-foto-input');
+  if (inp) inp.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════
+// PERFIL DA GOLEIRA
+// ═══════════════════════════════════════════════════════════
+let perfilChart = null;
+function verPerfil(gkId) {
+  navigate('perfil');
+  const sel = document.getElementById('perfil-gk-select');
+  if (sel) { sel.value = gkId; renderPerfil(); }
+}
+function calcIdade(nasc) {
+  if (!nasc) return null;
+  const diff = new Date() - new Date(nasc);
+  return Math.floor(diff / (1000*60*60*24*365.25));
+}
+function renderPerfil() {
+  const gkId = document.getElementById('perfil-gk-select')?.value;
+  const content = document.getElementById('perfil-content');
+  const empty   = document.getElementById('perfil-empty');
+  if (!gkId) { content.style.display='none'; empty.style.display='block'; return; }
+  const gk = DB.goleiras.find(g => g.id === gkId);
+  if (!gk) return;
+  content.style.display='block'; empty.style.display='none';
+
+  // Foto + nome
+  const fotoEl = document.getElementById('perfil-foto');
+  fotoEl.innerHTML = gk.foto
+    ? `<img src="${gk.foto}" style="width:100%;height:100%;object-fit:cover;">`
+    : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:48px;height:48px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
+  document.getElementById('perfil-nome').textContent = gk.nome;
+  const idade = calcIdade(gk.nasc);
+  const sub = [gk.equipe, gk.categoria, idade ? idade+' anos' : null].filter(Boolean).join(' • ');
+  document.getElementById('perfil-sub').textContent = sub || '—';
+
+  // Badge de performance
+  const avg = avgPerformance(gkId);
+  const { label, cls } = classifyPerf(avg);
+  document.getElementById('perfil-badge').innerHTML = avg !== null
+    ? `<span class="badge ${cls}" style="font-size:13px;padding:5px 12px;">${label} — ${avg}</span>`
+    : '<span style="color:var(--muted);font-size:12px;">Sem dados de performance</span>';
+
+  // Info grid
+  const infoItems = [
+    ['Nascimento', gk.nasc ? formatDate(gk.nasc) : '—'],
+    ['Idade', idade ? idade+' anos' : '—'],
+    ['Altura', gk.altura ? gk.altura+' cm' : '—'],
+    ['Peso', gk.peso ? gk.peso+' kg' : '—'],
+    ['Pé dominante', gk.pe || '—'],
+    ['Mão dominante', gk.mao || '—'],
+    ['Nº camisa', gk.num || '—'],
+    ['Equipe', gk.equipe || '—'],
+  ];
+  document.getElementById('perfil-info-grid').innerHTML = infoItems.map(([k,v])=>`
+    <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${k}</div>
+    <div style="font-weight:600;font-size:13px;margin-top:2px;">${v}</div></div>`).join('');
+
+  // Ranking interno
+  const allGks = DB.goleiras;
+  const ranking = [...allGks]
+    .map(g => ({ id: g.id, nome: g.nome, avg: avgPerformance(g.id) }))
+    .filter(g => g.avg !== null)
+    .sort((a,b) => b.avg - a.avg);
+  const pos = ranking.findIndex(r => r.id === gkId) + 1;
+  document.getElementById('perfil-ranking').innerHTML = `
+    <div class="card-header"><span class="card-title">Ranking Interno</span></div>
+    <div style="text-align:center;padding:12px 0;">
+      <div style="font-size:48px;font-weight:800;color:var(--primary);">${pos > 0 ? '#'+pos : '—'}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">de ${allGks.length} goleiras cadastradas</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);">
+      ${ranking.slice(0,5).map((r,i)=>`
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);${r.id===gkId?'color:var(--primary);font-weight:700;':''}">
+          <span>#${i+1} ${r.nome}</span><span>${r.avg}</span>
+        </div>`).join('')}
+    </div>`;
+
+  // Stats acumulados
+  const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
+  const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc');
+  const totalGols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+  const distAcc = (sum('dpc')+sum('dmc')) / Math.max(sum('dpc')+sum('dmc')+sum('dpe')+sum('dme'), 1);
+  document.getElementById('perfil-stats').innerHTML = `
+    <div class="card-header"><span class="card-title">Estatísticas</span></div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px;padding:8px 0;">
+      ${[['Partidas', scouts.length],['Defesas', totalDef],['Gols sofridos', totalGols],['Interceptações', sum('int')],
+         ['Esquadros', sum('esq')],['Precisão dist.', Math.round(distAcc*100)+'%']
+        ].map(([k,v])=>`<div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;">
+          <div style="font-size:20px;font-weight:800;color:var(--primary);">${v}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px;">${k}</div></div>`).join('')}
+    </div>`;
+
+  // Evolução técnica
+  const sorted = [...scouts].sort((a,b) => {
+    const pa = DB.partidas.find(p=>p.id===a.partidaId);
+    const pb = DB.partidas.find(p=>p.id===b.partidaId);
+    return (pa?.data||'').localeCompare(pb?.data||'');
+  });
+  const labels = sorted.map((s,i) => {
+    const p = DB.partidas.find(pt=>pt.id===s.partidaId);
+    return p ? p.adversario.slice(0,8) : 'J'+(i+1);
+  });
+  const scores = sorted.map(calcPerformance);
+  document.getElementById('perfil-evol-label').textContent = scouts.length ? `${scouts.length} partidas` : '';
+  if (perfilChart) perfilChart.destroy();
+  perfilChart = new Chart(document.getElementById('chart-perfil-evol'), {
+    type: 'line',
+    data: { labels, datasets: [{ label: 'Nota', data: scores, borderColor:'#00D4FF', backgroundColor:'rgba(0,212,255,.1)', tension:.4, fill:true, pointBackgroundColor:'#00D4FF', pointRadius:5 }] },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} },
+      scales:{ x:{grid:{color:'#2a2a4a'},ticks:{color:'#6B6B8A'}}, y:{grid:{color:'#2a2a4a'},ticks:{color:'#6B6B8A'},min:0,max:10} } }
+  });
+
+  // Histórico de partidas
+  const tbody = document.getElementById('perfil-historico-tbody');
+  if (!sorted.length) { tbody.innerHTML='<tr><td colspan="7"><div class="empty-state"><p>Nenhum scout registrado.</p></div></td></tr>'; return; }
+  tbody.innerHTML = sorted.reverse().map(s => {
+    const p = DB.partidas.find(pt=>pt.id===s.partidaId);
+    const def = (+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0);
+    const gc  = (+s.gda||0)+(+s.gfa||0)+(+s.gpe||0)+(+s.gfl||0);
+    const nota = calcPerformance(s);
+    const { label:lb, cls } = classifyPerf(nota);
+    let res = '—';
+    if (p?.gf !== undefined) {
+      const r = p.gf>p.gc?'V':p.gf<p.gc?'D':'E';
+      const col = r==='V'?'var(--success)':r==='D'?'var(--error)':'var(--warning)';
+      res = `<span style="color:${col};font-weight:700;">${r} ${p.gf}×${p.gc}</span>`;
+    }
+    return `<tr>
+      <td>${p?.data ? formatDate(p.data) : '—'}</td>
+      <td><strong>${p?.adversario || '—'}</strong></td>
+      <td>${p?.competicao || '—'}</td>
+      <td>${res}</td>
+      <td>${def}</td><td>${gc}</td>
+      <td>${nota !== null ? `<span class="badge ${cls}">${nota}</span>` : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPARAÇÃO ENTRE GOLEIRAS
+// ═══════════════════════════════════════════════════════════
+let compChart = null;
+function renderComparacao() {
+  const idA = document.getElementById('comp-gk1')?.value;
+  const idB = document.getElementById('comp-gk2')?.value;
+  const result = document.getElementById('comp-result');
+  const empty  = document.getElementById('comp-empty');
+  if (!idA || !idB || idA === idB) { result.style.display='none'; empty.style.display='block'; return; }
+  const gkA = DB.goleiras.find(g=>g.id===idA);
+  const gkB = DB.goleiras.find(g=>g.id===idB);
+  if (!gkA || !gkB) return;
+  result.style.display='block'; empty.style.display='none';
+  document.getElementById('comp-nome-a').textContent = gkA.nome;
+  document.getElementById('comp-nome-b').textContent = gkB.nome;
+
+  function gkStats(gkId) {
+    const sc = DB.scouts.filter(s=>s.goalkeeperId===gkId);
+    if (!sc.length) return null;
+    const sum = k => sc.reduce((a,s)=>a+(+s[k]||0),0);
+    const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc');
+    const totalGols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+    const distCerto = sum('dpc')+sum('dmc');
+    const distTotal = distCerto+sum('dpe')+sum('dme');
+    return {
+      notaMedia: avgPerformance(gkId) ?? 0,
+      taxaDefesa: totalDef+totalGols>0 ? Math.round(totalDef/(totalDef+totalGols)*100)/10 : 0,
+      distAcc: distTotal>0 ? Math.round(distCerto/distTotal*100)/10 : 0,
+      intPJ: sc.length>0 ? Math.round(sum('int')/sc.length*10)/10 : 0,
+      esquPJ: sc.length>0 ? Math.round(sum('esq')/sc.length*10)/10 : 0,
+      partidas: sc.length,
+    };
+  }
+  const sA = gkStats(idA) || { notaMedia:0, taxaDefesa:0, distAcc:0, intPJ:0, esquPJ:0, partidas:0 };
+  const sB = gkStats(idB) || { notaMedia:0, taxaDefesa:0, distAcc:0, intPJ:0, esquPJ:0, partidas:0 };
+
+  const dims = [
+    { label:'Nota Média', a:sA.notaMedia, b:sB.notaMedia, max:10 },
+    { label:'Taxa Defesa (%×0.1)', a:sA.taxaDefesa, b:sB.taxaDefesa, max:10 },
+    { label:'Precisão Dist. (%×0.1)', a:sA.distAcc, b:sB.distAcc, max:10 },
+    { label:'Intercep./Jogo', a:sA.intPJ, b:sB.intPJ, max:Math.max(sA.intPJ,sB.intPJ,1)*1.2 },
+    { label:'Esquadros/Jogo', a:sA.esquPJ, b:sB.esquPJ, max:Math.max(sA.esquPJ,sB.esquPJ,1)*1.2 },
+    { label:'Partidas', a:sA.partidas, b:sB.partidas, max:Math.max(sA.partidas,sB.partidas,1)*1.2 },
+  ];
+
+  // Radar chart
+  if (compChart) compChart.destroy();
+  compChart = new Chart(document.getElementById('chart-comp-radar'), {
+    type: 'radar',
+    data: {
+      labels: dims.map(d=>d.label),
+      datasets: [
+        { label:gkA.nome, data:dims.map(d=>d.a), borderColor:'#00D4FF', backgroundColor:'rgba(0,212,255,.15)', pointBackgroundColor:'#00D4FF' },
+        { label:gkB.nome, data:dims.map(d=>d.b), borderColor:'#FFB300', backgroundColor:'rgba(255,179,0,.15)', pointBackgroundColor:'#FFB300' },
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales:{ r:{ grid:{color:'#2a2a4a'}, ticks:{color:'#6B6B8A',backdropColor:'transparent'}, pointLabels:{color:'#6B6B8A',font:{size:10}} } },
+      plugins:{ legend:{ labels:{color:'#E8E8F0',font:{size:11}} } } }
+  });
+
+  // Barras comparativas
+  document.getElementById('comp-bars').innerHTML = dims.map(d => {
+    const pctA = Math.round(d.a/d.max*100);
+    const pctB = Math.round(d.b/d.max*100);
+    const winner = d.a > d.b ? 'a' : d.b > d.a ? 'b' : '';
+    return `<div style="margin-bottom:14px;">
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:4px;">${d.label}</div>
+      <div class="comp-row">
+        <div>
+          <div style="text-align:right;font-weight:${winner==='a'?700:400};color:${winner==='a'?'var(--primary)':'var(--text)'};">${d.a}</div>
+          <div style="display:flex;justify-content:flex-end;margin-top:3px;">
+            <div style="width:${pctA}%;max-width:100%;height:6px;border-radius:4px;background:var(--primary);"></div>
+          </div>
+        </div>
+        <div style="text-align:center;font-size:10px;color:var(--muted);">vs</div>
+        <div>
+          <div style="font-weight:${winner==='b'?700:400};color:${winner==='b'?'var(--warning)':'var(--text)'};">${d.b}</div>
+          <div style="margin-top:3px;">
+            <div style="width:${pctB}%;max-width:100%;height:6px;border-radius:4px;background:var(--warning);"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Tabela detalhada
+  const rows = [
+    ['Partidas com scout', sA.partidas, sB.partidas],
+    ['Nota média', sA.notaMedia, sB.notaMedia],
+    ['Taxa de defesa', sA.taxaDefesa+'%', sB.taxaDefesa+'%'],
+    ['Precisão distribuição', sA.distAcc+'%', sB.distAcc+'%'],
+    ['Interceptações/jogo', sA.intPJ, sB.intPJ],
+    ['Esquadros/jogo', sA.esquPJ, sB.esquPJ],
+  ];
+  document.getElementById('comp-table-detail').innerHTML = `
+    <thead><tr><th>Métrica</th><th style="color:var(--primary);">${gkA.nome}</th><th style="color:var(--warning);">${gkB.nome}</th></tr></thead>
+    <tbody>${rows.map(([m,a,b])=>{
+      const aw=typeof a==='number'&&typeof b==='number'&&a>b;
+      const bw=typeof a==='number'&&typeof b==='number'&&b>a;
+      return `<tr><td>${m}</td><td style="font-weight:${aw?700:400};color:${aw?'var(--primary)':''};">${a}</td><td style="font-weight:${bw?700:400};color:${bw?'var(--warning)':''};">${b}</td></tr>`;
+    }).join('')}</tbody>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// HEATMAP INTELIGENTE
+// ═══════════════════════════════════════════════════════════
+let hmDistribChart = null;
+function switchHmTab(btn, tabId) {
+  document.querySelectorAll('.hm-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('#page-heatmap .tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+  if (tabId === 'hm-distrib') renderDistribChart();
+}
+
 function renderHeatmap() {
   const gkId = document.getElementById('heatmap-gk')?.value || '';
   const scouts = aggScouts(gkId);
-  // Zonas de defesa: mapeadas numa grade 3x3 (a goleira defende o gol à esquerda)
-  const sum = (k) => scouts.reduce((a,s)=>a+(+s[k]||0),0);
-  // Defesas por zona [linha][coluna] linha 0=topo
+  const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
+
   const defGrid = [
-    [sum('dae'), 0, 0],   // alta esquerda
-    [sum('dbe')+sum('dc'), sum('int'), sum('esq')], // baixa esq + central / interceptações / esquadros
-    [sum('dbd'), 0, 0],   // baixa direita
+    [sum('dae'), sum('dad'), 0],
+    [sum('dbe')+sum('dc'), sum('int'), sum('esq')],
+    [sum('dbd'), sum('posd')+sum('pose'), 0],
   ];
-  // ajuste: também distribuímos defesas altas direita
-  defGrid[0][0] = sum('dae');
-  defGrid[2][0] = sum('dbd');
-  defGrid[0][1] = sum('dad'); // alta dir mais ao centro-topo
-  defGrid[1][0] = sum('dbe')+sum('dc');
-  defGrid[1][1] = sum('int');
-  defGrid[1][2] = sum('esq');
-  defGrid[2][1] = sum('posd')+sum('pose');
   const golGrid = [
     [Math.round(sum('gda')*0.4), Math.round(sum('gfa')*0.5), 0],
     [Math.round(sum('gda')*0.2), sum('gpe'), sum('gfl')],
     [Math.round(sum('gda')*0.4), Math.round(sum('gfa')*0.5), 0],
   ];
+  // Chutes recebidos = defesas + gols por zona
+  const chutesGrid = defGrid.map((row,r) => row.map((v,c) => v + golGrid[r][c]));
+
+  drawCourt('court-chutes', chutesGrid, '200,150,255');
   drawCourt('court-defesas', defGrid, '0,212,255');
   drawCourt('court-gols', golGrid, '255,61,87');
-  // Resumo
+  renderDistribChart(scouts);
+
   const stats = [
+    ['Chutes Recebidos', sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('gda')+sum('gfa')+sum('gpe')+sum('gfl')],
     ['Defesas Altas', sum('dad')+sum('dae')],
     ['Defesas Baixas', sum('dbd')+sum('dbe')],
     ['Defesa Central', sum('dc')],
@@ -2159,8 +2629,41 @@ function renderHeatmap() {
     ['Gols Dentro da Área', sum('gda')],
     ['Gols Fora da Área', sum('gfa')],
     ['Gols de Pênalti', sum('gpe')],
+    ['Distribuições corretas', sum('dpc')+sum('dmc')],
+    ['Distribuições erradas', sum('dpe')+sum('dme')],
   ];
   document.getElementById('heatmap-summary').innerHTML = `<table><thead><tr><th>Métrica</th><th>Total</th></tr></thead><tbody>${stats.map(([k,v])=>`<tr><td>${k}</td><td><strong>${v}</strong></td></tr>`).join('')}</tbody></table>`;
+}
+
+function renderDistribChart(scouts) {
+  const gkId = document.getElementById('heatmap-gk')?.value || '';
+  const sc = scouts || aggScouts(gkId);
+  const sum = k => sc.reduce((a,s)=>a+(+s[k]||0),0);
+  const dpc=sum('dpc'), dpe=sum('dpe'), dmc=sum('dmc'), dme=sum('dme');
+  const total=dpc+dpe+dmc+dme;
+  const detail = document.getElementById('distrib-detail');
+  if (detail) {
+    const rows=[['Pé Certo', dpc, 'var(--success)'],['Pé Errado', dpe, 'var(--error)'],['Mão Certa', dmc, 'var(--success)'],['Mão Errada', dme, 'var(--error)']];
+    detail.innerHTML = rows.map(([lbl,v,c])=>{
+      const pct=total>0?Math.round(v/total*100):0;
+      return `<div style="margin-bottom:14px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--muted);">${lbl}</span><span style="font-weight:700;color:${c};">${v} <small>(${pct}%)</small></span></div>
+        <div style="height:6px;border-radius:4px;background:var(--border);overflow:hidden;"><div style="width:${pct}%;height:100%;background:${c};border-radius:4px;"></div></div>
+      </div>`;
+    }).join('') + (total===0?'<p style="color:var(--muted);font-size:13px;">Sem dados de distribuição.</p>':'');
+  }
+  const ctx = document.getElementById('chart-distrib');
+  if (!ctx) return;
+  if (hmDistribChart) hmDistribChart.destroy();
+  if (total === 0) { ctx.getContext('2d').clearRect(0,0,1000,1000); return; }
+  hmDistribChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Pé Certo','Pé Errado','Mão Certa','Mão Errada'],
+      datasets: [{ data:[dpc,dpe,dmc,dme], backgroundColor:['#00C853','#FF3D57','#00D4FF','#FFB300'], borderColor:'transparent', hoverOffset:8 }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ labels:{color:'#E8E8F0',font:{size:11}} } } }
+  });
 }
 function drawCourt(id, grid, rgb) {
   const court = document.getElementById(id);
