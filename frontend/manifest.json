@@ -1,0 +1,36 @@
+{
+  "name": "GK Hub — Goalkeeper Performance Platform",
+  "short_name": "GK Hub",
+  "description": "Plataforma de análise e performance para goleiras de futsal",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#07070F",
+  "theme_color": "#00D4FF",
+  "lang": "pt-BR",
+  "categories": ["sports", "productivity"],
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Match Center",
+      "short_name": "Ao Vivo",
+      "description": "Registrar eventos em tempo real",
+      "url": "./#matchcenter"
+    },
+    {
+      "name": "Scout",
+      "short_name": "Scout",
+      "description": "Registrar scout de jogo",
+      "url": "./#scout"
+    }
+  ]
+}

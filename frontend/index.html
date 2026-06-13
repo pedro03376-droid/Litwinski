@@ -4,6 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GK Hub — Goalkeeper Performance Platform</title>
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json" />
+  <meta name="theme-color" content="#00D4FF" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="GK Hub" />
+  <link rel="apple-touch-icon" href="./icon.svg" />
+  <!-- Fonts & CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -693,6 +702,64 @@
     .mc-counter .lbl { font-size:10px; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:.5px; }
     .mc-log-item { display:flex; align-items:center; gap:10px; padding:6px 0; border-bottom:1px solid var(--border); font-size:12px; }
     .mc-log-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+
+    /* ── PWA / Offline ── */
+    .offline-banner {
+      position: fixed;
+      top: 72px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,179,0,.12);
+      border: 1px solid rgba(255,179,0,.4);
+      color: var(--warning);
+      padding: 7px 20px;
+      border-radius: 24px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      backdrop-filter: blur(8px);
+      animation: slideDown .3s ease;
+      pointer-events: none;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
+      to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .offline-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--warning);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; } 50% { opacity: .3; }
+    }
+    .btn-install {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: linear-gradient(135deg,rgba(0,212,255,.15),rgba(123,47,190,.15));
+      border: 1px solid rgba(0,212,255,.4);
+      border-radius: 8px;
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all .2s;
+    }
+    .btn-install:hover { background: rgba(0,212,255,.2); box-shadow: var(--glow-primary); }
+    .sync-flash {
+      position: fixed; inset: 0;
+      background: rgba(0,230,118,.04);
+      pointer-events: none;
+      z-index: 999;
+      animation: syncFlash .8s ease forwards;
+    }
+    @keyframes syncFlash { from { opacity:1; } to { opacity:0; } }
   </style>
 </head>
 <body>
@@ -785,9 +852,13 @@
       <span class="topbar-title" id="topbar-title">Dashboard</span>
     </div>
     <div class="topbar-actions">
+      <button class="btn-install" id="btn-install" onclick="installPWA()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Instalar App
+      </button>
       <button class="btn btn-primary btn-sm" onclick="navigate('importar')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Importar Excel
+        Importar
       </button>
     </div>
   </header>
@@ -3580,6 +3651,114 @@ function renderConfigStatus() {
 updateGoleiraSelects();
 refreshDashboard();
 initFirebaseFromStorage();
+
+// ═══════════════════════════════════════════════════════════
+// PWA — SERVICE WORKER + OFFLINE + AUTO-SYNC
+// ═══════════════════════════════════════════════════════════
+let deferredInstallPrompt = null;
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // When a new SW is waiting, activate it immediately
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (sw) sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            sw.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+    }).catch(() => {});
+  });
+}
+
+// Install prompt
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  document.getElementById('btn-install').style.display = 'flex';
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  document.getElementById('btn-install').style.display = 'none';
+  toast('GK Hub instalado com sucesso!', 'success');
+});
+
+function installPWA() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  deferredInstallPrompt.userChoice.then(result => {
+    deferredInstallPrompt = null;
+    document.getElementById('btn-install').style.display = 'none';
+    if (result.outcome === 'accepted') toast('GK Hub instalado!', 'success');
+  });
+}
+
+// Offline / Online status
+let offlineBanner = null;
+
+function showOfflineBanner(show) {
+  if (show && !offlineBanner) {
+    offlineBanner = document.createElement('div');
+    offlineBanner.className = 'offline-banner';
+    offlineBanner.innerHTML = '<div class="offline-dot"></div> Modo offline — dados salvos localmente';
+    document.body.appendChild(offlineBanner);
+  } else if (!show && offlineBanner) {
+    offlineBanner.remove();
+    offlineBanner = null;
+  }
+}
+
+async function syncAllToCloud() {
+  if (!rtdbUrl) return;
+  const goleiras = DB.goleiras;
+  const partidas = DB.partidas;
+  const scouts   = DB.scouts;
+  if (!goleiras.length && !partidas.length && !scouts.length) return;
+
+  toast('Sincronizando dados com a nuvem…', 'info');
+  try {
+    await Promise.all([
+      ...goleiras.map(g => { const {id,...r} = g; return rtdbPut('/goleiras/'+id, r); }),
+      ...partidas.map(p => { const {id,...r} = p; return rtdbPut('/partidas/'+id, r); }),
+      ...scouts.map(s  => { const {id,...r} = s; return rtdbPut('/scouts/'+id, r); }),
+    ]);
+    // Visual flash to signal success
+    const flash = document.createElement('div');
+    flash.className = 'sync-flash';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 900);
+    toast('Sincronização automática concluída!', 'success');
+    renderConfigStatus();
+  } catch(e) {
+    toast('Erro na sincronização: ' + e.message, 'error');
+  }
+}
+
+window.addEventListener('online', () => {
+  showOfflineBanner(false);
+  // Update cloud dot
+  const dot = document.getElementById('cloud-dot');
+  const lbl = document.getElementById('cloud-label');
+  if (dot) dot.style.background = 'var(--muted)';
+  if (lbl) lbl.textContent = 'Reconectado…';
+  // Auto-sync pending data
+  setTimeout(syncAllToCloud, 800);
+});
+
+window.addEventListener('offline', () => {
+  showOfflineBanner(true);
+  const dot = document.getElementById('cloud-dot');
+  const lbl = document.getElementById('cloud-label');
+  if (dot) dot.style.background = 'var(--warning)';
+  if (lbl) lbl.textContent = 'Offline';
+});
+
+// Initial check
+if (!navigator.onLine) showOfflineBanner(true);
 </script>
 </body>
 </html>
