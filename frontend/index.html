@@ -962,9 +962,58 @@
       animation: syncFlash .8s ease forwards;
     }
 
+
+    /* ── LOGIN OVERLAY ─────────────────────────────────────── */
+    #auth-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #auth-overlay.hidden { display: none; }
+    .auth-card {
+      width: 100%; max-width: 380px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 32px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    }
+    .auth-logo { text-align: center; margin-bottom: 32px; }
+    .auth-logo-text {
+      font-size: 36px; font-weight: 800; letter-spacing: -1.5px;
+      background: var(--primary-g); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .auth-logo-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .auth-err {
+      color: #FCA5A5; font-size: 12px; margin-top: 10px;
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.22);
+      border-radius: 8px; padding: 9px 12px; display: none;
+    }
   </style>
 </head>
 <body>
+
+<!-- ══ LOGIN OVERLAY ══ -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-text">GK Hub</div>
+      <div class="auth-logo-sub">Plataforma de Performance para Goleiras de Futsal</div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Usuário</label>
+      <input class="form-input" id="auth-user" type="text" placeholder="admin" autocomplete="username">
+    </div>
+    <div class="form-group" style="margin-bottom:4px;">
+      <label class="form-label">Senha</label>
+      <input class="form-input" id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')authLogin()">
+    </div>
+    <div id="auth-err" class="auth-err"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:18px;" onclick="authLogin()">Entrar</button>
+  </div>
+</div>
 
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
@@ -1040,6 +1089,10 @@
       <span id="cloud-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
       <span id="cloud-label" style="font-size:11px;">Nuvem: offline</span>
     </div>
+    <button class="btn btn-ghost btn-sm" onclick="authLogout()" style="width:100%;justify-content:center;color:var(--muted);font-size:11px;margin-bottom:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sair
+    </button>
     GK Hub v1.0 &copy; 2026
   </div>
 </aside>
@@ -1825,6 +1878,21 @@
 
     <!-- ══ CONFIG FIREBASE ══ -->
     <div id="page-config" class="page">
+      <div class="card" style="max-width:680px;margin-bottom:16px;">
+        <div class="card-header"><span class="card-title">Alterar Credenciais de Acesso</span></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Novo usuário</label>
+            <input class="form-input" id="cfg-new-user" type="text" placeholder="admin" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nova senha</label>
+            <input class="form-input" id="cfg-new-pass" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="authChangeCreds()">Salvar credenciais</button>
+        <div id="cfg-creds-status" style="margin-top:10px;font-size:13px;"></div>
+      </div>
       <div class="card" style="max-width:680px;">
         <div class="card-header"><span class="card-title">Sincronização na Nuvem (Firebase)</span></div>
         <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Cole a URL do seu banco de dados Firebase Realtime Database para salvar os dados na nuvem e acessá-los de qualquer dispositivo.</p>
@@ -5152,6 +5220,67 @@ function mcExportarRelatorioPDF() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// AUTH — Login simples com credenciais locais
+// ═══════════════════════════════════════════════════════════
+const _AUTH_SESSION = 'gkhub_session';
+const _AUTH_CREDS   = 'gkhub_creds';
+const _DEF_USER = 'admin';
+const _DEF_PASS = 'gkhub2026';
+
+function _h(s) {
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(33, h) ^ s.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+function initAuth() {
+  if (localStorage.getItem(_AUTH_SESSION) === '1') {
+    document.getElementById('auth-overlay').classList.add('hidden');
+  }
+  // session persists — overlay already visible by default
+}
+
+function authLogin() {
+  const user = document.getElementById('auth-user').value.trim();
+  const pass = document.getElementById('auth-pass').value;
+  const creds = JSON.parse(localStorage.getItem(_AUTH_CREDS) || 'null');
+  const okUser = creds?.user || _DEF_USER;
+  const okHash = creds?.hash || _h(_DEF_PASS);
+  const errEl  = document.getElementById('auth-err');
+  if (user === okUser && _h(pass) === okHash) {
+    localStorage.setItem(_AUTH_SESSION, '1');
+    document.getElementById('auth-overlay').classList.add('hidden');
+    errEl.style.display = 'none';
+  } else {
+    errEl.textContent = 'Usuário ou senha incorretos.';
+    errEl.style.display = 'block';
+    document.getElementById('auth-pass').value = '';
+    document.getElementById('auth-pass').focus();
+  }
+}
+
+function authLogout() {
+  localStorage.removeItem(_AUTH_SESSION);
+  document.getElementById('auth-overlay').classList.remove('hidden');
+  document.getElementById('auth-user').value = '';
+  document.getElementById('auth-pass').value = '';
+  document.getElementById('auth-err').style.display = 'none';
+}
+
+function authChangeCreds() {
+  const newUser = document.getElementById('cfg-new-user').value.trim();
+  const newPass = document.getElementById('cfg-new-pass').value;
+  const status  = document.getElementById('cfg-creds-status');
+  if (!newUser) { status.innerHTML = '<span style="color:var(--error)">Informe o novo usuário.</span>'; return; }
+  if (newPass.length < 4) { status.innerHTML = '<span style="color:var(--error)">Senha precisa ter ao menos 4 caracteres.</span>'; return; }
+  localStorage.setItem(_AUTH_CREDS, JSON.stringify({ user: newUser, hash: _h(newPass) }));
+  document.getElementById('cfg-new-user').value = '';
+  document.getElementById('cfg-new-pass').value = '';
+  status.innerHTML = '<span style="color:var(--success)">✓ Credenciais atualizadas! Use no próximo login.</span>';
+  toast('Credenciais atualizadas!', 'success');
+}
+
+// ═══════════════════════════════════════════════════════════
 // FIREBASE REALTIME DATABASE — REST API (sem SDK)
 // ═══════════════════════════════════════════════════════════
 let rtdbUrl = null;
@@ -5281,6 +5410,7 @@ function renderConfigStatus() {
 }
 
 // INIT
+initAuth();
 updateGoleiraSelects();
 refreshDashboard();
 initFirebaseFromStorage();
