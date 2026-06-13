@@ -663,7 +663,7 @@
 
     <!-- ══ PARTIDAS ══ -->
     <div id="page-partidas" class="page">
-      <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-header" style="margin-bottom:12px;">
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input class="search-input" id="search-partidas" type="text" placeholder="Buscar partida…" oninput="renderPartidas()">
@@ -673,6 +673,8 @@
           Nova Partida
         </button>
       </div>
+      <!-- Filtro por competição -->
+      <div id="filtro-competicoes" style="display:none;flex-wrap:wrap;gap:8px;margin-bottom:14px;"></div>
       <div class="card">
         <div class="table-wrap">
           <table>
@@ -1424,15 +1426,40 @@ function excluirPartida(id) {
   toast('Partida excluída.', 'info');
 }
 
+let filtroCompeticao = '';
+
+function renderFiltroCompeticoes() {
+  const todas = DB.partidas;
+  const comps = [...new Set(todas.map(p => p.competicao || '').filter(Boolean))].sort();
+  const container = document.getElementById('filtro-competicoes');
+  if (!container) return;
+  if (comps.length < 2) { container.style.display = 'none'; return; }
+  container.style.display = 'flex';
+  const chips = [{ label: 'Todas', value: '' }, ...comps.map(c => ({ label: c, value: c }))];
+  container.innerHTML = chips.map(c => {
+    const ativo = filtroCompeticao === c.value;
+    return `<button onclick="filtroCompeticao='${c.value.replace(/'/g,"\\'")}';renderFiltroCompeticoes();renderPartidas();"
+      style="padding:5px 14px;border-radius:20px;border:1px solid ${ativo ? 'var(--primary)' : 'var(--border)'};
+             background:${ativo ? 'rgba(0,212,255,.15)' : 'var(--card)'};
+             color:${ativo ? 'var(--primary)' : 'var(--muted)'};
+             font-size:12px;font-weight:${ativo ? 600 : 400};cursor:pointer;transition:all .2s;white-space:nowrap;">
+      ${c.label}${c.value ? ` <span style="opacity:.6;font-size:10px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
+    </button>`;
+  }).join('');
+}
+
 function renderPartidas() {
+  renderFiltroCompeticoes();
   const q = (document.getElementById('search-partidas')?.value || '').toLowerCase();
-  const partidas = DB.partidas.filter(p => !q ||
-    (p.adversario||'').toLowerCase().includes(q) ||
-    (p.competicao||'').toLowerCase().includes(q));
+  const partidas = DB.partidas.filter(p => {
+    const matchQ = !q || (p.adversario||'').toLowerCase().includes(q) || (p.competicao||'').toLowerCase().includes(q);
+    const matchComp = !filtroCompeticao || (p.competicao || '') === filtroCompeticao;
+    return matchQ && matchComp;
+  });
   const goleiras = DB.goleiras;
   const tbody = document.getElementById('tbody-partidas');
   if (!partidas.length) {
-    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>Nenhuma partida registrada.</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>Nenhuma partida encontrada.</p></div></td></tr>`;
     return;
   }
   tbody.innerHTML = [...partidas].sort((a,b) => (b.data||'').localeCompare(a.data||'')).map(p => {
