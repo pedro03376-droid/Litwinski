@@ -855,6 +855,61 @@
     .mc-placar-btn:hover { border-color: var(--border-h); color: var(--text); background: rgba(255,255,255,.1); }
     .mc-placar-btn:active { transform: scale(.88); }
 
+    /* ── Match Center Enhancements ── */
+    .mc-nota-ring {
+      width:72px; height:72px; border-radius:50%;
+      border:3px solid; display:flex; flex-direction:column;
+      align-items:center; justify-content:center;
+      transition: border-color .3s, color .3s;
+      flex-shrink:0;
+    }
+    .mc-nota-val { font-size:22px; font-weight:800; line-height:1; }
+    .mc-nota-lbl { font-size:9px; font-weight:600; letter-spacing:.8px; opacity:.7; margin-top:1px; }
+    .mc-nota-trend { font-size:10px; font-weight:700; margin-top:2px; }
+    .mc-alert-item {
+      display:flex; align-items:center; gap:8px;
+      padding:8px 14px; border-radius:var(--radius);
+      font-size:12px; font-weight:600;
+      border:1px solid; animation: slideIn .25s ease;
+    }
+    .mc-alert-error   { background:rgba(239,68,68,.1);   border-color:rgba(239,68,68,.3);   color:#FCA5A5; }
+    .mc-alert-warning { background:rgba(245,158,11,.1);  border-color:rgba(245,158,11,.3);  color:#FCD34D; }
+    .mc-alert-success { background:rgba(16,185,129,.1);  border-color:rgba(16,185,129,.3);  color:#6EE7B7; }
+    .mc-highlight-row { display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:12px; }
+    .mc-highlight-val { font-weight:700; font-size:15px; }
+    .mc-field-mini {
+      display:grid; grid-template-columns:repeat(3,1fr); grid-template-rows:repeat(3,1fr);
+      gap:2px; background:var(--border); border-radius:6px; overflow:hidden;
+      aspect-ratio:2/1; max-width:100%;
+    }
+    .mc-field-cell {
+      background:#0d2218; display:flex; align-items:center; justify-content:center;
+      font-size:12px; font-weight:700; color:#fff; position:relative;
+      transition:background .3s;
+    }
+    .mc-timeline-item {
+      display:flex; align-items:flex-start; gap:10px;
+      padding:8px 0; border-bottom:1px solid rgba(255,255,255,.05);
+      cursor:pointer; transition:background .15s; border-radius:6px;
+      padding-left:4px; padding-right:4px;
+    }
+    .mc-timeline-item:hover { background:rgba(255,255,255,.04); }
+    .mc-timeline-icon {
+      width:28px; height:28px; border-radius:50%; display:flex;
+      align-items:center; justify-content:center; font-size:14px;
+      flex-shrink:0; margin-top:1px;
+    }
+    .mc-period-grid { display:grid; grid-template-columns:1fr 1fr; gap:4px; }
+    .mc-period-cell { text-align:center; padding:6px 4px; background:rgba(255,255,255,.03); border-radius:6px; }
+    .mc-period-cell .pv { font-size:20px; font-weight:800; line-height:1; }
+    .mc-period-cell .pl { font-size:9px; color:var(--muted); font-weight:600; letter-spacing:.5px; margin-top:2px; }
+    @keyframes mcFlash {
+      0%   { transform:scale(1); }
+      40%  { transform:scale(1.18); }
+      100% { transform:scale(1); }
+    }
+    .mc-event-flash { animation: mcFlash .18s ease; }
+
     /* ════════════════════════════════════════════════════════
        PWA / OFFLINE
     ════════════════════════════════════════════════════════ */
@@ -1122,8 +1177,8 @@
     <!-- ══ MATCH CENTER ══ -->
     <div id="page-matchcenter" class="page">
 
-      <!-- Setup bar -->
-      <div class="card" style="margin-bottom:16px;">
+      <!-- ── Setup Bar ── -->
+      <div class="card" style="margin-bottom:12px;">
         <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
           <div class="form-group" style="margin:0;">
             <label class="form-label">Partida</label>
@@ -1139,18 +1194,27 @@
           </div>
         </div>
 
-        <!-- Timer + Período + Placar -->
+        <!-- Timer + Período + Placar + Nota -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
           <!-- Timer -->
           <div style="display:flex;align-items:center;gap:10px;">
-            <div id="mc-timer" style="font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--primary);letter-spacing:3px;">00:00</div>
+            <div id="mc-timer" style="font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--primary);letter-spacing:3px;">00:00</div>
             <div id="mc-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);"></div>
+          </div>
+
+          <!-- Nota ao Vivo -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:2px;">
+            <div class="mc-nota-ring" id="mc-nota-ring" style="border-color:var(--warning);color:var(--warning);">
+              <div class="mc-nota-val" id="mc-nota-val">7.0</div>
+              <div class="mc-nota-lbl">NOTA</div>
+            </div>
+            <div class="mc-nota-trend" id="mc-nota-trend" style="color:var(--muted);">→ Estável</div>
           </div>
 
           <!-- Período badge -->
           <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
-            <div id="mc-periodo-badge" style="font-size:11px;font-weight:700;background:rgba(0,212,255,.1);color:var(--primary);border:1px solid rgba(0,212,255,.3);border-radius:6px;padding:5px 14px;letter-spacing:.8px;text-align:center;">1º TEMPO</div>
-            <button class="btn btn-ghost btn-sm" id="mc-btn-2t" onclick="mcIniciarSegundoTempo()" style="display:none;font-size:11px;padding:4px 10px;">⏩ Ir para 2º Tempo</button>
+            <div id="mc-periodo-badge" style="font-size:11px;font-weight:700;background:rgba(59,130,246,.1);color:var(--primary);border:1px solid rgba(59,130,246,.3);border-radius:8px;padding:6px 16px;letter-spacing:.8px;text-align:center;">1º TEMPO</div>
+            <button class="btn btn-ghost btn-sm" id="mc-btn-2t" onclick="mcIniciarSegundoTempo()" style="display:none;font-size:11px;padding:4px 10px;">⏩ 2º Tempo</button>
           </div>
 
           <!-- Placar ao vivo -->
@@ -1176,7 +1240,7 @@
 
           <!-- Ações secundárias -->
           <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
-            <button class="btn btn-ghost btn-sm" onclick="mcTrocarGoleira()" style="color:var(--warning);border-color:rgba(255,179,0,.35);white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm" onclick="mcTrocarGoleira()" style="color:var(--warning);border-color:rgba(245,158,11,.35);white-space:nowrap;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
               Trocar Goleira
             </button>
@@ -1185,7 +1249,7 @@
         </div>
 
         <!-- Painel Trocar Goleira -->
-        <div id="mc-trocar-painel" style="display:none;margin-top:12px;padding:12px;background:rgba(255,179,0,.06);border:1px solid rgba(255,179,0,.25);border-radius:10px;">
+        <div id="mc-trocar-painel" style="display:none;margin-top:12px;padding:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.25);border-radius:10px;">
           <div style="font-size:12px;font-weight:700;color:var(--warning);margin-bottom:8px;">🔄 Substituição de Goleira</div>
           <div style="display:flex;gap:8px;align-items:center;">
             <select class="form-select" id="mc-nova-goleira" style="flex:1;"></select>
@@ -1200,20 +1264,29 @@
         </div>
       </div>
 
-      <!-- Counters rápidos -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;">
+      <!-- ── Alerts Bar ── -->
+      <div id="mc-alerts-bar" style="display:none;margin-bottom:12px;display:flex;flex-direction:column;gap:6px;"></div>
+
+      <!-- ── Quick Counters + Nota ── -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr) 1.4fr;gap:10px;margin-bottom:12px;">
         <div class="mc-counter"><div class="val" id="mc-c-def" style="color:var(--primary);">0</div><div class="lbl">Defesas</div></div>
         <div class="mc-counter"><div class="val" id="mc-c-gol" style="color:var(--error);">0</div><div class="lbl">Gols Sofr.</div></div>
         <div class="mc-counter"><div class="val" id="mc-c-dist" style="color:var(--warning);">0</div><div class="lbl">Distribuições</div></div>
-        <div class="mc-counter"><div class="val" id="mc-c-int" style="color:#69F0AE;">0</div><div class="lbl">Interceções</div></div>
+        <div class="mc-counter"><div class="val" id="mc-c-int" style="color:#6EE7B7;">0</div><div class="lbl">Interceptações</div></div>
+        <div class="mc-counter" style="background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.08));border-color:rgba(59,130,246,.2);">
+          <div class="val" id="mc-c-streak" style="color:var(--primary);">0</div>
+          <div class="lbl">Sequência Def.</div>
+        </div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 280px;gap:16px;">
-        <!-- Botões de eventos -->
+      <!-- ── Main Grid ── -->
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:12px;">
+
+        <!-- LEFT: Event buttons + Event Map -->
         <div>
           <!-- Defesas -->
-          <div class="card" style="margin-bottom:12px;">
-            <div style="font-size:11px;font-weight:700;color:var(--primary);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟦 Defesas</div>
+          <div class="card" style="margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:700;color:#93C5FD;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟦 Defesas</div>
             <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
               <button class="mc-btn mc-btn-def" onclick="mcEvento('dad','Alta Dir.','def')">Alta<br>Direita</button>
               <button class="mc-btn mc-btn-def" onclick="mcEvento('dae','Alta Esq.','def')">Alta<br>Esquerda</button>
@@ -1224,8 +1297,8 @@
             </div>
           </div>
           <!-- Gols -->
-          <div class="card" style="margin-bottom:12px;">
-            <div style="font-size:11px;font-weight:700;color:var(--error);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🔴 Gols Sofridos</div>
+          <div class="card" style="margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:700;color:#FCA5A5;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🔴 Gols Sofridos</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
               <button class="mc-btn mc-btn-gol" onclick="mcEvento('gda','Gol Área','gol')">Dentro<br>da Área</button>
               <button class="mc-btn mc-btn-gol" onclick="mcEvento('gfa','Gol Fora','gol')">Fora<br>da Área</button>
@@ -1234,8 +1307,8 @@
             </div>
           </div>
           <!-- Distribuição -->
-          <div class="card" style="margin-bottom:12px;">
-            <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟡 Distribuição</div>
+          <div class="card" style="margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:700;color:#FCD34D;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟡 Distribuição</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
               <button class="mc-btn mc-btn-dist" onclick="mcEvento('dpc','Pé Certo','dist')">Pé<br>Certo</button>
               <button class="mc-btn mc-btn-dist" onclick="mcEvento('dpe','Pé Errado','dist')">Pé<br>Errado</button>
@@ -1244,25 +1317,81 @@
             </div>
           </div>
           <!-- Outros -->
-          <div class="card">
-            <div style="font-size:11px;font-weight:700;color:#69F0AE;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟢 Outros</div>
+          <div class="card" style="margin-bottom:10px;">
+            <div style="font-size:11px;font-weight:700;color:#6EE7B7;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟢 Outros</div>
             <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-              <button class="mc-btn mc-btn-out" onclick="mcEvento('int','Interceptação','out')">Interceção</button>
+              <button class="mc-btn mc-btn-out" onclick="mcEvento('int','Interceptação','out')">Interceptação</button>
               <button class="mc-btn mc-btn-out" onclick="mcEvento('sai','Saída','out')">Saída<br>do Gol</button>
               <button class="mc-btn mc-btn-out" onclick="mcEvento('pose','Pos. Esq.','out')">Posic.<br>Esq.</button>
               <button class="mc-btn mc-btn-out" onclick="mcEvento('posd','Pos. Dir.','out')">Posic.<br>Dir.</button>
             </div>
           </div>
+          <!-- Mapa de Eventos -->
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+              <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Mapa de Eventos</span>
+              <div style="display:flex;gap:6px;">
+                <button onclick="mcSetMapMode('def')" id="mc-map-def" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid rgba(59,130,246,.4);background:rgba(59,130,246,.15);color:#93C5FD;cursor:pointer;font-family:var(--font);font-weight:700;">DEF</button>
+                <button onclick="mcSetMapMode('gol')" id="mc-map-gol" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:var(--font);font-weight:700;">GOL</button>
+                <button onclick="mcSetMapMode('dist')" id="mc-map-dist" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:var(--font);font-weight:700;">DIST</button>
+              </div>
+            </div>
+            <div id="mc-event-map" class="mc-field-mini" style="aspect-ratio:2.2/1;max-width:340px;margin:0 auto;"></div>
+            <div style="display:flex;justify-content:center;gap:16px;margin-top:8px;font-size:10px;color:var(--muted);">
+              <span>← Esq.</span><span>Centro</span><span>Dir. →</span>
+            </div>
+          </div>
         </div>
 
-        <!-- Log de eventos -->
-        <div class="card" style="max-height:600px;overflow-y:auto;">
-          <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Log de Eventos</div>
-          <div id="mc-log" style="font-size:12px;">
-            <div style="color:var(--muted);text-align:center;padding:20px 0;">Nenhum evento registrado</div>
+        <!-- RIGHT: Timeline + Period Stats + Highlights -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+
+          <!-- Timeline -->
+          <div class="card" style="flex:1;max-height:380px;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+              <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Timeline</span>
+              <span id="mc-event-count" style="font-size:11px;color:var(--muted);">0 eventos</span>
+            </div>
+            <div id="mc-log">
+              <div style="color:var(--muted);text-align:center;padding:20px 0;font-size:13px;">Nenhum evento registrado</div>
+            </div>
+          </div>
+
+          <!-- Stats por Período -->
+          <div class="card" id="mc-period-stats-card">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">Por Período</div>
+            <div id="mc-period-stats">
+              <div style="color:var(--muted);font-size:12px;text-align:center;padding:8px 0;">Inicie a partida para ver stats</div>
+            </div>
+          </div>
+
+          <!-- Comparação entre Goleiras (shown only when substitution happened) -->
+          <div class="card" id="mc-gk-comp-card" style="display:none;">
+            <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">⚖ Comparação GKs</div>
+            <div id="mc-gk-comp"></div>
+          </div>
+
+          <!-- Painel de Destaques -->
+          <div class="card">
+            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">⭐ Destaques</div>
+            <div id="mc-highlights">
+              <div style="color:var(--muted);font-size:12px;text-align:center;padding:8px 0;">Registre eventos para ver destaques</div>
+            </div>
           </div>
         </div>
       </div>
+
+      <!-- ── Momentum da Partida ── -->
+      <div class="card" style="margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="mcToggleMomentum()">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">📈 Momentum da Partida</span>
+          <span id="mc-momentum-toggle" style="font-size:11px;color:var(--muted);">▼ Mostrar</span>
+        </div>
+        <div id="mc-momentum-wrap" style="display:none;margin-top:14px;">
+          <div style="position:relative;height:120px;"><canvas id="mc-momentum-chart"></canvas></div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ══ PARTIDAS ══ -->
@@ -2042,6 +2171,27 @@
       </div>
     </div>
     <div class="modal-body" id="analise-body" style="padding:24px;"></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: RELATÓRIO PÓS-JOGO ══ -->
+<div class="modal-backdrop" id="modal-mc-relatorio">
+  <div class="modal" style="max-width:700px;max-height:93vh;">
+    <div class="modal-header" style="background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.08));">
+      <div>
+        <span class="modal-title">Relatório Pós-Jogo</span>
+        <div id="mc-rel-subtitle" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-ghost btn-sm" onclick="mcExportarRelatorioPDF()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exportar PDF
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="mcSalvarEFechar()">Salvar e Fechar</button>
+        <button class="modal-close" onclick="closeModal('modal-mc-relatorio')">&times;</button>
+      </div>
+    </div>
+    <div class="modal-body" id="mc-rel-body" style="padding:24px;"></div>
   </div>
 </div>
 
@@ -4211,7 +4361,7 @@ function pdfCompeticao() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// MATCH CENTER — LIVE EVENT TRACKING
+// MATCH CENTER — Central de Análise Profissional
 // ═══════════════════════════════════════════════════════════
 const MC_FIELDS = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
 let mcData = {};
@@ -4221,17 +4371,57 @@ let mcSeconds = 0;
 let mcRunning = false;
 let mcPeriodo = 1;
 let mcPlacar = { nos: 0, adv: 0 };
-let mcGkSegmentos = []; // [{gkId, periodo, data:{...}}]
+let mcGkSegmentos = [];
+// Enhanced state
+let mcNotaAtual = 7.0;
+let mcNotaHistory = [];   // [{sec, nota}]
+let mcStreak = 0;
+let mcMaxStreak = 0;
+let mcMaxNota = 7.0;
+let mcMinNota = 7.0;
+let mcLastGolSec = null;
+let mcMaxSemGolSec = 0;
+let mcMapMode = 'def';
+let mcMomentumChart = null;
+let mcMomentumOpen = false;
+// Pending data for post-game modal
+let mcPendingSegmentos = null;
+let mcPendingPId = null;
+
+const MC_NOTA_PESOS = {
+  dad:+0.12, dae:+0.12, dbd:+0.10, dbe:+0.10, dc:+0.08,
+  esq:+0.28,
+  dpc:+0.05, dmc:+0.05,
+  dpe:-0.14, dme:-0.14,
+  gda:-0.20, gfa:-0.12, gpe:-0.15, gfl:-0.08,
+  int:+0.10, sai:+0.07, pose:+0.05, posd:+0.05
+};
+
+const MC_ICONS = {
+  def:'🧤', gol:'⚽', dist:'🎯', out:'🛡️',
+  sub:'🔄', periodo:'─', 'placar-nos':'⚽', 'placar-adv':'⚽'
+};
+
+const MC_TIPO_ICONS = {
+  dad:'🧤', dae:'🧤', dbd:'🧤', dbe:'🧤', dc:'🧤', esq:'💥',
+  gda:'⚽', gfa:'⚽', gpe:'⚽', gfl:'⚽',
+  dpc:'🎯', dpe:'❌', dmc:'🎯', dme:'❌',
+  int:'🛡️', sai:'🏃', pose:'📍', posd:'📍'
+};
 
 function mcReset() {
   MC_FIELDS.forEach(f => mcData[f] = 0);
-  mcLog = [];
-  mcSeconds = 0;
-  mcRunning = false;
-  mcPeriodo = 1;
-  mcPlacar = { nos: 0, adv: 0 };
+  mcLog = []; mcSeconds = 0; mcRunning = false;
+  mcPeriodo = 1; mcPlacar = { nos:0, adv:0 };
   mcGkSegmentos = [];
+  mcNotaAtual = 7.0; mcNotaHistory = [];
+  mcStreak = 0; mcMaxStreak = 0;
+  mcMaxNota = 7.0; mcMinNota = 7.0;
+  mcLastGolSec = null; mcMaxSemGolSec = 0;
+  mcMapMode = 'def';
+  mcMomentumOpen = false;
   if (mcTimerInterval) { clearInterval(mcTimerInterval); mcTimerInterval = null; }
+  if (mcMomentumChart) { mcMomentumChart.destroy(); mcMomentumChart = null; }
 }
 mcReset();
 
