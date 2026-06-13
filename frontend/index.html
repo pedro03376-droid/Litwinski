@@ -4442,37 +4442,29 @@ function mcOnPartidaChange() {
   const advLbl = document.getElementById('mc-adv-label');
   if (p) {
     if (advLbl) advLbl.textContent = p.adversario;
-    // Pre-fill score from partida
-    mcPlacar.nos = p.gf ?? 0;
-    mcPlacar.adv = p.gc ?? 0;
+    mcPlacar.nos = p.gf ?? 0; mcPlacar.adv = p.gc ?? 0;
     const el = id => document.getElementById(id);
     if (el('mc-score-nos')) el('mc-score-nos').textContent = mcPlacar.nos;
     if (el('mc-score-adv')) el('mc-score-adv').textContent = mcPlacar.adv;
-    if (p.goalkeeperId) {
-      const sel = document.getElementById('mc-goleira');
-      if (sel) sel.value = p.goalkeeperId;
-    }
-  } else {
-    if (advLbl) advLbl.textContent = 'Adversário';
-  }
+    if (p.goalkeeperId) { const sel=document.getElementById('mc-goleira'); if(sel) sel.value=p.goalkeeperId; }
+  } else { if (advLbl) advLbl.textContent = 'Adversário'; }
 }
 
 function mcFormatTime(sec) {
-  const m = String(Math.floor(sec/60)).padStart(2,'0');
-  const s = String(sec%60).padStart(2,'0');
+  const m=String(Math.floor(sec/60)).padStart(2,'0');
+  const s=String(sec%60).padStart(2,'0');
   return m+':'+s;
 }
 
 function mcToggleTimer() {
-  const btn = document.getElementById('mc-btn-timer');
-  const dot = document.getElementById('mc-status-dot');
-  const btn2t = document.getElementById('mc-btn-2t');
+  const btn=document.getElementById('mc-btn-timer');
+  const dot=document.getElementById('mc-status-dot');
+  const btn2t=document.getElementById('mc-btn-2t');
   if (mcRunning) {
     clearInterval(mcTimerInterval); mcTimerInterval=null; mcRunning=false;
     if (btn) btn.innerHTML='▶ Continuar';
-    if (dot) dot.style.background='var(--warning)';
-    // Show 2T button when paused (only if still on 1T)
-    if (btn2t && mcPeriodo === 1) btn2t.style.display='inline-flex';
+    if (dot) { dot.style.background='var(--warning)'; dot.style.animation=''; }
+    if (btn2t && mcPeriodo===1) btn2t.style.display='inline-flex';
   } else {
     mcRunning=true;
     if (btn) btn.innerHTML='⏸ Pausar';
@@ -4482,6 +4474,11 @@ function mcToggleTimer() {
       mcSeconds++;
       const el=document.getElementById('mc-timer');
       if(el) el.textContent=mcFormatTime(mcSeconds);
+      // Track sem gol time
+      if (mcLastGolSec !== null) {
+        const delta = mcSeconds - mcLastGolSec;
+        if (delta > mcMaxSemGolSec) mcMaxSemGolSec = delta;
+      }
     },1000);
   }
 }
@@ -4489,198 +4486,487 @@ function mcToggleTimer() {
 function mcEvento(key, label, tipo) {
   mcData[key] = (mcData[key]||0)+1;
   const timeStr = mcFormatTime(mcSeconds);
-  mcLog.unshift({ key, label, tipo, time:timeStr, periodo: mcPeriodo });
+  mcLog.unshift({ key, label, tipo, time:timeStr, periodo:mcPeriodo, sec:mcSeconds });
   mcUpdateCounters();
   mcUpdateLog();
-  const undoBtn = document.getElementById('mc-btn-undo');
+  mcUpdateNota(key);
+  mcUpdateStreak(key, tipo);
+  mcUpdateHighlights();
+  mcCheckAlerts();
+  mcUpdateEventMap();
+  mcUpdatePeriodStats();
+  // Button flash
+  const undoBtn=document.getElementById('mc-btn-undo');
   if (undoBtn) { undoBtn.disabled=false; undoBtn.style.opacity='1'; }
-  event?.currentTarget?.classList.add('mc-flash');
-  setTimeout(()=>event?.currentTarget?.classList.remove('mc-flash'),200);
 }
 
 function mcDesfazer() {
   if (!mcLog.length) return;
-  const last = mcLog.shift();
+  const last=mcLog.shift();
   if (mcData[last.key] > 0) mcData[last.key]--;
   mcUpdateCounters();
   mcUpdateLog();
-  toast(`Desfeito: ${last.label}`, 'info');
-  const undoBtn = document.getElementById('mc-btn-undo');
+  // Recalc nota from scratch
+  mcNotaAtual = mcCalcNota();
+  mcUpdateNotaUI();
+  mcUpdateStreak(null, null);
+  mcUpdateHighlights();
+  mcUpdateEventMap();
+  mcUpdatePeriodStats();
+  toast(`Desfeito: ${last.label}`,'info');
+  const undoBtn=document.getElementById('mc-btn-undo');
   if (undoBtn && !mcLog.length) { undoBtn.disabled=true; undoBtn.style.opacity='.5'; }
 }
 
 function mcUpdateCounters() {
-  const def = (mcData.dad||0)+(mcData.dae||0)+(mcData.dbd||0)+(mcData.dbe||0)+(mcData.dc||0)+(mcData.esq||0);
-  const gol = (mcData.gda||0)+(mcData.gfa||0)+(mcData.gpe||0)+(mcData.gfl||0);
-  const dist = (mcData.dpc||0)+(mcData.dpe||0)+(mcData.dmc||0)+(mcData.dme||0);
-  const int_ = mcData.int||0;
-  const el = id => document.getElementById(id);
-  if(el('mc-c-def'))  el('mc-c-def').textContent  = def;
-  if(el('mc-c-gol'))  el('mc-c-gol').textContent  = gol;
-  if(el('mc-c-dist')) el('mc-c-dist').textContent = dist;
-  if(el('mc-c-int'))  el('mc-c-int').textContent  = int_;
+  const def=(mcData.dad||0)+(mcData.dae||0)+(mcData.dbd||0)+(mcData.dbe||0)+(mcData.dc||0)+(mcData.esq||0);
+  const gol=(mcData.gda||0)+(mcData.gfa||0)+(mcData.gpe||0)+(mcData.gfl||0);
+  const dist=(mcData.dpc||0)+(mcData.dpe||0)+(mcData.dmc||0)+(mcData.dme||0);
+  const int_=mcData.int||0;
+  const el=id=>document.getElementById(id);
+  if(el('mc-c-def'))    el('mc-c-def').textContent=def;
+  if(el('mc-c-gol'))    el('mc-c-gol').textContent=gol;
+  if(el('mc-c-dist'))   el('mc-c-dist').textContent=dist;
+  if(el('mc-c-int'))    el('mc-c-int').textContent=int_;
+  if(el('mc-c-streak')) el('mc-c-streak').textContent=mcStreak;
 }
 
 function mcUpdateLog() {
-  const el = document.getElementById('mc-log');
+  const el=document.getElementById('mc-log');
   if (!el) return;
-  if (!mcLog.length) { el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px 0;">Nenhum evento registrado</div>'; return; }
-  const colors = { def:'#3B82F6', gol:'#EF4444', dist:'#F59E0B', out:'#10B981', 'placar-nos':'#10B981', 'placar-adv':'#EF4444', sub:'#F59E0B', periodo:'rgba(255,255,255,.2)' };
-  el.innerHTML = mcLog.slice(0,50).map((e,i)=>{
-    if (e.tipo === 'periodo') return `<div style="text-align:center;padding:6px 0;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
-    const ptBadge = e.periodo ? `<span style="font-size:9px;font-weight:700;background:${e.periodo===1?'rgba(0,212,255,.1)':'rgba(255,179,0,.1)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;">${e.periodo}T</span>` : '';
-    return `<div class="mc-log-item" style="opacity:${i===0?1:Math.max(0.35,1-i*0.05)}">
-      <div class="mc-log-dot" style="background:${colors[e.tipo]||'var(--muted)'};"></div>
-      <span style="color:var(--muted);font-variant-numeric:tabular-nums;font-size:11px;">${e.time}</span>
-      ${ptBadge}
-      <span style="font-weight:${i===0?700:400};flex:1;">${e.label}</span>
+  const countEl=document.getElementById('mc-event-count');
+  const realEvents=mcLog.filter(e=>e.tipo!=='periodo');
+  if(countEl) countEl.textContent=`${realEvents.length} evento${realEvents.length!==1?'s':''}`;
+  if (!mcLog.length) {
+    el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px 0;font-size:13px;">Nenhum evento registrado</div>';
+    return;
+  }
+  const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)'};
+  const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)'};
+  el.innerHTML=mcLog.slice(0,60).map((e,i)=>{
+    if (e.tipo==='periodo') return `<div style="text-align:center;padding:6px 0;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
+    const icon=MC_TIPO_ICONS[e.key]||MC_ICONS[e.tipo]||'●';
+    const bg=typeColors[e.tipo]||'rgba(255,255,255,.05)';
+    const bc=borderColors[e.tipo]||'var(--border)';
+    const ptBadge=e.periodo?`<span style="font-size:9px;font-weight:700;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;">${e.periodo}T</span>`:'';
+    return `<div class="mc-timeline-item" title="${e.label} @ ${e.time}" style="opacity:${i===0?1:Math.max(0.45,1-i*0.04)}">
+      <div class="mc-timeline-icon" style="background:${bg};border:1px solid ${bc};">${icon}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:${i===0?700:500};font-size:12px;line-height:1.3;">${e.label}</div>
+        <div style="display:flex;gap:6px;align-items:center;margin-top:2px;">
+          <span style="color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;">${e.time}</span>
+          ${ptBadge}
+        </div>
+      </div>
     </div>`;
   }).join('');
 }
 
-// ── Placar ao vivo ──────────────────────────────────────
-function mcAjustarPlacar(team, delta) {
-  mcPlacar[team] = Math.max(0, (mcPlacar[team]||0) + delta);
-  const elNos = document.getElementById('mc-score-nos');
-  const elAdv = document.getElementById('mc-score-adv');
-  if (elNos) elNos.textContent = mcPlacar.nos;
-  if (elAdv) elAdv.textContent = mcPlacar.adv;
-  const timeStr = mcFormatTime(mcSeconds);
-  const lbl = team === 'nos'
-    ? (delta > 0 ? '⚽ Gol Nosso' : '↩ Gol Nosso Anulado')
-    : (delta > 0 ? '⚽ Gol Adversário' : '↩ Gol Adversário Anulado');
-  mcLog.unshift({ key:'_placar', label: lbl, tipo: team==='nos'?'placar-nos':'placar-adv', time: timeStr, periodo: mcPeriodo });
-  mcUpdateLog();
+// ── Nota ao Vivo ────────────────────────────────────────────
+function mcCalcNota() {
+  let nota = 7.0;
+  // Process events in chronological order (log is reversed)
+  [...mcLog].reverse().forEach(e => {
+    const peso = MC_NOTA_PESOS[e.key];
+    if (peso !== undefined) nota += peso;
+  });
+  return Math.max(0, Math.min(10, nota));
 }
 
-// ── Segundo tempo ────────────────────────────────────────
-function mcIniciarSegundoTempo() {
-  if (mcPeriodo === 2) return;
-  if (!confirm('Iniciar 2º Tempo?\nO cronômetro será zerado e os eventos da goleira atual serão salvos como 1º Tempo.')) return;
-  // Snapshot current GK as 1T
-  mcSnapshotGkSegmento('1T');
-  mcPeriodo = 2;
-  // Reset timer + counters for new period
-  if (mcRunning) mcToggleTimer();
-  mcSeconds = 0;
-  document.getElementById('mc-timer').textContent = '00:00';
-  MC_FIELDS.forEach(f => mcData[f] = 0);
-  mcUpdateCounters();
-  // Update periodo badge
-  const badge = document.getElementById('mc-periodo-badge');
-  if (badge) {
-    badge.textContent = '2º TEMPO';
-    badge.style.background = 'rgba(255,179,0,.1)';
-    badge.style.color = 'var(--warning)';
-    badge.style.borderColor = 'rgba(255,179,0,.3)';
+function mcUpdateNota(key) {
+  if (key && MC_NOTA_PESOS[key] !== undefined) {
+    mcNotaAtual = Math.max(0, Math.min(10, mcNotaAtual + MC_NOTA_PESOS[key]));
+  } else {
+    mcNotaAtual = mcCalcNota();
   }
-  document.getElementById('mc-btn-2t').style.display = 'none';
-  mcLog.unshift({ key:'_periodo', label:'─── 2º Tempo ───', tipo:'periodo', time:'00:00', periodo:2 });
-  mcUpdateLog();
-  toast('2º Tempo iniciado — cronômetro zerado!', 'info');
+  if (mcNotaAtual > mcMaxNota) mcMaxNota = mcNotaAtual;
+  if (mcNotaAtual < mcMinNota) mcMinNota = mcNotaAtual;
+  mcNotaHistory.push({ sec:mcSeconds, nota:mcNotaAtual });
+  mcUpdateNotaUI();
+  if (mcMomentumOpen) mcRenderMomentum();
 }
 
-// ── Troca de goleira ─────────────────────────────────────
+function mcUpdateNotaUI() {
+  const valEl=document.getElementById('mc-nota-val');
+  const ringEl=document.getElementById('mc-nota-ring');
+  const trendEl=document.getElementById('mc-nota-trend');
+  if (!valEl) return;
+  valEl.textContent=mcNotaAtual.toFixed(1);
+  const color=mcNotaAtual>=8.5?'#34D399':mcNotaAtual>=7?'var(--primary)':mcNotaAtual>=5?'var(--warning)':'var(--error)';
+  if(valEl) valEl.style.color=color;
+  if(ringEl) { ringEl.style.borderColor=color; ringEl.style.color=color; }
+  // Trend: sum of last 3 event weights
+  const recentPesos=mcLog.slice(0,4).map(e=>MC_NOTA_PESOS[e.key]||0).reduce((a,b)=>a+b,0);
+  const trendText=recentPesos>=0.15?'↗ Crescendo':recentPesos<=-0.15?'↘ Em queda':'→ Estável';
+  const trendColor=recentPesos>=0.15?'#34D399':recentPesos<=-0.15?'var(--error)':'var(--muted)';
+  if(trendEl) { trendEl.textContent=trendText; trendEl.style.color=trendColor; }
+}
+
+// ── Streak tracking ─────────────────────────────────────────
+function mcUpdateStreak(key, tipo) {
+  if (tipo==='def') {
+    mcStreak++;
+    if (mcStreak>mcMaxStreak) mcMaxStreak=mcStreak;
+  } else if (tipo==='gol') {
+    mcStreak=0;
+    mcLastGolSec=mcSeconds;
+  } else if (!key) {
+    // Recalc streak from log
+    mcStreak=0;
+    for (const e of mcLog) {
+      if (e.tipo==='def') mcStreak++;
+      else if (e.tipo==='gol') break;
+    }
+  }
+  const el=document.getElementById('mc-c-streak');
+  if(el) el.textContent=mcStreak;
+}
+
+// ── Highlights Panel ─────────────────────────────────────────
+function mcUpdateHighlights() {
+  const el=document.getElementById('mc-highlights');
+  if (!el || !mcLog.filter(e=>e.tipo!=='periodo').length) return;
+  const semGolDisplay=mcLastGolSec!==null?mcFormatTime(mcSeconds-mcLastGolSec):mcFormatTime(mcSeconds);
+  el.innerHTML=`
+    <div class="mc-highlight-row">
+      <span style="color:var(--muted);">⭐ Nota Máx.</span>
+      <span class="mc-highlight-val" style="color:#34D399;">${mcMaxNota.toFixed(1)}</span>
+    </div>
+    <div class="mc-highlight-row">
+      <span style="color:var(--muted);">📉 Nota Mín.</span>
+      <span class="mc-highlight-val" style="color:var(--warning);">${mcMinNota.toFixed(1)}</span>
+    </div>
+    <div class="mc-highlight-row">
+      <span style="color:var(--muted);">🔥 Maior Sequência</span>
+      <span class="mc-highlight-val" style="color:var(--primary);">${mcMaxStreak} def.</span>
+    </div>
+    <div class="mc-highlight-row">
+      <span style="color:var(--muted);">⏱ Seq. Atual</span>
+      <span class="mc-highlight-val">${mcStreak} def.</span>
+    </div>
+    <div class="mc-highlight-row" style="border:none;">
+      <span style="color:var(--muted);">🧱 Sem Gol há</span>
+      <span class="mc-highlight-val">${semGolDisplay}</span>
+    </div>`;
+}
+
+// ── Alerts System ────────────────────────────────────────────
+function mcCheckAlerts() {
+  const bar=document.getElementById('mc-alerts-bar');
+  if (!bar) return;
+  const alerts=[];
+  const recent5=mcLog.slice(0,5);
+  const recentGols=recent5.filter(e=>['gda','gfa','gpe','gfl'].includes(e.key));
+  const recentDistErr=recent5.filter(e=>['dpe','dme'].includes(e.key));
+  if (recentGols.length>=2) alerts.push({type:'error',msg:'⚠ Alta pressão — 2 ou mais gols sofridos recentemente'});
+  if (recentDistErr.length>=3) alerts.push({type:'warning',msg:'⚠ Distribuição inconsistente — muitos erros seguidos'});
+  if (mcNotaAtual<5.0) alerts.push({type:'error',msg:'⚠ Queda de rendimento — nota abaixo de 5.0'});
+  if (mcStreak>=5) alerts.push({type:'success',msg:`★ Sequência de ${mcStreak} defesas consecutivas!`});
+  if (mcNotaAtual>=9.0) alerts.push({type:'success',msg:`★ Desempenho excepcional — Nota ${mcNotaAtual.toFixed(1)}`});
+  if (!alerts.length) { bar.style.display='none'; return; }
+  bar.style.display='flex';
+  bar.style.flexDirection='column';
+  bar.style.gap='6px';
+  bar.innerHTML=alerts.map(a=>`<div class="mc-alert-item mc-alert-${a.type}">${a.msg}</div>`).join('');
+}
+
+// ── Event Map ────────────────────────────────────────────────
+function mcSetMapMode(mode) {
+  mcMapMode=mode;
+  ['def','gol','dist'].forEach(m=>{
+    const btn=document.getElementById('mc-map-'+m);
+    if(!btn) return;
+    if(m===mode) {
+      const colors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)'};
+      const borders={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)'};
+      const texts={def:'#93C5FD',gol:'#FCA5A5',dist:'#FCD34D'};
+      btn.style.background=colors[m]; btn.style.borderColor=borders[m]; btn.style.color=texts[m];
+    } else {
+      btn.style.background='none'; btn.style.borderColor='var(--border)'; btn.style.color='var(--muted)';
+    }
+  });
+  mcUpdateEventMap();
+}
+
+function mcUpdateEventMap() {
+  const el=document.getElementById('mc-event-map');
+  if (!el) return;
+  let grid, rgb;
+  if (mcMapMode==='def') {
+    grid=[[mcData.dae||0, 0, mcData.dad||0],[mcData.dc||0,mcData.esq||0,mcData.dc||0],[mcData.dbe||0,0,mcData.dbd||0]];
+    rgb='59,130,246';
+  } else if (mcMapMode==='gol') {
+    const da=mcData.gda||0, fa=mcData.gfa||0;
+    grid=[[Math.round(fa*.3),Math.round(fa*.4),Math.round(fa*.3)],[Math.round(da*.25),mcData.gpe||0,Math.round(da*.25)],[Math.round(da*.25),mcData.gfl||0,Math.round(da*.25)]];
+    rgb='239,68,68';
+  } else {
+    grid=[[mcData.dpc||0,mcData.dmc||0,0],[mcData.dpe||0,mcData.dme||0,0],[0,0,0]];
+    rgb='245,158,11';
+  }
+  const max=Math.max(1,...grid.flat());
+  let html='';
+  for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+    const v=grid[r][c];
+    const intens=v/max;
+    const bg=v>0?`rgba(${rgb},${0.12+intens*0.7})`:'rgba(255,255,255,.02)';
+    html+=`<div class="mc-field-cell" style="background:${bg};">${v>0?`<span>${v}</span>`:''}</div>`;
+  }
+  el.innerHTML=html;
+}
+
+// ── Stats por Período ─────────────────────────────────────────
+function mcUpdatePeriodStats() {
+  const el=document.getElementById('mc-period-stats');
+  if (!el) return;
+  const curDef=(mcData.dad||0)+(mcData.dae||0)+(mcData.dbd||0)+(mcData.dbe||0)+(mcData.dc||0)+(mcData.esq||0);
+  const curGol=(mcData.gda||0)+(mcData.gfa||0)+(mcData.gpe||0)+(mcData.gfl||0);
+  const curInt=mcData.int||0;
+  const curDistC=(mcData.dpc||0)+(mcData.dmc||0);
+  const curDistE=(mcData.dpe||0)+(mcData.dme||0);
+  const curDistT=curDistC+curDistE;
+  const curAp=curDistT>0?Math.round(curDistC/curDistT*100):0;
+  const segs=mcGkSegmentos;
+  const priColor=mcPeriodo===1?'var(--primary)':'var(--warning)';
+  let html=`
+    <div style="font-size:10px;font-weight:700;color:${priColor};letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px;">${mcPeriodo===1?'1º Tempo (atual)':'2º Tempo (atual)'}</div>
+    <div class="mc-period-grid" style="margin-bottom:10px;">
+      <div class="mc-period-cell"><div class="pv" style="color:var(--primary);">${curDef}</div><div class="pl">Defesas</div></div>
+      <div class="mc-period-cell"><div class="pv" style="color:var(--error);">${curGol}</div><div class="pl">Gols</div></div>
+      <div class="mc-period-cell"><div class="pv" style="color:#6EE7B7;">${curInt}</div><div class="pl">Interceptações</div></div>
+      <div class="mc-period-cell"><div class="pv" style="color:var(--warning);">${curAp}%</div><div class="pl">Aproveit. Dist.</div></div>
+    </div>`;
+  if (segs.length) {
+    segs.forEach(seg=>{
+      const d=seg.data;
+      const def=(d.dad||0)+(d.dae||0)+(d.dbd||0)+(d.dbe||0)+(d.dc||0)+(d.esq||0);
+      const gol=(d.gda||0)+(d.gfa||0)+(d.gpe||0)+(d.gfl||0);
+      const dC=(d.dpc||0)+(d.dmc||0), dE=(d.dpe||0)+(d.dme||0);
+      const ap=(dC+dE)>0?Math.round(dC/(dC+dE)*100):0;
+      const gk=DB.goleiras.find(g=>g.id===seg.gkId);
+      html+=`
+        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px;">${seg.periodoLabel} — ${gk?.nome||'—'}</div>
+        <div class="mc-period-grid" style="margin-bottom:10px;">
+          <div class="mc-period-cell"><div class="pv" style="color:var(--primary);">${def}</div><div class="pl">Defesas</div></div>
+          <div class="mc-period-cell"><div class="pv" style="color:var(--error);">${gol}</div><div class="pl">Gols</div></div>
+          <div class="mc-period-cell"><div class="pv" style="color:#6EE7B7;">${d.int||0}</div><div class="pl">Intercep.</div></div>
+          <div class="mc-period-cell"><div class="pv" style="color:var(--warning);">${ap}%</div><div class="pl">Aproveit.</div></div>
+        </div>`;
+    });
+    const uniqueGks=[...new Set(segs.map(s=>s.gkId))];
+    if (uniqueGks.length>=2) mcUpdateGkComp(segs);
+  }
+  el.innerHTML=html;
+}
+
+function mcUpdateGkComp(segs) {
+  const card=document.getElementById('mc-gk-comp-card');
+  const el=document.getElementById('mc-gk-comp');
+  if (!card||!el) return;
+  card.style.display='block';
+  const groups={};
+  segs.forEach(s=>{
+    if (!groups[s.gkId]) groups[s.gkId]={gkId:s.gkId,data:{}};
+    MC_FIELDS.forEach(f=>{ groups[s.gkId].data[f]=(groups[s.gkId].data[f]||0)+(s.data[f]||0); });
+  });
+  const gkArr=Object.values(groups).slice(0,2);
+  if (gkArr.length<2) return;
+  const [a,b]=gkArr;
+  const gkA=DB.goleiras.find(g=>g.id===a.gkId);
+  const gkB=DB.goleiras.find(g=>g.id===b.gkId);
+  const metrics=[
+    { label:'Defesas', va:(a.data.dad||0)+(a.data.dae||0)+(a.data.dbd||0)+(a.data.dbe||0)+(a.data.dc||0), vb:(b.data.dad||0)+(b.data.dae||0)+(b.data.dbd||0)+(b.data.dbe||0)+(b.data.dc||0) },
+    { label:'Gols Sofridos', va:(a.data.gda||0)+(a.data.gfa||0)+(a.data.gpe||0)+(a.data.gfl||0), vb:(b.data.gda||0)+(b.data.gfa||0)+(b.data.gpe||0)+(b.data.gfl||0) },
+    { label:'Interceptações', va:a.data.int||0, vb:b.data.int||0 },
+  ];
+  const mxDef=Math.max(1,...metrics.map(m=>Math.max(m.va,m.vb)));
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:4px;margin-bottom:8px;">
+      <div style="font-size:11px;font-weight:700;color:var(--primary);text-align:right;">${gkA?.nome||'GK A'}</div>
+      <div></div>
+      <div style="font-size:11px;font-weight:700;color:var(--warning);">${gkB?.nome||'GK B'}</div>
+    </div>
+    ${metrics.map(m=>`
+    <div class="comp-row" style="grid-template-columns:1fr 80px 1fr;">
+      <div>
+        <div style="text-align:right;font-weight:700;font-size:13px;color:var(--primary);">${m.va}</div>
+        <div class="comp-bar-wrap"><div class="comp-bar-a" style="width:${Math.round(m.va/mxDef*100)}%;"></div></div>
+      </div>
+      <div class="comp-label">${m.label}</div>
+      <div>
+        <div style="font-weight:700;font-size:13px;color:var(--warning);">${m.vb}</div>
+        <div class="comp-bar-wrap"><div class="comp-bar-b" style="width:${Math.round(m.vb/mxDef*100)}%;"></div></div>
+      </div>
+    </div>`).join('')}`;
+}
+
+// ── Momentum Chart ────────────────────────────────────────────
+function mcToggleMomentum() {
+  mcMomentumOpen=!mcMomentumOpen;
+  const wrap=document.getElementById('mc-momentum-wrap');
+  const tog=document.getElementById('mc-momentum-toggle');
+  if (wrap) wrap.style.display=mcMomentumOpen?'block':'none';
+  if (tog) tog.textContent=mcMomentumOpen?'▲ Ocultar':'▼ Mostrar';
+  if (mcMomentumOpen) mcRenderMomentum();
+}
+
+function mcRenderMomentum() {
+  const canvas=document.getElementById('mc-momentum-chart');
+  if (!canvas) return;
+  const data=mcNotaHistory.slice(-30);
+  if (!data.length) return;
+  const labels=data.map(p=>mcFormatTime(p.sec));
+  const values=data.map(p=>p.nota);
+  if (mcMomentumChart) { mcMomentumChart.destroy(); mcMomentumChart=null; }
+  mcMomentumChart=new Chart(canvas,{
+    type:'line',
+    data:{labels,datasets:[{
+      label:'Nota',data:values,
+      borderColor:'#3B82F6',backgroundColor:'rgba(59,130,246,.1)',
+      tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#3B82F6',borderWidth:2
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#94A3B8',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{min:0,max:10,ticks:{color:'#94A3B8',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}}
+      }
+    }
+  });
+}
+
+// ── Placar ao vivo ───────────────────────────────────────────
+function mcAjustarPlacar(team, delta) {
+  mcPlacar[team]=Math.max(0,(mcPlacar[team]||0)+delta);
+  const elNos=document.getElementById('mc-score-nos');
+  const elAdv=document.getElementById('mc-score-adv');
+  if(elNos) elNos.textContent=mcPlacar.nos;
+  if(elAdv) elAdv.textContent=mcPlacar.adv;
+  const timeStr=mcFormatTime(mcSeconds);
+  const lbl=team==='nos'?(delta>0?'⚽ Gol Nosso':'↩ Gol Nosso Anulado'):(delta>0?'⚽ Gol Adversário':'↩ Gol Adversário Anulado');
+  mcLog.unshift({key:'_placar',label:lbl,tipo:team==='nos'?'placar-nos':'placar-adv',time:timeStr,periodo:mcPeriodo,sec:mcSeconds});
+  mcUpdateLog();
+}
+
+// ── Segundo Tempo ────────────────────────────────────────────
+function mcIniciarSegundoTempo() {
+  if (mcPeriodo===2) return;
+  if (!confirm('Iniciar 2º Tempo?\nO cronômetro será zerado e os eventos da goleira atual serão salvos como 1º Tempo.')) return;
+  mcSnapshotGkSegmento('1T');
+  mcPeriodo=2;
+  if (mcRunning) mcToggleTimer();
+  mcSeconds=0;
+  document.getElementById('mc-timer').textContent='00:00';
+  MC_FIELDS.forEach(f=>mcData[f]=0);
+  mcUpdateCounters();
+  const badge=document.getElementById('mc-periodo-badge');
+  if(badge){badge.textContent='2º TEMPO';badge.style.background='rgba(245,158,11,.1)';badge.style.color='var(--warning)';badge.style.borderColor='rgba(245,158,11,.3)';}
+  document.getElementById('mc-btn-2t').style.display='none';
+  mcLog.unshift({key:'_periodo',label:'─── 2º Tempo ───',tipo:'periodo',time:'00:00',periodo:2,sec:0});
+  mcUpdateLog();
+  mcUpdatePeriodStats();
+  toast('2º Tempo iniciado — cronômetro zerado!','info');
+}
+
+// ── Troca de Goleira ─────────────────────────────────────────
 function mcSnapshotGkSegmento(periodoLabel) {
-  const gkId = document.getElementById('mc-goleira')?.value;
+  const gkId=document.getElementById('mc-goleira')?.value;
   if (!gkId) return;
-  const segData = {};
-  MC_FIELDS.forEach(f => segData[f] = mcData[f] || 0);
-  mcGkSegmentos.push({ gkId, periodoLabel: periodoLabel || `${mcPeriodo}T`, data: segData });
-  // Show info
+  const segData={};
+  MC_FIELDS.forEach(f=>segData[f]=mcData[f]||0);
+  mcGkSegmentos.push({gkId,periodoLabel:periodoLabel||`${mcPeriodo}T`,data:segData});
   mcUpdateGkInfo();
 }
 
 function mcUpdateGkInfo() {
   if (!mcGkSegmentos.length) return;
-  const infoEl = document.getElementById('mc-gk-info');
-  const listEl = document.getElementById('mc-gk-info-list');
-  if (!infoEl || !listEl) return;
-  const goleiras = DB.goleiras;
-  listEl.textContent = mcGkSegmentos.map(s => {
-    const gk = goleiras.find(g => g.id === s.gkId);
-    return `${gk?.nome || '—'} (${s.periodoLabel})`;
+  const infoEl=document.getElementById('mc-gk-info');
+  const listEl=document.getElementById('mc-gk-info-list');
+  if(!infoEl||!listEl) return;
+  listEl.textContent=mcGkSegmentos.map(s=>{
+    const gk=DB.goleiras.find(g=>g.id===s.gkId);
+    return `${gk?.nome||'—'} (${s.periodoLabel})`;
   }).join(' → ');
-  infoEl.style.display = 'block';
+  infoEl.style.display='block';
 }
 
 function mcTrocarGoleira() {
-  const goleiras = DB.goleiras;
-  const atualId = document.getElementById('mc-goleira')?.value;
-  const outras = goleiras.filter(g => g.id !== atualId);
-  if (!outras.length) { toast('Não há outras goleiras cadastradas','error'); return; }
-  // Populate nova goleira select
-  const sel = document.getElementById('mc-nova-goleira');
-  if (sel) sel.innerHTML = outras.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
-  document.getElementById('mc-trocar-painel').style.display = 'block';
+  const goleiras=DB.goleiras;
+  const atualId=document.getElementById('mc-goleira')?.value;
+  const outras=goleiras.filter(g=>g.id!==atualId);
+  if (!outras.length){toast('Não há outras goleiras cadastradas','error');return;}
+  const sel=document.getElementById('mc-nova-goleira');
+  if(sel) sel.innerHTML=outras.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
+  document.getElementById('mc-trocar-painel').style.display='block';
 }
 
 function mcConfirmarTroca() {
-  const novaId = document.getElementById('mc-nova-goleira')?.value;
+  const novaId=document.getElementById('mc-nova-goleira')?.value;
   if (!novaId) return;
-  const goleiras = DB.goleiras;
-  const novaGk = goleiras.find(g => g.id === novaId);
-  // Snapshot current GK
+  const novaGk=DB.goleiras.find(g=>g.id===novaId);
   mcSnapshotGkSegmento(`${mcPeriodo}T`);
-  // Reset stats for new GK
-  MC_FIELDS.forEach(f => mcData[f] = 0);
+  MC_FIELDS.forEach(f=>mcData[f]=0);
   mcUpdateCounters();
-  // Switch GK select
-  const sel = document.getElementById('mc-goleira');
-  if (sel) sel.value = novaId;
-  // Log substitution
-  const timeStr = mcFormatTime(mcSeconds);
-  mcLog.unshift({ key:'_sub', label:`🔄 Entra: ${novaGk?.nome||'Nova GK'}`, tipo:'sub', time:timeStr, periodo:mcPeriodo });
+  const sel=document.getElementById('mc-goleira');
+  if(sel) sel.value=novaId;
+  const timeStr=mcFormatTime(mcSeconds);
+  mcLog.unshift({key:'_sub',label:`🔄 Entra: ${novaGk?.nome||'Nova GK'}`,tipo:'sub',time:timeStr,periodo:mcPeriodo,sec:mcSeconds});
   mcUpdateLog();
-  document.getElementById('mc-trocar-painel').style.display = 'none';
-  toast(`Goleira alterada para ${novaGk?.nome||'—'}!`, 'success');
+  mcUpdatePeriodStats();
+  document.getElementById('mc-trocar-painel').style.display='none';
+  toast(`Goleira alterada para ${novaGk?.nome||'—'}!`,'success');
 }
 
+// ── Encerrar Partida ─────────────────────────────────────────
 function mcEncerrar() {
-  const gkId = document.getElementById('mc-goleira')?.value;
-  const pId  = document.getElementById('mc-partida')?.value;
-  if (!gkId) { toast('Selecione a goleira antes de encerrar','error'); return; }
-  // Build final segments (include current GK's data)
-  const finalSegmentos = [...mcGkSegmentos];
-  const totalCurrentEvents = MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
-  if (totalCurrentEvents > 0 || finalSegmentos.length === 0) {
-    const curData = {};
-    MC_FIELDS.forEach(f => curData[f] = mcData[f] || 0);
-    finalSegmentos.push({ gkId, periodoLabel: `${mcPeriodo}T`, data: curData });
+  const gkId=document.getElementById('mc-goleira')?.value;
+  const pId=document.getElementById('mc-partida')?.value;
+  if (!gkId){toast('Selecione a goleira antes de encerrar','error');return;}
+  const finalSegmentos=[...mcGkSegmentos];
+  const totalCurrentEvents=MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
+  if (totalCurrentEvents>0||finalSegmentos.length===0){
+    const curData={};
+    MC_FIELDS.forEach(f=>curData[f]=mcData[f]||0);
+    finalSegmentos.push({gkId,periodoLabel:`${mcPeriodo}T`,data:curData});
   }
-  const totalAll = finalSegmentos.reduce((a,s)=>a+MC_FIELDS.reduce((b,f)=>b+(s.data[f]||0),0),0);
-  if (totalAll === 0 && finalSegmentos.length === 0) { toast('Nenhum evento registrado','error'); return; }
+  const totalAll=finalSegmentos.reduce((a,s)=>a+MC_FIELDS.reduce((b,f)=>b+(s.data[f]||0),0),0);
+  if (totalAll===0&&finalSegmentos.length===0){toast('Nenhum evento registrado','error');return;}
   if (!confirm(`Encerrar o jogo e salvar ${finalSegmentos.length} scout(s)?`)) return;
-
   if (mcRunning) mcToggleTimer();
-  const scouts = DB.scouts;
+  // Store pending for post-game modal
+  mcPendingSegmentos=finalSegmentos;
+  mcPendingPId=pId;
+  // Show post-game report first
+  mcMostrarRelatorioFinal(finalSegmentos, pId);
+}
 
-  // Save one scout per segment
-  finalSegmentos.forEach(seg => {
-    const obj = { id: uid(), goalkeeperId: seg.gkId, partidaId: pId || '', periodo: seg.periodoLabel };
-    MC_FIELDS.forEach(f => { obj[f] = seg.data[f] || 0; });
+function mcSalvarEFechar() {
+  const finalSegmentos=mcPendingSegmentos;
+  const pId=mcPendingPId;
+  if (!finalSegmentos) { closeModal('modal-mc-relatorio'); return; }
+  const scouts=DB.scouts;
+  finalSegmentos.forEach(seg=>{
+    const obj={id:uid(),goalkeeperId:seg.gkId,partidaId:pId||'',periodo:seg.periodoLabel};
+    MC_FIELDS.forEach(f=>{obj[f]=seg.data[f]||0;});
     scouts.push(obj);
-    cloudSet('scouts', obj);
+    cloudSet('scouts',obj);
   });
   DB.saveScouts(scouts);
-
-  // Update partida score if set
-  if (pId) {
-    const partidas = DB.partidas;
-    const pIdx = partidas.findIndex(p=>p.id===pId);
-    if (pIdx !== -1) {
-      partidas[pIdx].gf = mcPlacar.nos;
-      partidas[pIdx].gc = mcPlacar.adv;
+  if (pId){
+    const partidas=DB.partidas;
+    const pIdx=partidas.findIndex(p=>p.id===pId);
+    if(pIdx!==-1){
+      partidas[pIdx].gf=mcPlacar.nos;
+      partidas[pIdx].gc=mcPlacar.adv;
       DB.savePartidas(partidas);
-      cloudSet('partidas', partidas[pIdx]);
+      cloudSet('partidas',partidas[pIdx]);
     }
   }
-
-  toast(`${finalSegmentos.length} scout(s) salvos com sucesso!`, 'success');
+  toast(`${finalSegmentos.length} scout(s) salvos com sucesso!`,'success');
+  closeModal('modal-mc-relatorio');
+  mcPendingSegmentos=null; mcPendingPId=null;
   // Reset UI
-  mcReset();
-  mcUpdateCounters();
-  mcUpdateLog();
+  mcReset(); mcUpdateCounters(); mcUpdateLog();
   document.getElementById('mc-timer').textContent='00:00';
   document.getElementById('mc-btn-timer').innerHTML='▶ Iniciar';
   document.getElementById('mc-status-dot').style.background='var(--muted)';
@@ -4689,11 +4975,179 @@ function mcEncerrar() {
   document.getElementById('mc-btn-2t').style.display='none';
   document.getElementById('mc-trocar-painel').style.display='none';
   document.getElementById('mc-gk-info').style.display='none';
-  const badge = document.getElementById('mc-periodo-badge');
-  if (badge) { badge.textContent='1º TEMPO'; badge.style.background='rgba(0,212,255,.1)'; badge.style.color='var(--primary)'; badge.style.borderColor='rgba(0,212,255,.3)'; }
-  const undoBtn = document.getElementById('mc-btn-undo');
-  if (undoBtn) { undoBtn.disabled=true; undoBtn.style.opacity='.5'; }
+  document.getElementById('mc-gk-comp-card').style.display='none';
+  document.getElementById('mc-alerts-bar').style.display='none';
+  document.getElementById('mc-highlights').innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px 0;">Registre eventos para ver destaques</div>';
+  document.getElementById('mc-event-count').textContent='0 eventos';
+  mcUpdateNotaUI();
+  const badge=document.getElementById('mc-periodo-badge');
+  if(badge){badge.textContent='1º TEMPO';badge.style.background='rgba(59,130,246,.1)';badge.style.color='var(--primary)';badge.style.borderColor='rgba(59,130,246,.3)';}
+  const undoBtn=document.getElementById('mc-btn-undo');
+  if(undoBtn){undoBtn.disabled=true;undoBtn.style.opacity='.5';}
   navigate('scout');
+}
+
+// ── Relatório Pós-Jogo ───────────────────────────────────────
+function mcMostrarRelatorioFinal(segs, pId) {
+  const partida=DB.partidas.find(p=>p.id===pId);
+  const gkIds=[...new Set(segs.map(s=>s.gkId))];
+  const subtitleParts=[];
+  if(partida) subtitleParts.push(`${partida.adversario} · ${formatDate(partida.data||'')}`);
+  subtitleParts.push(`${mcFormatTime(mcSeconds)} jogados · ${segs.length} período(s)`);
+  const subtitleEl=document.getElementById('mc-rel-subtitle');
+  if(subtitleEl) subtitleEl.textContent=subtitleParts.join(' · ');
+
+  let html='<div id="mc-rel-content">';
+
+  gkIds.forEach(gkId=>{
+    const gk=DB.goleiras.find(g=>g.id===gkId);
+    const gkSegs=segs.filter(s=>s.gkId===gkId);
+    const sum=f=>gkSegs.reduce((a,s)=>a+(s.data[f]||0),0);
+    const def=sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('esq');
+    const gol=sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+    const distC=sum('dpc')+sum('dmc'), distE=sum('dpe')+sum('dme');
+    const distT=distC+distE;
+    const taxaDef=(def+gol)>0?def/(def+gol):null;
+    const taxaDist=distT>0?distC/distT:null;
+    const nota=mcNotaAtual;
+    const nivel=nota>=9?'Elite':nota>=7.5?'Destaque':nota>=6?'Competitiva':nota>=4.5?'Em Desenvolvimento':'Necessita Evolução';
+    const nivelColor=nota>=9?'#34D399':nota>=7.5?'#3B82F6':nota>=6?'#F59E0B':nota>=4.5?'#94A3B8':'#EF4444';
+
+    const forcas=[];
+    if(taxaDef!==null&&taxaDef>=.80) forcas.push(`Taxa de defesa de ${(taxaDef*100).toFixed(0)}% — excelente`);
+    if(taxaDist!==null&&taxaDist>=.75) forcas.push(`Distribuição ${(taxaDist*100).toFixed(0)}% de precisão`);
+    if(mcMaxStreak>=4) forcas.push(`Sequência de ${mcMaxStreak} defesas consecutivas`);
+    if(sum('int')>=2) forcas.push(`${sum('int')} interceptações — boa leitura de jogo`);
+    if(sum('esq')>0) forcas.push(`${sum('esq')} esquadro(s) — reações de alto nível`);
+
+    const mels=[];
+    if(taxaDef!==null&&taxaDef<.65) mels.push(`Taxa de defesa de ${(taxaDef*100).toFixed(0)}% — trabalhar posicionamento`);
+    if(taxaDist!==null&&taxaDist<.60) mels.push(`Distribuição com apenas ${(taxaDist*100).toFixed(0)}% — foco na precisão`);
+    if(sum('gpe')>0) mels.push(`${sum('gpe')} gol(is) de pênalti — desenvolver leitura de cobranças`);
+    if(distE>distC) mels.push('Mais distribuições erradas que certas — prioridade no treino');
+
+    const recs=[];
+    if(taxaDef!==null&&taxaDef<.75) recs.push('Treino de posicionamento de gol com cones e finalizações variadas');
+    if(taxaDist!==null&&taxaDist<.70) recs.push('Sessão de distribuição: 20 min por treino, alvo a 10m e 15m');
+    if(sum('gpe')>1) recs.push('Análise de cobranças de pênalti — padrão de lateralidade dos adversários');
+    recs.push('Revisão em vídeo dos eventos da partida com a comissão técnica');
+
+    html+=`
+      <div style="margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(139,92,246,.06));border:1px solid rgba(59,130,246,.15);border-radius:14px;margin-bottom:16px;">
+          <div style="text-align:center;flex-shrink:0;">
+            <div style="font-size:44px;font-weight:900;color:${nivelColor};line-height:1;">${nota.toFixed(1)}</div>
+            <div style="font-size:9px;color:var(--muted);letter-spacing:1px;font-weight:600;">NOTA FINAL</div>
+          </div>
+          <div style="flex:1;">
+            <div style="font-size:18px;font-weight:800;">${gk?.nome||'—'}</div>
+            <div style="font-size:22px;font-weight:800;color:${nivelColor};margin-top:2px;">${nivel}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px;">${gkSegs.map(s=>s.periodoLabel).join(' + ')} · Sequência máx: ${mcMaxStreak} def.</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px;">
+          ${[
+            {l:'Defesas',v:def,c:'var(--primary)'},
+            {l:'Gols Sofr.',v:gol,c:'var(--error)'},
+            {l:'Interceções',v:sum('int'),c:'#6EE7B7'},
+            {l:'Precis. Dist.',v:taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—',c:'var(--warning)'}
+          ].map(m=>`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:6px;">${m.l}</div><div style="font-size:24px;font-weight:800;color:${m.c};">${m.v}</div></div>`).join('')}
+        </div>
+
+        <div style="background:rgba(255,255,255,.03);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text);">
+          ${gk?.nome||'A goleira'} encerrou a partida com classificação <strong>${nivel}</strong> e nota <strong>${nota.toFixed(1)}/10</strong>.
+          ${taxaDef!==null?`Taxa de defesa de <strong>${(taxaDef*100).toFixed(0)}%</strong>.`:''}
+          ${mcMaxStreak>=3?`Melhor sequência defensiva de <strong>${mcMaxStreak} defesas consecutivas</strong>.`:''}
+          ${mcMaxSemGolSec>60?`Ficou <strong>${mcFormatTime(mcMaxSemGolSec)}</strong> sem sofrer gols.`:''}
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+          <div style="background:rgba(16,185,129,.04);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:14px;">
+            <div style="font-size:10px;font-weight:700;color:var(--success);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">✅ Pontos Fortes</div>
+            ${(forcas.length?forcas:[`Continue acumulando dados para análise`]).map(f=>`<div style="font-size:12px;line-height:1.5;margin-bottom:7px;display:flex;gap:6px;"><span>▸</span><span>${f}</span></div>`).join('')}
+          </div>
+          <div style="background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:14px;">
+            <div style="font-size:10px;font-weight:700;color:var(--warning);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">⚠ A Desenvolver</div>
+            ${(mels.length?mels:[`Manter o nível atual e continuar evoluindo`]).map(m=>`<div style="font-size:12px;line-height:1.5;margin-bottom:7px;display:flex;gap:6px;"><span>▸</span><span>${m}</span></div>`).join('')}
+          </div>
+        </div>
+
+        <div style="background:rgba(59,130,246,.04);border:1px solid rgba(59,130,246,.15);border-radius:12px;padding:14px;">
+          <div style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">📋 Recomendações de Treino</div>
+          ${recs.map((r,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px;line-height:1.5;"><span style="width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span>${r}</span></div>`).join('')}
+        </div>
+      </div>`;
+  });
+
+  const timelineEvents=mcLog.filter(e=>e.tipo!=='periodo').slice(0,20);
+  if (timelineEvents.length) {
+    const typeColors2={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#F59E0B','placar-nos':'#10B981','placar-adv':'#EF4444'};
+    html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📅 Timeline do Jogo</div>
+      ${timelineEvents.map(e=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;">
+          <span style="color:var(--muted);font-variant-numeric:tabular-nums;width:40px;flex-shrink:0;">${e.time}</span>
+          <span style="width:8px;height:8px;border-radius:50%;background:${typeColors2[e.tipo]||'var(--muted)'};flex-shrink:0;"></span>
+          <span style="flex:1;">${e.label}</span>
+          <span style="font-size:9px;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;font-weight:700;">${e.periodo}T</span>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  html+='</div>';
+  const bodyEl=document.getElementById('mc-rel-body');
+  if(bodyEl) bodyEl.innerHTML=html;
+  openModal('modal-mc-relatorio');
+}
+
+function mcExportarRelatorioPDF() {
+  const { jsPDF }=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  doc.setFillColor(15,23,42); doc.rect(0,0,210,297,'F');
+  doc.setTextColor(248,250,252);
+  doc.setFontSize(18); doc.setFont('helvetica','bold');
+  doc.text('GK Hub — Relatório Pós-Jogo',15,20);
+  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(148,163,184);
+  const subtEl=document.getElementById('mc-rel-subtitle');
+  doc.text(subtEl?.textContent||'',15,28);
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`,15,34);
+  const segs=mcPendingSegmentos||[];
+  const gkIds=[...new Set(segs.map(s=>s.gkId))];
+  let yPos=44;
+  gkIds.forEach(gkId=>{
+    const gk=DB.goleiras.find(g=>g.id===gkId);
+    const gkSegs=segs.filter(s=>s.gkId===gkId);
+    const sum=f=>gkSegs.reduce((a,s)=>a+(s.data[f]||0),0);
+    const def=sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('esq');
+    const gol=sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+    const distC=sum('dpc')+sum('dmc'), distE=sum('dpe')+sum('dme');
+    const ap=(distC+distE)>0?Math.round(distC/(distC+distE)*100):0;
+    doc.autoTable({
+      startY:yPos,
+      head:[[gk?.nome||'—','Defesas','Gols','Intercep.','Dist. Aprox.','Nota Final']],
+      body:[[gkSegs.map(s=>s.periodoLabel).join('+'),def,gol,sum('int'),ap+'%',mcNotaAtual.toFixed(1)]],
+      styles:{textColor:[248,250,252],fillColor:[30,41,59],lineColor:[30,41,59]},
+      headStyles:{fillColor:[59,130,246],textColor:[255,255,255],fontStyle:'bold'},
+      theme:'grid'
+    });
+    yPos=doc.lastAutoTable.finalY+10;
+    const evts=mcLog.filter(e=>e.tipo!=='periodo'&&e.key&&e.sec!==undefined).slice(0,15);
+    if(evts.length){
+      doc.autoTable({
+        startY:yPos,
+        head:[['Tempo','Evento','Período']],
+        body:evts.map(e=>[e.time,e.label,`${e.periodo}T`]),
+        styles:{textColor:[248,250,252],fillColor:[30,41,59],lineColor:[30,41,59],fontSize:9},
+        headStyles:{fillColor:[51,65,85],textColor:[148,163,184],fontStyle:'bold'},
+        alternateRowStyles:{fillColor:[36,48,68]},
+        theme:'grid'
+      });
+      yPos=doc.lastAutoTable.finalY+10;
+    }
+  });
+  doc.save(`relatorio_jogo_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('PDF exportado!','success');
 }
 
 // ═══════════════════════════════════════════════════════════
