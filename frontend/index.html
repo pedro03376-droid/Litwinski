@@ -961,9 +961,112 @@
       z-index: 999;
       animation: syncFlash .8s ease forwards;
     }
+
+    /* ── AUTH OVERLAY ──────────────────────────────────────── */
+    #auth-overlay {
+      position: fixed; inset: 0; z-index: 9999;
+      background: var(--bg);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    #auth-overlay.hidden { display: none; }
+    .auth-card {
+      width: 100%; max-width: 420px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 40px 36px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    }
+    .auth-logo { text-align: center; margin-bottom: 28px; }
+    .auth-logo-text {
+      font-size: 34px; font-weight: 800;
+      background: var(--primary-g); -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; letter-spacing: -1px;
+    }
+    .auth-logo-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .auth-tabs {
+      display: flex; gap: 4px;
+      background: var(--bg); border-radius: var(--radius); padding: 4px;
+      margin-bottom: 22px;
+    }
+    .auth-tab {
+      flex: 1; padding: 8px; text-align: center; border-radius: 8px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      color: var(--muted); background: none; border: none; font-family: var(--font);
+      transition: all var(--transition);
+    }
+    .auth-tab.active { background: var(--card-2); color: var(--text); }
+    .auth-divider {
+      display: flex; align-items: center; gap: 12px;
+      margin: 16px 0; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+    .btn-google {
+      width: 100%; padding: 11px; border-radius: var(--radius);
+      background: var(--card-2); border: 1px solid var(--border);
+      color: var(--text); font-size: 13px; font-weight: 600;
+      cursor: pointer; font-family: var(--font);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all var(--transition);
+    }
+    .btn-google:hover { border-color: var(--border-h); transform: translateY(-1px); }
+    .auth-error {
+      color: #FCA5A5; font-size: 12px; margin-top: 10px;
+      background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.25);
+      border-radius: 8px; padding: 9px 12px; display: none; line-height: 1.5;
+    }
+    .auth-footer { text-align: center; margin-top: 20px; font-size: 12px; color: var(--muted); }
+    .auth-footer a { color: var(--primary); cursor: pointer; text-decoration: none; }
+    .auth-footer a:hover { text-decoration: underline; }
+    .auth-user-chip {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 10px; border-radius: var(--radius);
+      background: rgba(59,130,246,.07); border: 1px solid rgba(59,130,246,.18);
+      margin-bottom: 8px; cursor: default;
+    }
+    .auth-user-avatar {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--primary-g); display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+    }
+    .auth-user-email { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   </style>
 </head>
 <body>
+
+<!-- ══ AUTH OVERLAY ══ -->
+<div id="auth-overlay">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="auth-logo-text">GK Hub</div>
+      <div class="auth-logo-sub">Plataforma de Performance para Goleiras de Futsal</div>
+    </div>
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="authSetTab('login')" id="auth-tab-login">Entrar</button>
+      <button class="auth-tab" onclick="authSetTab('register')" id="auth-tab-register">Criar conta</button>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label class="form-label">Email</label>
+      <input class="form-input" id="auth-email" type="email" placeholder="seu@email.com" autocomplete="email">
+    </div>
+    <div class="form-group" style="margin-bottom:4px;">
+      <label class="form-label">Senha</label>
+      <input class="form-input" id="auth-senha" type="password" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')authSubmit()">
+    </div>
+    <div id="auth-error" class="auth-error"></div>
+    <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="authSubmit()" id="auth-submit-btn">Entrar</button>
+    <div class="auth-divider">ou</div>
+    <button class="btn-google" onclick="authSignInGoogle()">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continuar com Google
+    </button>
+    <div class="auth-footer">
+      Primeiro acesso? <a onclick="authOpenSetup()">Configure o Firebase aqui</a>
+    </div>
+  </div>
+</div>
 
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
@@ -1035,10 +1138,21 @@
     </div>
   </nav>
   <div class="sidebar-footer">
+    <div class="auth-user-chip" id="auth-sidebar-chip" style="display:none;">
+      <div class="auth-user-avatar" id="auth-sidebar-avatar">?</div>
+      <div style="flex:1;overflow:hidden;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="auth-sidebar-name">Usuário</div>
+        <div class="auth-user-email" id="auth-sidebar-email"></div>
+      </div>
+    </div>
     <div id="cloud-status" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
       <span id="cloud-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
       <span id="cloud-label" style="font-size:11px;">Nuvem: offline</span>
     </div>
+    <button class="btn btn-ghost btn-sm" onclick="authSignOut()" id="auth-logout-btn" style="display:none;width:100%;justify-content:center;color:var(--muted);font-size:11px;margin-bottom:6px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Sair da conta
+    </button>
     GK Hub v1.0 &copy; 2026
   </div>
 </aside>
@@ -1824,17 +1938,16 @@
 
     <!-- ══ CONFIG FIREBASE ══ -->
     <div id="page-config" class="page">
-      <div class="card" style="max-width:680px;">
+      <div class="card" style="max-width:680px;margin-bottom:16px;">
         <div class="card-header"><span class="card-title">Sincronização na Nuvem (Firebase)</span></div>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Cole a URL do seu banco de dados Firebase Realtime Database para salvar os dados na nuvem e acessá-los de qualquer dispositivo.</p>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Cole a URL do seu banco de dados Firebase Realtime Database para salvar os dados na nuvem.</p>
         <details style="margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
           <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--primary);">📖 Como obter a URL do banco (passo a passo)</summary>
           <ol style="margin:12px 0 0 18px;font-size:12px;color:var(--muted);line-height:1.9;">
             <li>Acesse <strong>console.firebase.google.com</strong> e abra seu projeto</li>
             <li>No menu lateral, vá em <strong>Build → Realtime Database</strong></li>
             <li>Clique em <strong>"Criar banco de dados"</strong> (escolha <em>Modo de teste</em>)</li>
-            <li>Copie a URL que aparece no topo, no formato <code>https://seu-projeto-default-rtdb.firebaseio.com</code></li>
-            <li>Cole a URL abaixo e clique em <strong>Conectar</strong></li>
+            <li>Copie a URL no formato <code>https://seu-projeto-default-rtdb.firebaseio.com</code></li>
           </ol>
         </details>
         <div class="form-group" style="margin-bottom:14px;">
@@ -1850,6 +1963,29 @@
         </div>
         <div id="fb-status" style="margin-top:16px;font-size:13px;"></div>
       </div>
+
+      <div class="card" style="max-width:680px;">
+        <div class="card-header"><span class="card-title">Credenciais de Autenticação</span></div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Necessário para o sistema de login. Encontre a <strong>Chave de API Web</strong> no console Firebase em <em>Configurações do Projeto → Geral</em>.</p>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">Chave de API Web (Firebase)</label>
+          <input class="form-input" id="cfg-api-key" type="text"
+            placeholder="AIzaSy..."
+            style="font-family:monospace;font-size:13px;" />
+        </div>
+        <details style="margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
+          <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--warning);">🔑 Login com Google (opcional)</summary>
+          <p style="font-size:12px;color:var(--muted);margin:10px 0 8px;">Para habilitar "Continuar com Google", ative o provedor Google em <strong>Firebase → Authentication → Sign-in method</strong> e cole o Client ID OAuth abaixo.</p>
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Google Client ID</label>
+            <input class="form-input" id="cfg-google-cid" type="text"
+              placeholder="123456789-abc.apps.googleusercontent.com"
+              style="font-family:monospace;font-size:12px;" />
+          </div>
+        </details>
+        <button class="btn btn-primary" onclick="cfgSaveAuth()">Salvar credenciais</button>
+        <div id="cfg-auth-status" style="margin-top:12px;font-size:13px;"></div>
+      </div>
     </div>
 
   </div><!-- /content -->
@@ -1857,6 +1993,44 @@
 
 <!-- ══ TOAST CONTAINER ══ -->
 <div class="toast-container" id="toasts"></div>
+
+<!-- ══ MODAL: AUTH SETUP ══ -->
+<div class="modal-backdrop" id="modal-auth-setup">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <span class="modal-title">Configurar Firebase</span>
+      <button class="modal-close" onclick="closeModal('modal-auth-setup')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Configure as credenciais do Firebase para usar o GK Hub. Encontre tudo em <strong>console.firebase.google.com → Configurações do Projeto</strong>.</p>
+      <div class="form-group">
+        <label class="form-label">URL do Realtime Database *</label>
+        <input class="form-input" id="setup-rtdb-url" type="url"
+          placeholder="https://seu-projeto-default-rtdb.firebaseio.com"
+          style="font-family:monospace;font-size:13px;" />
+        <span style="font-size:11px;color:var(--muted);">Em: Build → Realtime Database</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Chave de API Web *</label>
+        <input class="form-input" id="setup-api-key" type="text"
+          placeholder="AIzaSy..."
+          style="font-family:monospace;font-size:13px;" />
+        <span style="font-size:11px;color:var(--muted);">Em: Configurações do Projeto → Geral → Suas apps → apiKey</span>
+      </div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Google Client ID <span style="color:var(--muted);font-weight:400;">(opcional)</span></label>
+        <input class="form-input" id="setup-google-cid" type="text"
+          placeholder="123456789-abc.apps.googleusercontent.com"
+          style="font-family:monospace;font-size:12px;" />
+        <span style="font-size:11px;color:var(--muted);">Ative o provedor Google em Authentication → Sign-in method</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-auth-setup')">Cancelar</button>
+      <button class="btn btn-primary" onclick="authSaveSetup()">Salvar e continuar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══ MODAL: GOLEIRA ══ -->
 <div class="modal-backdrop" id="modal-goleira">
@@ -5151,6 +5325,281 @@ function mcExportarRelatorioPDF() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// AUTH — Firebase Authentication REST API
+// ═══════════════════════════════════════════════════════════
+let currentUser = null; // { uid, email, idToken, refreshToken, expiresAt }
+let fbApiKey = null;
+let googleClientId = null;
+
+const _AUTH_STORE = 'gkhub_auth';
+const _APIKEY_STORE = 'gkhub_fb_apikey';
+const _GID_STORE = 'gkhub_google_cid';
+const _AUTH_BASE = 'https://identitytoolkit.googleapis.com/v1/accounts';
+const _TOKEN_URL = 'https://securetoken.googleapis.com/v1/token';
+
+let _authTab = 'login';
+
+function initAuth() {
+  fbApiKey = localStorage.getItem(_APIKEY_STORE) || null;
+  googleClientId = localStorage.getItem(_GID_STORE) || null;
+
+  // Pre-fill config page
+  const cfgKey = document.getElementById('cfg-api-key');
+  const cfgCid = document.getElementById('cfg-google-cid');
+  if (cfgKey && fbApiKey) cfgKey.value = fbApiKey;
+  if (cfgCid && googleClientId) cfgCid.value = googleClientId;
+
+  const saved = localStorage.getItem(_AUTH_STORE);
+  if (saved) {
+    try {
+      currentUser = JSON.parse(saved);
+      if (Date.now() >= currentUser.expiresAt) {
+        authRefreshToken().then(ok => ok ? _showApp() : _showLogin()).catch(() => _showLogin());
+      } else {
+        _showApp();
+      }
+    } catch { _showLogin(); }
+  } else {
+    _showLogin();
+  }
+
+  if (googleClientId) _initGoogleGIS();
+}
+
+function _showApp() {
+  document.getElementById('auth-overlay').classList.add('hidden');
+  _updateUserBadge();
+  initFirebaseFromStorage();
+}
+
+function _showLogin() {
+  currentUser = null;
+  document.getElementById('auth-overlay').classList.remove('hidden');
+}
+
+function _updateUserBadge() {
+  if (!currentUser) return;
+  const email = currentUser.email || '';
+  const name = email.split('@')[0] || 'Usuário';
+  const initial = name[0]?.toUpperCase() || '?';
+  const chip = document.getElementById('auth-sidebar-chip');
+  const avatar = document.getElementById('auth-sidebar-avatar');
+  const nameEl = document.getElementById('auth-sidebar-name');
+  const emailEl = document.getElementById('auth-sidebar-email');
+  const logoutBtn = document.getElementById('auth-logout-btn');
+  if (chip) chip.style.display = 'flex';
+  if (avatar) avatar.textContent = initial;
+  if (nameEl) nameEl.textContent = name;
+  if (emailEl) emailEl.textContent = email;
+  if (logoutBtn) logoutBtn.style.display = 'flex';
+}
+
+function authSetTab(tab) {
+  _authTab = tab;
+  const isLogin = tab === 'login';
+  document.getElementById('auth-tab-login').classList.toggle('active', isLogin);
+  document.getElementById('auth-tab-register').classList.toggle('active', !isLogin);
+  document.getElementById('auth-submit-btn').textContent = isLogin ? 'Entrar' : 'Criar conta';
+  const pw = document.getElementById('auth-senha');
+  if (pw) pw.autocomplete = isLogin ? 'current-password' : 'new-password';
+  _authShowError('');
+}
+
+function _authShowError(msg) {
+  const el = document.getElementById('auth-error');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = msg ? 'block' : 'none';
+}
+
+async function authSubmit() {
+  if (!fbApiKey) {
+    _authShowError('Configure a chave da API Firebase primeiro. Clique em "Configure o Firebase aqui" abaixo.');
+    return;
+  }
+  const email = document.getElementById('auth-email').value.trim();
+  const senha = document.getElementById('auth-senha').value;
+  if (!email || !senha) { _authShowError('Preencha email e senha.'); return; }
+
+  const btn = document.getElementById('auth-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Aguarde…';
+  _authShowError('');
+
+  try {
+    const endpoint = _authTab === 'register'
+      ? `${_AUTH_BASE}:signUp?key=${fbApiKey}`
+      : `${_AUTH_BASE}:signInWithPassword?key=${fbApiKey}`;
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password: senha, returnSecureToken: true })
+    });
+    const data = await res.json();
+    if (!res.ok) { _authShowError(_authErrMsg(data?.error?.message)); return; }
+    _authSaveSession(data);
+    _showApp();
+  } catch { _authShowError('Erro de conexão. Verifique sua internet.'); }
+  finally {
+    btn.disabled = false;
+    btn.textContent = _authTab === 'login' ? 'Entrar' : 'Criar conta';
+  }
+}
+
+function _authSaveSession(data) {
+  currentUser = {
+    uid: data.localId,
+    email: data.email,
+    idToken: data.idToken,
+    refreshToken: data.refreshToken,
+    expiresAt: Date.now() + (parseInt(data.expiresIn || 3600) - 60) * 1000
+  };
+  localStorage.setItem(_AUTH_STORE, JSON.stringify(currentUser));
+}
+
+async function authRefreshToken() {
+  if (!currentUser?.refreshToken || !fbApiKey) return false;
+  try {
+    const res = await fetch(`${_TOKEN_URL}?key=${fbApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=refresh_token&refresh_token=' + encodeURIComponent(currentUser.refreshToken)
+    });
+    const data = await res.json();
+    if (!res.ok) return false;
+    currentUser.idToken = data.id_token;
+    currentUser.refreshToken = data.refresh_token;
+    currentUser.expiresAt = Date.now() + (parseInt(data.expires_in || 3600) - 60) * 1000;
+    localStorage.setItem(_AUTH_STORE, JSON.stringify(currentUser));
+    return true;
+  } catch { return false; }
+}
+
+async function ensureValidToken() {
+  if (!currentUser?.idToken) return;
+  if (Date.now() >= currentUser.expiresAt - 300000) await authRefreshToken();
+}
+
+function authSignOut() {
+  currentUser = null;
+  localStorage.removeItem(_AUTH_STORE);
+  rtdbUrl = null;
+  setCloudStatus(false, 'offline');
+  const chip = document.getElementById('auth-sidebar-chip');
+  const btn = document.getElementById('auth-logout-btn');
+  if (chip) chip.style.display = 'none';
+  if (btn) btn.style.display = 'none';
+  _showLogin();
+  toast('Sessão encerrada', 'info');
+}
+
+function _authErrMsg(code) {
+  const msgs = {
+    EMAIL_EXISTS: 'Este email já possui uma conta. Tente entrar.',
+    EMAIL_NOT_FOUND: 'Email não encontrado. Crie uma conta.',
+    INVALID_PASSWORD: 'Senha incorreta.',
+    INVALID_LOGIN_CREDENTIALS: 'Email ou senha incorretos.',
+    USER_DISABLED: 'Conta desativada.',
+    WEAK_PASSWORD: 'Senha muito fraca (mínimo 6 caracteres).',
+    INVALID_EMAIL: 'Formato de email inválido.',
+    TOO_MANY_ATTEMPTS_TRY_LATER: 'Muitas tentativas. Aguarde alguns minutos.',
+    OPERATION_NOT_ALLOWED: 'Login por email/senha não está ativo no Firebase.',
+  };
+  return msgs[code] || (code ? 'Erro: ' + code : 'Erro desconhecido. Tente novamente.');
+}
+
+// Google Sign-In via GIS
+function _initGoogleGIS() {
+  if (!window.google?.accounts?.id || !googleClientId) return;
+  google.accounts.id.initialize({
+    client_id: googleClientId,
+    callback: _handleGoogleCredential,
+    auto_select: false,
+  });
+}
+
+function authSignInGoogle() {
+  if (!fbApiKey) { _authShowError('Configure a chave da API Firebase primeiro.'); return; }
+  if (!googleClientId) { _authShowError('Configure o Google Client ID nas configurações.'); return; }
+  if (!window.google?.accounts?.id) { _authShowError('Google Sign-In não carregou. Verifique sua conexão.'); return; }
+  google.accounts.id.prompt(notification => {
+    if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+      _authShowError('Popup do Google bloqueado. Permita pop-ups para este site.');
+    }
+  });
+}
+
+async function _handleGoogleCredential(response) {
+  if (!response.credential || !fbApiKey) return;
+  _authShowError('');
+  try {
+    const res = await fetch(`${_AUTH_BASE}:signInWithIdp?key=${fbApiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        postBody: `id_token=${response.credential}&providerId=google.com`,
+        requestUri: window.location.href,
+        returnSecureToken: true
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) { _authShowError(_authErrMsg(data?.error?.message)); return; }
+    _authSaveSession(data);
+    _showApp();
+  } catch { _authShowError('Erro ao autenticar com Google. Tente novamente.'); }
+}
+
+// Setup modal (from login screen link)
+function authOpenSetup() {
+  const keyEl = document.getElementById('setup-api-key');
+  const cidEl = document.getElementById('setup-google-cid');
+  const rtdbEl = document.getElementById('setup-rtdb-url');
+  if (keyEl) keyEl.value = fbApiKey || '';
+  if (cidEl) cidEl.value = googleClientId || '';
+  if (rtdbEl) rtdbEl.value = localStorage.getItem('gkhub_rtdb_url') || '';
+  openModal('modal-auth-setup');
+}
+
+function authSaveSetup() {
+  const apiKey = document.getElementById('setup-api-key').value.trim();
+  const cid = document.getElementById('setup-google-cid').value.trim();
+  const rtdbRaw = document.getElementById('setup-rtdb-url').value.trim().replace(/\/$/, '');
+  if (!apiKey) { toast('Chave de API é obrigatória', 'error'); return; }
+  if (!rtdbRaw || !rtdbRaw.includes('firebaseio.com')) { toast('URL do banco inválida', 'error'); return; }
+  fbApiKey = apiKey;
+  localStorage.setItem(_APIKEY_STORE, apiKey);
+  localStorage.setItem('gkhub_rtdb_url', rtdbRaw);
+  if (cid) { googleClientId = cid; localStorage.setItem(_GID_STORE, cid); _initGoogleGIS(); }
+  // Update config page fields
+  const cfgKey = document.getElementById('cfg-api-key'); if (cfgKey) cfgKey.value = apiKey;
+  const cfgCid = document.getElementById('cfg-google-cid'); if (cfgCid) cfgCid.value = cid;
+  const fbCfg = document.getElementById('fb-config'); if (fbCfg) fbCfg.value = rtdbRaw;
+  closeModal('modal-auth-setup');
+  toast('Configurações salvas! Agora faça login.', 'success');
+}
+
+// Save auth settings from config page
+function cfgSaveAuth() {
+  const apiKey = document.getElementById('cfg-api-key').value.trim();
+  const cid = document.getElementById('cfg-google-cid').value.trim();
+  if (!apiKey) { toast('Chave de API é obrigatória', 'error'); return; }
+  fbApiKey = apiKey;
+  localStorage.setItem(_APIKEY_STORE, apiKey);
+  if (cid) { googleClientId = cid; localStorage.setItem(_GID_STORE, cid); _initGoogleGIS(); }
+  document.getElementById('cfg-auth-status').innerHTML = '<span style="color:var(--success)">✓ Credenciais salvas!</span>';
+  toast('Credenciais salvas!', 'success');
+}
+
+// Load GIS script dynamically when Google Client ID is set
+(function loadGISScript() {
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true; s.defer = true;
+  s.onload = () => { if (googleClientId) _initGoogleGIS(); };
+  document.head.appendChild(s);
+})();
+
+// ═══════════════════════════════════════════════════════════
 // FIREBASE REALTIME DATABASE — REST API (sem SDK)
 // ═══════════════════════════════════════════════════════════
 let rtdbUrl = null;
@@ -5163,16 +5612,21 @@ function setCloudStatus(connected, label) {
 }
 
 function rtdbPath(path) {
-  return rtdbUrl + path + '.json';
+  const uid = currentUser?.uid;
+  const scope = uid ? '/users/' + uid : '';
+  const auth = currentUser?.idToken ? '?auth=' + currentUser.idToken : '';
+  return rtdbUrl + scope + path + '.json' + auth;
 }
 
 async function rtdbGet(path) {
+  await ensureValidToken();
   const res = await fetch(rtdbPath(path));
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
 
 async function rtdbPut(path, data) {
+  await ensureValidToken();
   const res = await fetch(rtdbPath(path), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -5182,6 +5636,7 @@ async function rtdbPut(path, data) {
 }
 
 async function rtdbDelete(path) {
+  await ensureValidToken();
   await fetch(rtdbPath(path), { method: 'DELETE' });
 }
 
@@ -5202,7 +5657,11 @@ async function conectarFirebase() {
   }
   rtdbUrl = raw;
   try {
-    await rtdbGet('/.json?shallow=true');
+    const uid = currentUser?.uid;
+    const auth = currentUser?.idToken ? '?auth=' + currentUser.idToken : '';
+    const scope = uid ? '/users/' + uid : '';
+    const testRes = await fetch(raw + scope + '/.json?shallow=true' + (auth ? '&auth=' + currentUser.idToken : ''));
+    if (!testRes.ok) throw new Error('HTTP ' + testRes.status);
     localStorage.setItem('gkhub_rtdb_url', raw);
     setCloudStatus(true, 'conectada');
     const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
@@ -5282,7 +5741,7 @@ function renderConfigStatus() {
 // INIT
 updateGoleiraSelects();
 refreshDashboard();
-initFirebaseFromStorage();
+initAuth(); // handles login state + calls initFirebaseFromStorage() after auth
 
 // ═══════════════════════════════════════════════════════════
 // PWA — SERVICE WORKER + OFFLINE + AUTO-SYNC
