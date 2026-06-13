@@ -1377,8 +1377,14 @@
           <!-- Card info pessoal -->
           <div class="card">
             <div style="display:flex;flex-direction:column;align-items:center;text-align:center;padding:8px 0 16px;">
-              <div class="gk-avatar" id="perfil-foto" style="margin-bottom:14px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:48px;height:48px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+              <div style="position:relative;display:inline-block;margin-bottom:14px;">
+                <div class="gk-avatar" id="perfil-foto" style="width:110px;height:110px;cursor:pointer;" onclick="perfilEditarFoto()" title="Clique para alterar foto">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:48px;height:48px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+                </div>
+                <button onclick="perfilEditarFoto()" style="position:absolute;bottom:2px;right:2px;background:var(--primary);border:none;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4);" title="Alterar foto">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" width="13" height="13"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                </button>
+                <input type="file" id="perfil-foto-input" accept="image/*" style="display:none;" onchange="handlePerfilFotoUpload(this)">
               </div>
               <div id="perfil-nome" style="font-size:20px;font-weight:800;"></div>
               <div id="perfil-sub" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
@@ -1556,8 +1562,15 @@
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
               <input type="file" id="gk-foto-input" accept="image/*" style="display:none;" onchange="handleFotoUpload(this)">
-              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('gk-foto-input').click()">Escolher foto</button>
-              <button type="button" class="btn btn-ghost btn-sm" style="color:var(--error);" onclick="clearFoto()">Remover foto</button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('gk-foto-input').click()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Escolher foto
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" id="btn-ajustar-foto" style="display:none;color:var(--primary);" onclick="reabrirCrop()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18M3 9h18M3 15h18"/></svg>
+                Reajustar
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" style="color:var(--error);" onclick="clearFoto()">Remover</button>
             </div>
           </div>
         </div>
@@ -1791,7 +1804,42 @@
   </div>
 </div>
 
-<script>
+<!-- ══ MODAL CROP FOTO ══ -->
+<div class="modal-backdrop" id="modal-crop">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-header">
+      <span class="modal-title">Ajustar Foto</span>
+      <button class="modal-close" onclick="closeModal('modal-crop')">&times;</button>
+    </div>
+    <div class="modal-body" style="padding:20px;text-align:center;">
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Arraste para reposicionar · Use o zoom para ajustar</p>
+      <!-- Circular crop viewport -->
+      <div id="crop-container" style="position:relative;width:260px;height:260px;margin:0 auto 16px;overflow:hidden;border-radius:50%;border:3px solid var(--primary);box-shadow:var(--glow-primary);cursor:grab;user-select:none;touch-action:none;">
+        <img id="crop-img" draggable="false" style="position:absolute;transform-origin:0 0;pointer-events:none;" src="">
+        <!-- Grid overlay -->
+        <div style="position:absolute;inset:0;pointer-events:none;border-radius:50%;
+          background:linear-gradient(rgba(255,255,255,.06) 1px,transparent 1px),
+                      linear-gradient(90deg,rgba(255,255,255,.06) 1px,transparent 1px);
+          background-size:65px 65px;">
+        </div>
+      </div>
+      <!-- Zoom -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+        <span style="font-size:16px;">🔍−</span>
+        <input type="range" id="crop-zoom" min="1" max="3" step="0.01" value="1" style="flex:1;accent-color:var(--primary);">
+        <span style="font-size:16px;">🔍+</span>
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:4px;">Zoom</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modal-crop')">Cancelar</button>
+      <button class="btn btn-primary" onclick="applyCrop()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Usar esta foto
+      </button>
+    </div>
+  </div>
+</div>
 // ═══════════════════════════════════════════════════════════
 // DATA STORE
 // ═══════════════════════════════════════════════════════════
@@ -2875,25 +2923,160 @@ function aggScouts(gkId) {
 // FOTO DA GOLEIRA
 // ═══════════════════════════════════════════════════════════
 let currentFotoBase64 = '';
+let cropOriginalSrc = '';     // raw upload for re-crop
+let cropTarget = 'modal';    // 'modal' or 'perfil'
+let cropGkId = null;          // for perfil direct save
+
+// ── Crop state ────────────────────────────────────────────
+const cropState = {
+  x: 0, y: 0, scale: 1,
+  isDragging: false,
+  startX: 0, startY: 0,
+  startImgX: 0, startImgY: 0,
+  size: 260
+};
+
+function openCropModal(src, target = 'modal', gkId = null) {
+  cropOriginalSrc = src;
+  cropTarget = target;
+  cropGkId = gkId;
+  const img = document.getElementById('crop-img');
+  const zoom = document.getElementById('crop-zoom');
+  img.onload = () => {
+    // Auto-fit to fill circle
+    const fitScale = Math.max(cropState.size / img.naturalWidth, cropState.size / img.naturalHeight);
+    cropState.scale = fitScale;
+    cropState.x = (cropState.size - img.naturalWidth * fitScale) / 2;
+    cropState.y = (cropState.size - img.naturalHeight * fitScale) / 2;
+    if (zoom) { zoom.min = fitScale; zoom.max = fitScale * 4; zoom.step = fitScale * 0.01; zoom.value = fitScale; }
+    updateCropTransform();
+  };
+  img.src = src;
+  openModal('modal-crop');
+}
+
+function updateCropTransform() {
+  const img = document.getElementById('crop-img');
+  if (!img || !img.naturalWidth) return;
+  img.style.left = cropState.x + 'px';
+  img.style.top  = cropState.y + 'px';
+  img.style.width  = (img.naturalWidth  * cropState.scale) + 'px';
+  img.style.height = (img.naturalHeight * cropState.scale) + 'px';
+}
+
+function applyCrop() {
+  const img = document.getElementById('crop-img');
+  if (!img || !img.naturalWidth) return;
+  const out = 240;
+  const ratio = out / cropState.size;
+  const canvas = document.createElement('canvas');
+  canvas.width = out; canvas.height = out;
+  const ctx = canvas.getContext('2d');
+  ctx.beginPath();
+  ctx.arc(out/2, out/2, out/2, 0, Math.PI*2);
+  ctx.clip();
+  ctx.drawImage(img, cropState.x*ratio, cropState.y*ratio,
+    img.naturalWidth*cropState.scale*ratio, img.naturalHeight*cropState.scale*ratio);
+  const result = canvas.toDataURL('image/jpeg', 0.85);
+
+  if (cropTarget === 'perfil' && cropGkId) {
+    // Save directly to the goalkeeper
+    const goleiras = DB.goleiras;
+    const idx = goleiras.findIndex(g => g.id === cropGkId);
+    if (idx !== -1) {
+      goleiras[idx].foto = result;
+      DB.saveGoleiras(goleiras);
+      cloudSet('goleiras', goleiras[idx]);
+      renderPerfil();
+      toast('Foto atualizada!', 'success');
+    }
+  } else {
+    // Save to modal form
+    currentFotoBase64 = result;
+    updateFotoPreview(result);
+    const ajBtn = document.getElementById('btn-ajustar-foto');
+    if (ajBtn) ajBtn.style.display = 'inline-flex';
+  }
+  closeModal('modal-crop');
+}
+
+function reabrirCrop() {
+  if (cropOriginalSrc) openCropModal(cropOriginalSrc, 'modal');
+}
+
+// Init drag on crop container (called once on load)
+function initCropDrag() {
+  const c = document.getElementById('crop-container');
+  if (!c) return;
+  const move = (dx, dy) => {
+    cropState.x = cropState.startImgX + dx;
+    cropState.y = cropState.startImgY + dy;
+    updateCropTransform();
+  };
+  // Mouse
+  c.addEventListener('mousedown', e => {
+    cropState.isDragging = true; c.style.cursor = 'grabbing';
+    cropState.startX = e.clientX; cropState.startY = e.clientY;
+    cropState.startImgX = cropState.x; cropState.startImgY = cropState.y;
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', e => {
+    if (!cropState.isDragging) return;
+    move(e.clientX - cropState.startX, e.clientY - cropState.startY);
+  });
+  document.addEventListener('mouseup', () => { cropState.isDragging = false; c.style.cursor = 'grab'; });
+  // Touch
+  c.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    cropState.isDragging = true;
+    cropState.startX = t.clientX; cropState.startY = t.clientY;
+    cropState.startImgX = cropState.x; cropState.startImgY = cropState.y;
+  }, { passive: true });
+  document.addEventListener('touchmove', e => {
+    if (!cropState.isDragging) return;
+    const t = e.touches[0];
+    move(t.clientX - cropState.startX, t.clientY - cropState.startY);
+  }, { passive: true });
+  document.addEventListener('touchend', () => { cropState.isDragging = false; });
+  // Zoom
+  const zoom = document.getElementById('crop-zoom');
+  if (zoom) zoom.addEventListener('input', () => {
+    const img = document.getElementById('crop-img');
+    if (!img) return;
+    const newScale = parseFloat(zoom.value);
+    const cx = cropState.size / 2;
+    const cy = cropState.size / 2;
+    cropState.x = cx - (cx - cropState.x) * (newScale / cropState.scale);
+    cropState.y = cy - (cy - cropState.y) * (newScale / cropState.scale);
+    cropState.scale = newScale;
+    updateCropTransform();
+  });
+}
+initCropDrag();
+
 function handleFotoUpload(input) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const max = 240;
-      const scale = Math.min(max/img.width, max/img.height, 1);
-      canvas.width = img.width * scale; canvas.height = img.height * scale;
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-      currentFotoBase64 = canvas.toDataURL('image/jpeg', 0.75);
-      updateFotoPreview(currentFotoBase64);
-    };
-    img.src = e.target.result;
-  };
+  reader.onload = e => openCropModal(e.target.result, 'modal');
   reader.readAsDataURL(file);
 }
+
+// Perfil page: click avatar to edit photo
+function perfilEditarFoto() {
+  document.getElementById('perfil-foto-input').click();
+}
+function handlePerfilFotoUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const gkId = document.getElementById('perfil-select')?.value;
+  if (!gkId) { toast('Selecione uma goleira primeiro', 'error'); return; }
+  const reader = new FileReader();
+  reader.onload = e => openCropModal(e.target.result, 'perfil', gkId);
+  reader.readAsDataURL(file);
+  input.value = '';
+}
+
 function updateFotoPreview(src) {
   const el = document.getElementById('gk-foto-preview');
   if (!el) return;
@@ -2903,7 +3086,10 @@ function updateFotoPreview(src) {
 }
 function clearFoto() {
   currentFotoBase64 = '';
+  cropOriginalSrc = '';
   updateFotoPreview('');
+  const ajBtn = document.getElementById('btn-ajustar-foto');
+  if (ajBtn) ajBtn.style.display = 'none';
   const inp = document.getElementById('gk-foto-input');
   if (inp) inp.value = '';
 }
