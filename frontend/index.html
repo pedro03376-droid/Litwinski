@@ -1031,11 +1031,38 @@
           <label class="form-label">Local</label>
           <input class="form-input" id="match-local" type="text" placeholder="Ex: Ginásio Municipal">
         </div>
-        <div class="form-group">
-          <label class="form-label">Goleira</label>
-          <select class="form-select" id="match-goleira">
-            <option value="">Selecionar…</option>
-          </select>
+        <!-- Goleiras -->
+        <div class="form-group full" style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--bg);">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <span class="form-label" style="margin:0;">Goleiras em jogo</span>
+            <button type="button" onclick="toggleSegundaGoleira()" id="btn-add-gk2"
+              style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;">
+              + 2ª Goleira
+            </button>
+          </div>
+          <div class="form-grid" style="margin-bottom:0;">
+            <div class="form-group">
+              <label class="form-label" id="lbl-gk1">Goleira</label>
+              <select class="form-select" id="match-goleira"><option value="">Selecionar…</option></select>
+            </div>
+            <div class="form-group" id="grupo-periodo1" style="display:none;">
+              <label class="form-label">Período jogado</label>
+              <input class="form-input" id="match-periodo1" type="text" placeholder="Ex: 1º Tempo" value="1º Tempo">
+            </div>
+          </div>
+          <!-- 2ª goleira (oculta por padrão) -->
+          <div id="secao-gk2" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
+            <div class="form-grid" style="margin-bottom:0;">
+              <div class="form-group">
+                <label class="form-label">2ª Goleira</label>
+                <select class="form-select" id="match-gk2"><option value="">Selecionar…</option></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Período jogado</label>
+                <input class="form-input" id="match-periodo2" type="text" placeholder="Ex: 2º Tempo" value="2º Tempo">
+              </div>
+            </div>
+          </div>
         </div>
         <div class="form-group">
           <label class="form-label">Gols a favor</label>
@@ -1370,11 +1397,31 @@ function renderGoleiras() {
 // ═══════════════════════════════════════════════════════════
 // PARTIDAS
 // ═══════════════════════════════════════════════════════════
+function toggleSegundaGoleira(forcar) {
+  const sec = document.getElementById('secao-gk2');
+  const grp = document.getElementById('grupo-periodo1');
+  const btn = document.getElementById('btn-add-gk2');
+  const lbl = document.getElementById('lbl-gk1');
+  const ativo = forcar !== undefined ? forcar : (sec.style.display === 'none');
+  sec.style.display = ativo ? 'block' : 'none';
+  grp.style.display = ativo ? 'block' : 'none';
+  lbl.textContent = ativo ? '1ª Goleira' : 'Goleira';
+  btn.textContent = ativo ? '✕ Remover 2ª goleira' : '+ 2ª Goleira';
+  btn.style.color = ativo ? 'var(--error)' : 'var(--muted)';
+  if (!ativo) {
+    document.getElementById('match-gk2').value = '';
+    document.getElementById('match-periodo1').value = '1º Tempo';
+    document.getElementById('match-periodo2').value = '2º Tempo';
+  }
+}
+
 function salvarPartida() {
   const data = document.getElementById('match-data').value;
   const adv = document.getElementById('match-adv').value.trim();
   if (!adv) { toast('Informe o adversário', 'error'); return; }
   const partidas = DB.partidas;
+  const gk2Id = document.getElementById('match-gk2').value;
+  const temGk2 = document.getElementById('secao-gk2').style.display !== 'none' && gk2Id;
   const obj = {
     id: editingId.partida || uid(),
     data, hora: document.getElementById('match-hora').value,
@@ -1383,6 +1430,9 @@ function salvarPartida() {
     fase: document.getElementById('match-fase').value,
     local: document.getElementById('match-local').value,
     goalkeeperId: document.getElementById('match-goleira').value,
+    periodo1: temGk2 ? (document.getElementById('match-periodo1').value || '1º Tempo') : '',
+    gk2Id: temGk2 ? gk2Id : '',
+    periodo2: temGk2 ? (document.getElementById('match-periodo2').value || '2º Tempo') : '',
     gf: +document.getElementById('match-gf').value || 0,
     gc: +document.getElementById('match-gc').value || 0,
     obs: document.getElementById('match-obs').value,
@@ -1415,6 +1465,14 @@ function editarPartida(id) {
   document.getElementById('match-gf').value = p.gf ?? 0;
   document.getElementById('match-gc').value = p.gc ?? 0;
   document.getElementById('match-obs').value = p.obs || '';
+  // Restaura 2ª goleira
+  toggleSegundaGoleira(false);
+  if (p.gk2Id) {
+    toggleSegundaGoleira(true);
+    document.getElementById('match-gk2').value = p.gk2Id;
+    document.getElementById('match-periodo1').value = p.periodo1 || '1º Tempo';
+    document.getElementById('match-periodo2').value = p.periodo2 || '2º Tempo';
+  }
   openModal('modal-partida');
 }
 
@@ -1463,7 +1521,8 @@ function renderPartidas() {
     return;
   }
   tbody.innerHTML = [...partidas].sort((a,b) => (b.data||'').localeCompare(a.data||'')).map(p => {
-    const gk = goleiras.find(g => g.id === p.goalkeeperId);
+    const gk  = goleiras.find(g => g.id === p.goalkeeperId);
+    const gk2 = p.gk2Id ? goleiras.find(g => g.id === p.gk2Id) : null;
     const scouts = DB.scouts.filter(s => s.partidaId === p.id);
     const totalDef = scouts.reduce((acc, s) =>
       acc + (+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0), 0);
@@ -1473,11 +1532,22 @@ function renderPartidas() {
       const color = r==='V'?'var(--success)':r==='D'?'var(--error)':'var(--warning)';
       res = `<span style="color:${color};font-weight:700">${r} ${p.gf}×${p.gc}</span>`;
     }
+    let gkCell = gk ? gk.nome : '—';
+    if (gk2) {
+      gkCell = `<span style="display:block;line-height:1.6;">
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${p.periodo1||'1º T'}</span><br>
+        <strong>${gk ? gk.nome : '—'}</strong>
+      </span>
+      <span style="display:block;line-height:1.6;margin-top:4px;padding-top:4px;border-top:1px solid var(--border);">
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${p.periodo2||'2º T'}</span><br>
+        <strong>${gk2.nome}</strong>
+      </span>`;
+    }
     return `<tr>
       <td>${p.data ? formatDate(p.data) : '—'}</td>
       <td><strong>${p.adversario}</strong></td>
       <td>${p.competicao || '—'}</td>
-      <td>${gk ? gk.nome : '—'}</td>
+      <td>${gkCell}</td>
       <td>${res}</td>
       <td>${p.gc ?? '—'}</td>
       <td>${totalDef || '—'}</td>
@@ -1761,9 +1831,9 @@ function refreshDashboard() {
 function updateGoleiraSelects() {
   const goleiras = DB.goleiras;
   const opts = `<option value="">Selecionar…</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
-  ['match-goleira','scout-goleira'].forEach(id => {
+  ['match-goleira','match-gk2','scout-goleira'].forEach(id => {
     const el = document.getElementById(id);
-    if (el) el.innerHTML = opts;
+    if (el) { const v = el.value; el.innerHTML = opts; el.value = v; }
   });
   const hmEl = document.getElementById('heatmap-gk');
   if (hmEl) { const v = hmEl.value; hmEl.innerHTML = `<option value="">Todas as goleiras</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join(''); hmEl.value = v; }
@@ -2009,6 +2079,7 @@ document.querySelector('[onclick="openModal(\'modal-partida\')"]')?.addEventList
   ['data','hora','adv','comp','fase','local','obs'].forEach(f => document.getElementById('match-'+f).value='');
   document.getElementById('match-goleira').value='';
   document.getElementById('match-gf').value=0; document.getElementById('match-gc').value=0;
+  toggleSegundaGoleira(false);
 });
 document.querySelector('[onclick="openModal(\'modal-scout\')"]')?.addEventListener('click', () => {
   editingId.scout = null;
