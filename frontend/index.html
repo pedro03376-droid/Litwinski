@@ -1446,14 +1446,16 @@
         </div>
       </div>
 
-      <!-- ── Momentum da Partida ── -->
+      <!-- ── Timeline de Desempenho ── -->
       <div class="card" style="margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="mcToggleMomentum()">
-          <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">📈 Momentum da Partida</span>
-          <span id="mc-momentum-toggle" style="font-size:11px;color:var(--muted);">▼ Mostrar</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="mcToggleTimeline()">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">📊 Timeline de Desempenho</span>
+          <span id="mc-timeline-toggle" style="font-size:11px;color:var(--muted);">▼ Mostrar</span>
         </div>
-        <div id="mc-momentum-wrap" style="display:none;margin-top:14px;">
-          <div style="position:relative;height:120px;"><canvas id="mc-momentum-chart"></canvas></div>
+        <div id="mc-timeline-wrap" style="display:none;margin-top:14px;">
+          <div style="position:relative;height:180px;"><canvas id="mc-timeline-chart"></canvas></div>
+          <div id="mc-fases-bar" style="margin-top:10px;"></div>
+          <div id="mc-smart-log" style="margin-top:10px;max-height:200px;overflow-y:auto;"></div>
         </div>
       </div>
 
@@ -4500,17 +4502,29 @@ let mcMaxSemGolSec = 0;
 let mcMapMode = 'def';
 let mcMomentumChart = null;
 let mcMomentumOpen = false;
+// Timeline de Desempenho
+let mcTimelineChart = null;
+let mcTimelineOpen = false;
+let mcPosStreak = 0;
+let mcNegStreak = 0;
+let mcMaxPosStreak = 0;
+let mcMaxNegStreak = 0;
+let mcBestNotaSec = 0;
+let mcWorstNotaSec = 0;
 // Pending data for post-game modal
 let mcPendingSegmentos = null;
 let mcPendingPId = null;
 
 const MC_NOTA_PESOS = {
-  dad:+0.12, dae:+0.12, dbd:+0.10, dbe:+0.10, dc:+0.08,
-  esq:+0.28,
-  dpc:+0.05, dmc:+0.05,
-  dpe:-0.14, dme:-0.14,
-  gda:-0.20, gfa:-0.12, gpe:-0.15, gfl:-0.08,
-  int:+0.10, sai:+0.07, pose:+0.05, posd:+0.05
+  dad:+0.20, dae:+0.20,            // defesa difícil
+  dbd:+0.05, dbe:+0.05, dc:+0.05,  // defesa simples
+  d1x1:+0.25,                       // defesa 1x1
+  esq:+0.25,                        // esquadro
+  dpc:+0.05, dmc:+0.05,             // distribuição correta
+  dpe:-0.10, dme:-0.10,             // distribuição errada
+  gda:-0.20, gfa:-0.20, gpe:-0.20, gfl:-0.20, // gol sofrido
+  int:+0.10, sai:+0.10,             // interceptação / saída correta
+  pose:+0.05, posd:+0.05            // posicionamento
 };
 
 const MC_ICONS = {
@@ -4519,7 +4533,7 @@ const MC_ICONS = {
 };
 
 const MC_TIPO_ICONS = {
-  dad:'🧤', dae:'🧤', dbd:'🧤', dbe:'🧤', dc:'🧤', esq:'💥',
+  dad:'🧤', dae:'🧤', dbd:'🧤', dbe:'🧤', dc:'🧤', d1x1:'🥊', esq:'💥',
   gda:'⚽', gfa:'⚽', gpe:'⚽', gfl:'⚽',
   dpc:'🎯', dpe:'❌', dmc:'🎯', dme:'❌',
   int:'🛡️', sai:'🏃', pose:'📍', posd:'📍'
@@ -4536,8 +4550,12 @@ function mcReset() {
   mcLastGolSec = null; mcMaxSemGolSec = 0;
   mcMapMode = 'def';
   mcMomentumOpen = false;
+  mcTimelineOpen = false;
+  mcPosStreak = 0; mcNegStreak = 0; mcMaxPosStreak = 0; mcMaxNegStreak = 0;
+  mcBestNotaSec = 0; mcWorstNotaSec = 0;
   if (mcTimerInterval) { clearInterval(mcTimerInterval); mcTimerInterval = null; }
   if (mcMomentumChart) { mcMomentumChart.destroy(); mcMomentumChart = null; }
+  if (mcTimelineChart) { mcTimelineChart.destroy(); mcTimelineChart = null; }
 }
 mcReset();
 
@@ -4692,14 +4710,23 @@ function mcCalcNota() {
 function mcUpdateNota(key) {
   if (key && MC_NOTA_PESOS[key] !== undefined) {
     mcNotaAtual = Math.max(0, Math.min(10, mcNotaAtual + MC_NOTA_PESOS[key]));
+    const peso = MC_NOTA_PESOS[key];
+    if (peso > 0) {
+      mcPosStreak++; mcNegStreak = 0;
+      if (mcPosStreak > mcMaxPosStreak) mcMaxPosStreak = mcPosStreak;
+    } else if (peso < 0) {
+      mcNegStreak++; mcPosStreak = 0;
+      if (mcNegStreak > mcMaxNegStreak) mcMaxNegStreak = mcNegStreak;
+    }
   } else {
     mcNotaAtual = mcCalcNota();
   }
-  if (mcNotaAtual > mcMaxNota) mcMaxNota = mcNotaAtual;
-  if (mcNotaAtual < mcMinNota) mcMinNota = mcNotaAtual;
+  if (mcNotaAtual > mcMaxNota) { mcMaxNota = mcNotaAtual; mcBestNotaSec = mcSeconds; }
+  if (mcNotaAtual < mcMinNota) { mcMinNota = mcNotaAtual; mcWorstNotaSec = mcSeconds; }
   mcNotaHistory.push({ sec:mcSeconds, nota:mcNotaAtual });
   mcUpdateNotaUI();
   if (mcMomentumOpen) mcRenderMomentum();
+  if (mcTimelineOpen) mcRenderTimeline();
 }
 
 function mcUpdateNotaUI() {
@@ -4917,39 +4944,162 @@ function mcUpdateGkComp(segs) {
 
 // ── Momentum Chart ────────────────────────────────────────────
 function mcToggleMomentum() {
-  mcMomentumOpen=!mcMomentumOpen;
-  const wrap=document.getElementById('mc-momentum-wrap');
-  const tog=document.getElementById('mc-momentum-toggle');
-  if (wrap) wrap.style.display=mcMomentumOpen?'block':'none';
-  if (tog) tog.textContent=mcMomentumOpen?'▲ Ocultar':'▼ Mostrar';
-  if (mcMomentumOpen) mcRenderMomentum();
+  mcToggleTimeline();
 }
 
-function mcRenderMomentum() {
-  const canvas=document.getElementById('mc-momentum-chart');
+function mcToggleTimeline() {
+  mcTimelineOpen=!mcTimelineOpen;
+  const wrap=document.getElementById('mc-timeline-wrap');
+  const tog=document.getElementById('mc-timeline-toggle');
+  if (wrap) wrap.style.display=mcTimelineOpen?'block':'none';
+  if (tog) tog.textContent=mcTimelineOpen?'▲ Ocultar':'▼ Mostrar';
+  if (mcTimelineOpen) mcRenderTimeline();
+}
+
+function mcDetectFases() {
+  const h=mcNotaHistory;
+  if (h.length<4) return [];
+  const phases=[];
+  let runStart=0, runDir=null;
+  const getDir=(a,b)=>{ const d=b-a; return d>0.08?1:d<-0.08?-1:0; };
+  for (let i=1;i<=h.length;i++) {
+    const dir=i<h.length?getDir(h[i-1].nota,h[i]?.nota??h[i-1].nota):0;
+    if (runDir===null){runDir=dir;continue;}
+    const switchDir=(dir!==runDir&&dir!==0)||i===h.length;
+    if (switchDir) {
+      const endIdx=i-1;
+      const totalDelta=h[endIdx].nota-h[runStart].nota;
+      const eventCount=endIdx-runStart;
+      const timeDelta=h[endIdx].sec-h[runStart].sec;
+      if (eventCount>=2&&Math.abs(totalDelta)>=0.35&&timeDelta>=45) {
+        const isPrevQueda=phases.length>0&&phases[phases.length-1].tipo==='queda';
+        let tipo,emoji,label;
+        if (totalDelta>0) {
+          tipo=isPrevQueda?'recuperacao':'alta';
+          emoji=isPrevQueda?'📈':'🔥';
+          label=isPrevQueda?'Recuperação':'Momento de Destaque';
+        } else {
+          tipo='queda'; emoji='⚠'; label='Queda de Rendimento';
+        }
+        phases.push({tipo,emoji,label,startSec:h[runStart].sec,endSec:h[endIdx].sec,startNota:h[runStart].nota,endNota:h[endIdx].nota,delta:totalDelta});
+      }
+      if (i<h.length){runStart=i-1;runDir=dir;}
+    }
+  }
+  return phases;
+}
+
+function mcRenderTimeline() {
+  const canvas=document.getElementById('mc-timeline-chart');
   if (!canvas) return;
-  const data=mcNotaHistory.slice(-30);
-  if (!data.length) return;
+  const data=mcNotaHistory;
+  if (!data.length){return;}
   const labels=data.map(p=>mcFormatTime(p.sec));
   const values=data.map(p=>p.nota);
-  if (mcMomentumChart) { mcMomentumChart.destroy(); mcMomentumChart=null; }
-  mcMomentumChart=new Chart(canvas,{
+  // Point colors: green>=8, blue>=6.5, yellow>=5, red<5
+  const ptColors=values.map(v=>v>=8?'#34D399':v>=6.5?'#3B82F6':v>=5?'#F59E0B':'#EF4444');
+  if (mcTimelineChart){mcTimelineChart.destroy();mcTimelineChart=null;}
+  mcTimelineChart=new Chart(canvas,{
     type:'line',
     data:{labels,datasets:[{
-      label:'Nota',data:values,
-      borderColor:'#3B82F6',backgroundColor:'rgba(59,130,246,.1)',
-      tension:.4,fill:true,pointRadius:3,pointBackgroundColor:'#3B82F6',borderWidth:2
+      label:'Desempenho',data:values,
+      borderColor:'#3B82F6',
+      backgroundColor:(ctx)=>{
+        const g=ctx.chart.ctx.createLinearGradient(0,0,0,180);
+        g.addColorStop(0,'rgba(59,130,246,.25)');g.addColorStop(1,'rgba(59,130,246,.02)');return g;
+      },
+      tension:.4,fill:true,
+      pointRadius:values.map((v,i)=>{
+        // Larger points for best/worst
+        if (i===values.indexOf(Math.max(...values))||i===values.indexOf(Math.min(...values))) return 6;
+        return 3;
+      }),
+      pointBackgroundColor:ptColors,
+      pointBorderColor:ptColors,
+      borderWidth:2
     }]},
     options:{
       responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
+      animation:{duration:300},
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          backgroundColor:'rgba(15,23,42,.95)',
+          titleColor:'#94A3B8',bodyColor:'#F8FAFC',
+          callbacks:{
+            title:items=>'⏱ '+items[0].label,
+            label:item=>'Nota: '+item.raw.toFixed(2)
+          }
+        }
+      },
       scales:{
-        x:{ticks:{color:'#94A3B8',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}},
-        y:{min:0,max:10,ticks:{color:'#94A3B8',font:{size:9}},grid:{color:'rgba(255,255,255,.04)'}}
+        x:{ticks:{color:'#94A3B8',font:{size:9},maxTicksLimit:8},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{min:0,max:10,ticks:{color:'#94A3B8',font:{size:9},stepSize:2},grid:{color:'rgba(255,255,255,.06)'},
+          afterFit:s=>{s.width=28;}}
       }
     }
   });
+  // Render phase bar
+  mcRenderFasesBar();
+  // Render smart log
+  mcRenderSmartLog();
 }
+
+function mcRenderFasesBar() {
+  const el=document.getElementById('mc-fases-bar');
+  if (!el) return;
+  const fases=mcDetectFases();
+  if (!fases.length){el.innerHTML='';return;}
+  const faseColors={alta:'rgba(52,211,153,.15)',queda:'rgba(239,68,68,.12)',recuperacao:'rgba(59,130,246,.15)',estavel:'rgba(148,163,184,.06)'};
+  const faseBorder={alta:'rgba(52,211,153,.5)',queda:'rgba(239,68,68,.4)',recuperacao:'rgba(59,130,246,.4)',estavel:'rgba(148,163,184,.2)'};
+  el.innerHTML=`
+    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">Fases Detectadas</div>
+    <div style="display:flex;flex-direction:column;gap:4px;">
+      ${fases.map(f=>`
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${faseColors[f.tipo]};border:1px solid ${faseBorder[f.tipo]};border-radius:8px;">
+          <span style="font-size:14px;">${f.emoji}</span>
+          <div style="flex:1;">
+            <span style="font-size:11px;font-weight:700;color:var(--text);">${f.label}</span>
+            <span style="font-size:10px;color:var(--muted);margin-left:6px;">${mcFormatTime(f.startSec)} → ${mcFormatTime(f.endSec)}</span>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:${f.delta>0?'#34D399':'#EF4444'};">${f.delta>0?'+':''}${f.delta.toFixed(1)}</span>
+        </div>`).join('')}
+    </div>`;
+}
+
+function mcRenderSmartLog() {
+  const el=document.getElementById('mc-smart-log');
+  if (!el) return;
+  const events=mcLog.filter(e=>e.tipo!=='periodo').slice().reverse();
+  if (!events.length){el.innerHTML='';return;}
+  const fases=mcDetectFases();
+  const typeColors={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#8B5CF6','placar-nos':'#10B981','placar-adv':'#EF4444'};
+  let html='<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">Linha do Tempo</div>';
+  let lastFaseIdx=-1;
+  for (const ev of events) {
+    // Check if a phase starts around this event
+    for (let fi=lastFaseIdx+1;fi<fases.length;fi++) {
+      const f=fases[fi];
+      if (ev.sec>=f.startSec&&ev.sec<=f.endSec&&fi>lastFaseIdx) {
+        lastFaseIdx=fi;
+        const faseColors2={alta:'rgba(52,211,153,.12)',queda:'rgba(239,68,68,.1)',recuperacao:'rgba(59,130,246,.12)'};
+        const faseBorder2={alta:'rgba(52,211,153,.4)',queda:'rgba(239,68,68,.35)',recuperacao:'rgba(59,130,246,.35)'};
+        html+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin:4px 0;background:${faseColors2[f.tipo]||'rgba(148,163,184,.08)'};border-left:2px solid ${faseBorder2[f.tipo]||'var(--border)'};border-radius:0 6px 6px 0;font-size:10px;font-weight:700;color:var(--muted);">${f.emoji} ${f.label} · ${mcFormatTime(f.startSec)}</div>`;
+        break;
+      }
+    }
+    const icon=MC_TIPO_ICONS[ev.key]||MC_ICONS[ev.tipo]||'•';
+    html+=`<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;">
+      <span style="color:var(--muted);font-variant-numeric:tabular-nums;width:38px;flex-shrink:0;font-size:11px;">${ev.time}</span>
+      <span style="font-size:13px;">${icon}</span>
+      <span style="flex:1;color:var(--text);">${ev.label}</span>
+      <span style="width:7px;height:7px;border-radius:50%;background:${typeColors[ev.tipo]||'var(--muted)'};flex-shrink:0;"></span>
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+
+function mcRenderMomentum() { mcRenderTimeline(); }
 
 // ── Placar ao vivo ───────────────────────────────────────────
 function mcAjustarPlacar(team, delta) {
@@ -5199,6 +5349,55 @@ function mcMostrarRelatorioFinal(segs, pId) {
         </div>
       </div>`;
   });
+
+  // ── Resumo da Timeline de Desempenho ──
+  const fases=mcDetectFases();
+  const recentPesos=mcLog.slice(0,5).map(e=>MC_NOTA_PESOS[e.key]||0).reduce((a,b)=>a+b,0);
+  const tendencia=recentPesos>=0.25?{icon:'📈',label:'Crescimento',color:'#34D399'}:recentPesos<=-0.25?{icon:'📉',label:'Queda',color:'#EF4444'}:{icon:'➡',label:'Estável',color:'#94A3B8'};
+  html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📊 Resumo da Partida</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+      <div style="background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:10px;">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">🔥 Melhor Momento</div>
+        <div style="font-size:18px;font-weight:800;color:#34D399;">${mcMaxNota.toFixed(1)}</div>
+        <div style="font-size:10px;color:var(--muted);">⏱ ${mcFormatTime(mcBestNotaSec)}</div>
+      </div>
+      <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:10px;">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">📉 Pior Momento</div>
+        <div style="font-size:18px;font-weight:800;color:#EF4444;">${mcMinNota.toFixed(1)}</div>
+        <div style="font-size:10px;color:var(--muted);">⏱ ${mcFormatTime(mcWorstNotaSec)}</div>
+      </div>
+      <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">✅ Seq. Positiva Máx.</div>
+        <div style="font-size:18px;font-weight:800;color:#3B82F6;">${mcMaxPosStreak}</div>
+        <div style="font-size:10px;color:var(--muted);">ações consecutivas</div>
+      </div>
+      <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:10px;">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">⚠ Seq. Negativa Máx.</div>
+        <div style="font-size:18px;font-weight:800;color:#F59E0B;">${mcMaxNegStreak}</div>
+        <div style="font-size:10px;color:var(--muted);">eventos negativos</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(148,163,184,.06);border:1px solid var(--border);border-radius:10px;margin-bottom:${fases.length?'12px':'0'};">
+      <span style="font-size:20px;">${tendencia.icon}</span>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:${tendencia.color};">Tendência Final: ${tendencia.label}</div>
+        <div style="font-size:10px;color:var(--muted);">Baseado nos últimos eventos da partida</div>
+      </div>
+    </div>
+    ${fases.length?`
+    <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Fases da Partida</div>
+    ${fases.map(f=>{
+      const fc={alta:'rgba(52,211,153,.1)',queda:'rgba(239,68,68,.08)',recuperacao:'rgba(59,130,246,.1)'};
+      const fb={alta:'rgba(52,211,153,.35)',queda:'rgba(239,68,68,.3)',recuperacao:'rgba(59,130,246,.3)'};
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:${fc[f.tipo]||'rgba(148,163,184,.06)'};border:1px solid ${fb[f.tipo]||'var(--border)'};border-radius:7px;margin-bottom:4px;font-size:11px;">
+        <span>${f.emoji}</span>
+        <span style="font-weight:600;flex:1;">${f.label}</span>
+        <span style="color:var(--muted);">${mcFormatTime(f.startSec)} → ${mcFormatTime(f.endSec)}</span>
+        <span style="font-weight:700;color:${f.delta>0?'#34D399':'#EF4444'};">${f.delta>0?'+':''}${f.delta.toFixed(1)}</span>
+      </div>`;
+    }).join('')}`:''}
+  </div>`;
 
   const timelineEvents=mcLog.filter(e=>e.tipo!=='periodo').slice(0,20);
   if (timelineEvents.length) {
