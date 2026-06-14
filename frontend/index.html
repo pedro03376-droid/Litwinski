@@ -2175,7 +2175,15 @@
               Substituir nota automática
               <span style="font-size:11px;color:var(--muted);font-weight:400;">(deixe em branco para usar o cálculo automático)</span>
             </label>
-            <input class="form-input" id="s-nota" type="number" min="0" max="10" step="0.1" placeholder="Ex: 8.5 — sobrepõe o cálculo" oninput="atualizarNotaPreview()">
+            <div style="display:flex;gap:8px;align-items:center;">
+              <input class="form-input" id="s-nota" type="number" min="0" max="10" step="0.1" placeholder="Ex: 8.5 — sobrepõe o cálculo" oninput="atualizarNotaPreview()" style="flex:1;">
+              <button type="button" class="btn btn-ghost btn-sm" onclick="preencherNotaAuto()" title="Preencher com o valor calculado automaticamente" style="white-space:nowrap;color:var(--primary);border-color:rgba(59,130,246,.35);">
+                ⚡ Calcular
+              </button>
+              <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('s-nota').value='';atualizarNotaPreview();" style="white-space:nowrap;color:var(--muted);">
+                Limpar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -2709,6 +2717,17 @@ function renderPartidas() {
 // ═══════════════════════════════════════════════════════════
 // SCOUT
 // ═══════════════════════════════════════════════════════════
+function preencherNotaAuto() {
+  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+  const s = {};
+  fields.forEach(f => { s[f] = document.getElementById('s-'+f)?.value || 0; });
+  const nota = calcPerformanceAuto(s);
+  if (nota === null) { toast('Insira defesas ou gols para calcular a nota', 'error'); return; }
+  document.getElementById('s-nota').value = nota;
+  atualizarNotaPreview();
+  toast(`Nota calculada: ${nota}`, 'success');
+}
+
 function atualizarNotaPreview() {
   const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   const s = {};
