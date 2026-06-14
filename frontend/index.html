@@ -5713,7 +5713,7 @@ function _mcExportarRelatorioPDFImpl() {
   sh('VS. MÉDIA DA TEMPORADA',y-8,[52,211,153]);
   const cmpItems=[
     {l:'Nota Final',cur:nota,avg:seasonNota,fmt:v=>v.toFixed(1)},
-    {l:'Defesas',cur:def,avg:seasonDef,fmt:v=>Math.round(v)},
+    {l:'Defesas',cur:def,avg:seasonDef,fmt:v=>String(Math.round(v))},
     {l:'Taxa Def.',cur:taxaDef!==null?taxaDef*100:null,avg:null,fmt:v=>v.toFixed(0)+'%'},
   ];
   let cy2=y;
@@ -5723,7 +5723,7 @@ function _mcExportarRelatorioPDFImpl() {
     doc.setFontSize(7);doc.setFont('helvetica','normal');sT(148,163,184);doc.text(it.l,rX+3,cy2+4.5);
     const good=it.avg===null||it.cur>=it.avg;
     doc.setFontSize(9);doc.setFont('helvetica','bold');sT(...(good?[52,211,153]:[239,68,68]));
-    doc.text(it.fmt(it.cur),rX+hW-5,cy2+4.5,{align:'right'});
+    doc.text(String(it.fmt(it.cur)),rX+hW-5,cy2+4.5,{align:'right'});
     if(it.avg!==null){doc.setFontSize(6.5);doc.setFont('helvetica','normal');sT(100,116,139);doc.text(`μ ${it.fmt(it.avg)}`,rX+hW-5,cy2+8.5,{align:'right'});}
     const ratio=it.avg?Math.min(1,it.cur/(it.avg*1.4)):0.65;
     sF(30,41,59);rr(rX+2,cy2+7.5,hW-7,2,1);
@@ -5774,7 +5774,7 @@ function _mcExportarRelatorioPDFImpl() {
     recs.forEach((r,i)=>{
       if(y>260){doc.addPage();sF(10,14,26);doc.rect(0,0,W,H,'F');y=15;}
       sF(59,130,246);rr(lX,y,5.5,5.5,1);
-      doc.setFontSize(6.5);doc.setFont('helvetica','bold');sT(255,255,255);doc.text(i+1,lX+2.75,y+4,{align:'center'});
+      doc.setFontSize(6.5);doc.setFont('helvetica','bold');sT(255,255,255);doc.text(String(i+1),lX+2.75,y+4,{align:'center'});
       doc.setFontSize(7.5);doc.setFont('helvetica','normal');sT(200,210,230);
       doc.text(r,lX+8,y+4,{maxWidth:W-lX-8-5});
       y+=8;
