@@ -5541,7 +5541,8 @@ function _pdfBarChart(labels,values,colors) {
 }
 
 function _pdfDonut(distC,distE,taxaDist) {
-  const W=140,H=130,cx=58,cy=60,r=48;
+  // Wide canvas (same aspect as bar chart 260×130) so it displays without distortion
+  const W=260,H=130,cx=75,cy=65,r=52;
   const cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const c=cv.getContext('2d');
   c.fillStyle='#0F172A';c.fillRect(0,0,W,H);
@@ -5557,16 +5558,16 @@ function _pdfDonut(distC,distE,taxaDist) {
   } else {
     c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fillStyle='#1E293B';c.fill();
   }
-  c.beginPath();c.arc(cx,cy,r*.55,0,Math.PI*2);c.fillStyle='#0F172A';c.fill();
-  c.fillStyle='#E2E8F0';c.font='bold 16px Arial';c.textAlign='center';c.textBaseline='middle';
-  c.fillText(taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—',cx,cy-4);
-  c.fillStyle='#64748B';c.font='9px Arial';c.fillText('precisão',cx,cy+11);
-  // Legend
+  c.beginPath();c.arc(cx,cy,r*.56,0,Math.PI*2);c.fillStyle='#0F172A';c.fill();
+  c.fillStyle='#E2E8F0';c.font='bold 18px Arial';c.textAlign='center';c.textBaseline='middle';
+  c.fillText(taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—',cx,cy-5);
+  c.fillStyle='#64748B';c.font='10px Arial';c.fillText('precisão',cx,cy+13);
+  // Legend on right portion of canvas
   [['Certas',distC,'#34D399'],['Erradas',distE,'#EF4444']].forEach(([l,v,col],i)=>{
-    const ly=15+i*26;
-    c.fillStyle=col;c.fillRect(W-42,ly,9,9);
-    c.fillStyle='#94A3B8';c.font='8px Arial';c.textAlign='left';c.fillText(l,W-30,ly+7);
-    c.fillStyle='#E2E8F0';c.font='bold 10px Arial';c.fillText(v,W-42,ly+20);
+    const ly=28+i*38;
+    c.fillStyle=col;c.beginPath();c.arc(162,ly+5,6,0,Math.PI*2);c.fill();
+    c.fillStyle='#94A3B8';c.font='11px Arial';c.textAlign='left';c.fillText(l,174,ly+9);
+    c.fillStyle='#E2E8F0';c.font='bold 20px Arial';c.fillText(String(v),174,ly+30);
   });
   return cv;
 }
@@ -5683,54 +5684,59 @@ function _mcExportarRelatorioPDFImpl() {
   });
   y+=21;
 
-  // Section header helper
-  const sh=(lbl,yy,rgb=[59,130,246])=>{
-    sF(...rgb);doc.rect(15,yy,2.5,4,'F');
+  // Section header helper — xx defaults to left margin, pass rX for right-column headers
+  const sh=(lbl,yy,rgb=[59,130,246],xx=15)=>{
+    sF(...rgb);doc.rect(xx,yy,2.5,4,'F');
     doc.setFontSize(7.5);doc.setFont('helvetica','bold');sT(...rgb);
-    doc.text(lbl,19,yy+3.2);return yy+8;
+    doc.text(lbl,xx+4,yy+3.2);return yy+8;
   };
 
   // ── TIMELINE CHART ─────────────────────────────────────────
   y=sh('EVOLUÇÃO DO DESEMPENHO NA PARTIDA',y);
   const tlCV=_pdfLineChart(mcNotaHistory);
-  if(tlCV){doc.addImage(tlCV.toDataURL('image/png'),'PNG',15,y,W-30,38);y+=41;}
-  else{sF(18,25,42);rr(15,y,W-30,38,3);sT(100,116,139);doc.setFontSize(9);doc.text('Dados de timeline disponíveis ao usar o Match Center ao vivo',W/2,y+20,{align:'center'});y+=41;}
+  if(tlCV){doc.addImage(tlCV.toDataURL('image/png'),'PNG',15,y,W-30,40);y+=44;}
+  else{sF(18,25,42);rr(15,y,W-30,28,3);sT(100,116,139);doc.setFontSize(8.5);doc.text('Dados de timeline disponíveis ao usar o Match Center ao vivo',W/2,y+15,{align:'center'});y+=32;}
 
   // ── DEFESAS + DISTRIBUIÇÃO ─────────────────────────────────
+  // hW = half column width; bar+donut both use 260×130 canvas so display at hW × 44mm (correct 2:1 ratio)
   const hW=(W-35)/2, lX=15, rX=15+hW+5;
+  const chartH=Math.round(hW*130/260); // ≈ 44mm — exact aspect ratio
   y=sh('DEFESAS POR TIPO',y);
+  sh('DISTRIBUIÇÃO',y-8,[245,158,11],rX);
   const defCV=_pdfBarChart(['Alta D','Alta E','1×1','Baixas','Central','Esq.'],[sum('dad'),sum('dae'),sum('d1x1'),sum('dbd')+sum('dbe'),sum('dc'),sum('esq')],['#3B82F6','#6366F1','#EC4899','#10B981','#F59E0B','#EF4444']);
-  if(defCV)doc.addImage(defCV.toDataURL('image/png'),'PNG',lX,y,hW,36);
-  sh('DISTRIBUIÇÃO',y-8,[245,158,11]);
+  if(defCV)doc.addImage(defCV.toDataURL('image/png'),'PNG',lX,y,hW,chartH);
   const dstCV=_pdfDonut(distC,distE,taxaDist);
-  if(dstCV)doc.addImage(dstCV.toDataURL('image/png'),'PNG',rX,y,hW,36);
-  y+=40;
+  if(dstCV)doc.addImage(dstCV.toDataURL('image/png'),'PNG',rX,y,hW,chartH);
+  y+=chartH+5;
 
   // ── HEATMAP + TEMPORADA ────────────────────────────────────
+  // Heatmap canvas 230×148 → display at hW × (hW*148/230) ≈ hW × 56mm
+  const hmH=Math.round(hW*148/230);
   y=sh('MAPA DE CHUTES / DEFESAS',y);
+  sh('VS. MÉDIA DA TEMPORADA',y-8,[52,211,153],rX);
   const hmCV=_pdfHeatmap([[sum('dae'),0,sum('dad')],[sum('dc'),sum('esq'),sum('dc')],[sum('dbe'),0,sum('dbd')]],def,gol);
-  if(hmCV)doc.addImage(hmCV.toDataURL('image/png'),'PNG',lX,y,hW+4,40);
-  sh('VS. MÉDIA DA TEMPORADA',y-8,[52,211,153]);
+  if(hmCV)doc.addImage(hmCV.toDataURL('image/png'),'PNG',lX,y,hW,hmH);
   const cmpItems=[
     {l:'Nota Final',cur:nota,avg:seasonNota,fmt:v=>v.toFixed(1)},
     {l:'Defesas',cur:def,avg:seasonDef,fmt:v=>String(Math.round(v))},
     {l:'Taxa Def.',cur:taxaDef!==null?taxaDef*100:null,avg:null,fmt:v=>v.toFixed(0)+'%'},
+    {l:'Interceptações',cur:sum('int'),avg:null,fmt:v=>String(Math.round(v))},
   ];
   let cy2=y;
   cmpItems.forEach(it=>{
     if(it.cur===null)return;
-    sF(18,25,42);rr(rX,cy2,hW-2,11,2);
-    doc.setFontSize(7);doc.setFont('helvetica','normal');sT(148,163,184);doc.text(it.l,rX+3,cy2+4.5);
+    sF(18,25,42);rr(rX,cy2,hW-2,13,2);
+    doc.setFontSize(7);doc.setFont('helvetica','normal');sT(148,163,184);doc.text(it.l,rX+3,cy2+5.5);
     const good=it.avg===null||it.cur>=it.avg;
-    doc.setFontSize(9);doc.setFont('helvetica','bold');sT(...(good?[52,211,153]:[239,68,68]));
-    doc.text(String(it.fmt(it.cur)),rX+hW-5,cy2+4.5,{align:'right'});
-    if(it.avg!==null){doc.setFontSize(6.5);doc.setFont('helvetica','normal');sT(100,116,139);doc.text(`μ ${it.fmt(it.avg)}`,rX+hW-5,cy2+8.5,{align:'right'});}
+    doc.setFontSize(10);doc.setFont('helvetica','bold');sT(...(good?[52,211,153]:[239,68,68]));
+    doc.text(String(it.fmt(it.cur)),rX+hW-5,cy2+5.5,{align:'right'});
+    if(it.avg!==null){doc.setFontSize(6.5);doc.setFont('helvetica','normal');sT(100,116,139);doc.text(`μ ${it.fmt(it.avg)}`,rX+hW-5,cy2+10,{align:'right'});}
     const ratio=it.avg?Math.min(1,it.cur/(it.avg*1.4)):0.65;
-    sF(30,41,59);rr(rX+2,cy2+7.5,hW-7,2,1);
-    sF(...(good?[52,211,153]:[239,68,68]));rr(rX+2,cy2+7.5,Math.max(2,(hW-7)*ratio),2,1);
-    cy2+=14;
+    sF(30,41,59);rr(rX+2,cy2+9,hW-7,2.5,1);
+    sF(...(good?[52,211,153]:[239,68,68]));rr(rX+2,cy2+9,Math.max(2,(hW-7)*ratio),2.5,1);
+    cy2+=16;
   });
-  y+=44;
+  y=Math.max(y+hmH, cy2)+6;
 
   // Check page space
   if(y>200){doc.addPage();sF(10,14,26);doc.rect(0,0,W,H,'F');y=15;}
