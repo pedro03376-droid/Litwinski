@@ -471,16 +471,20 @@
       width: 100%;
       max-width: 560px;
       max-height: 90vh;
-      overflow-y: auto;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
       box-shadow: 0 25px 60px rgba(0,0,0,.5);
       animation: pageIn .22s ease;
     }
+
     .modal-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 22px 28px 18px;
       border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
     }
     .modal-title { font-size: 16px; font-weight: 700; letter-spacing: -.2px; }
     .modal-close {
@@ -494,13 +498,14 @@
       transition: all .18s;
     }
     .modal-close:hover { color: var(--text); background: rgba(255,255,255,.1); border-color: var(--border-h); }
-    .modal-body { padding: 24px 28px; }
+    .modal-body { padding: 24px 28px; overflow-y: auto; flex: 1; min-height: 0; }
     .modal-footer {
       display: flex;
       justify-content: flex-end;
       gap: 10px;
       padding: 16px 28px;
       border-top: 1px solid var(--border);
+      flex-shrink: 0;
     }
 
     /* ════════════════════════════════════════════════════════
@@ -2145,6 +2150,7 @@
           <div class="form-group"><label class="form-label">Defesas Baixas Dir.</label><input class="form-input" id="s-dbd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Defesas Baixas Esq.</label><input class="form-input" id="s-dbe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Defesa Central</label><input class="form-input" id="s-dc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Defesa 1×1</label><input class="form-input" id="s-d1x1" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0"></div>
         </div>
       </div>
@@ -2407,7 +2413,7 @@ function switchTab(btn, tabId) {
 // PERFORMANCE CALC
 // ═══════════════════════════════════════════════════════════
 function calcPerformanceAuto(scout) {
-  const totalDef = (+scout.dad||0) + (+scout.dae||0) + (+scout.dbd||0) + (+scout.dbe||0) + (+scout.dc||0);
+  const totalDef = (+scout.dad||0) + (+scout.dae||0) + (+scout.dbd||0) + (+scout.dbe||0) + (+scout.dc||0) + (+scout.d1x1||0);
   const gols     = (+scout.gda||0) + (+scout.gfa||0) + (+scout.gpe||0) + (+scout.gfl||0);
   if (totalDef + gols === 0) return null;
   // Base: taxa de defesa → até 8 pontos
@@ -2725,7 +2731,7 @@ function renderPartidas() {
 // SCOUT
 // ═══════════════════════════════════════════════════════════
 function preencherNotaAuto() {
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+  const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   const s = {};
   fields.forEach(f => { s[f] = document.getElementById('s-'+f)?.value || 0; });
   const nota = calcPerformanceAuto(s);
@@ -2736,7 +2742,7 @@ function preencherNotaAuto() {
 }
 
 function atualizarNotaPreview() {
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+  const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   const s = {};
   fields.forEach(f => { s[f] = document.getElementById('s-'+f)?.value || 0; });
   const notaManual = document.getElementById('s-nota')?.value;
@@ -2763,7 +2769,7 @@ function salvarScout() {
   const goalkeeperId = document.getElementById('scout-goleira').value;
   if (!goalkeeperId) { toast('Selecione a goleira', 'error'); return; }
   const scouts = DB.scouts;
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
+  const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
   const obj = { id: editingId.scout || uid(), goalkeeperId,
     partidaId: document.getElementById('scout-partida').value };
   fields.forEach(f => { obj[f] = document.getElementById('s-'+f)?.value || 0; });
@@ -2792,7 +2798,7 @@ function editarScout(id) {
   document.getElementById('modal-scout-title').textContent = 'Editar Scout';
   document.getElementById('scout-goleira').value = s.goalkeeperId || '';
   document.getElementById('scout-partida').value = s.partidaId || '';
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
+  const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
   fields.forEach(f => { const el = document.getElementById('s-'+f); if(el) el.value = s[f] || 0; });
   openModal('modal-scout');
   atualizarNotaPreview();
@@ -3363,7 +3369,7 @@ document.querySelector('[onclick="openModal(\'modal-scout\')"]')?.addEventListen
   document.getElementById('modal-scout-title').textContent = 'Novo Scout';
   document.getElementById('scout-goleira').value='';
   document.getElementById('scout-partida').value='';
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+  const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   fields.forEach(f => { const el=document.getElementById('s-'+f); if(el) el.value=0; });
   document.getElementById('s-nota').value='';
   atualizarNotaPreview();
@@ -3636,7 +3642,7 @@ function renderPerfil() {
   // Stats acumulados
   const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
   const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
-  const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc');
+  const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1');
   const totalGols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
   const distAcc = (sum('dpc')+sum('dmc')) / Math.max(sum('dpc')+sum('dmc')+sum('dpe')+sum('dme'), 1);
   document.getElementById('perfil-stats').innerHTML = `
@@ -3953,7 +3959,7 @@ function exportarAnalisePDF() {
   const scouts = gkId ? DB.scouts.filter(s=>s.goalkeeperId===gkId) : [];
   const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
   const avgNota = gkId ? avgPerformance(gkId) : null;
-  const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc');
+  const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1');
   const totalGols= sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
   const distCertas=sum('dpc')+sum('dmc'); const distTotal=distCertas+sum('dpe')+sum('dme');
   const taxaDef = (totalDef+totalGols)>0 ? totalDef/(totalDef+totalGols) : null;
@@ -4003,7 +4009,7 @@ function renderComparacao() {
     const sc = DB.scouts.filter(s=>s.goalkeeperId===gkId);
     if (!sc.length) return null;
     const sum = k => sc.reduce((a,s)=>a+(+s[k]||0),0);
-    const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc');
+    const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1');
     const totalGols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
     const distCerto = sum('dpc')+sum('dmc');
     const distTotal = distCerto+sum('dpe')+sum('dme');
@@ -4221,7 +4227,7 @@ function renderHeatmap() {
   renderDistribChart(scouts);
 
   const stats = [
-    ['Chutes Recebidos', sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('gda')+sum('gfa')+sum('gpe')+sum('gfl')],
+    ['Chutes Recebidos', sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('gda')+sum('gfa')+sum('gpe')+sum('gfl')],
     ['Defesas Altas', sum('dad')+sum('dae')],
     ['Defesas Baixas', sum('dbd')+sum('dbe')],
     ['Defesa Central', sum('dc')],
@@ -4471,7 +4477,7 @@ function pdfCompeticao() {
 // ═══════════════════════════════════════════════════════════
 // MATCH CENTER — Central de Análise Profissional
 // ═══════════════════════════════════════════════════════════
-const MC_FIELDS = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+const MC_FIELDS = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
 let mcData = {};
 let mcLog = [];
 let mcTimerInterval = null;
@@ -4627,7 +4633,7 @@ function mcDesfazer() {
 }
 
 function mcUpdateCounters() {
-  const def=(mcData.dad||0)+(mcData.dae||0)+(mcData.dbd||0)+(mcData.dbe||0)+(mcData.dc||0)+(mcData.esq||0);
+  const def=(mcData.dad||0)+(mcData.dae||0)+(mcData.dbd||0)+(mcData.dbe||0)+(mcData.dc||0)+(mcData.d1x1||0)+(mcData.esq||0);
   const gol=(mcData.gda||0)+(mcData.gfa||0)+(mcData.gpe||0)+(mcData.gfl||0);
   const dist=(mcData.dpc||0)+(mcData.dpe||0)+(mcData.dmc||0)+(mcData.dme||0);
   const int_=mcData.int||0;
@@ -4826,7 +4832,7 @@ function mcUpdateEventMap() {
 function mcUpdatePeriodStats() {
   const el=document.getElementById('mc-period-stats');
   if (!el) return;
-  const curDef=(mcData.dad||0)+(mcData.dae||0)+(mcData.dbd||0)+(mcData.dbe||0)+(mcData.dc||0)+(mcData.esq||0);
+  const curDef=(mcData.dad||0)+(mcData.dae||0)+(mcData.dbd||0)+(mcData.dbe||0)+(mcData.dc||0)+(mcData.d1x1||0)+(mcData.esq||0);
   const curGol=(mcData.gda||0)+(mcData.gfa||0)+(mcData.gpe||0)+(mcData.gfl||0);
   const curInt=mcData.int||0;
   const curDistC=(mcData.dpc||0)+(mcData.dmc||0);
@@ -5115,7 +5121,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
     const gk=DB.goleiras.find(g=>g.id===gkId);
     const gkSegs=segs.filter(s=>s.gkId===gkId);
     const sum=f=>gkSegs.reduce((a,s)=>a+(s.data[f]||0),0);
-    const def=sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('esq');
+    const def=sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
     const gol=sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
     const distC=sum('dpc')+sum('dmc'), distE=sum('dpe')+sum('dme');
     const distT=distC+distE;
@@ -5231,7 +5237,7 @@ function mcExportarRelatorioPDF() {
     const gk=DB.goleiras.find(g=>g.id===gkId);
     const gkSegs=segs.filter(s=>s.gkId===gkId);
     const sum=f=>gkSegs.reduce((a,s)=>a+(s.data[f]||0),0);
-    const def=sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('esq');
+    const def=sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
     const gol=sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
     const distC=sum('dpc')+sum('dmc'), distE=sum('dpe')+sum('dme');
     const ap=(distC+distE)>0?Math.round(distC/(distC+distE)*100):0;
