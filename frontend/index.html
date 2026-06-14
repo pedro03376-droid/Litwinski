@@ -2397,6 +2397,11 @@ function openModal(id) {
 }
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
+  // Restore "Salvar e Fechar" button if it was hidden by historical report view
+  if (id === 'modal-mc-relatorio') {
+    const saveBtn = document.querySelector('#modal-mc-relatorio [onclick="mcSalvarEFechar()"]');
+    if (saveBtn) saveBtn.style.display = '';
+  }
 }
 document.querySelectorAll('.modal-backdrop').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
@@ -2723,12 +2728,53 @@ function renderPartidas() {
       <td>${totalDef || '—'}</td>
       <td>
         <div class="td-actions">
+          <button class="btn btn-ghost btn-sm" onclick="verRelatorioPartida('${p.id}')">📊 Relatório</button>
           <button class="btn btn-ghost btn-sm" onclick="editarPartida('${p.id}')">Editar</button>
           <button class="btn btn-danger btn-sm" onclick="excluirPartida('${p.id}')">Excluir</button>
         </div>
       </td>
     </tr>`;
   }).join('');
+}
+
+function verRelatorioPartida(pId) {
+  const partida = DB.partidas.find(p => p.id === pId);
+  if (!partida) return;
+  const scouts = DB.scouts.filter(s => s.partidaId === pId);
+  if (!scouts.length) { toast('Nenhum scout registrado para esta partida', 'info'); return; }
+
+  // Build segments from saved scouts
+  const segs = scouts.map(s => ({
+    gkId: s.goalkeeperId,
+    periodoLabel: s.periodo || '1T',
+    data: Object.fromEntries(MC_FIELDS.map(f => [f, +s[f]||0]))
+  }));
+
+  // Set MC globals from historical data
+  const notaVals = scouts.map(s => parseFloat(s.nota) || calcPerformanceAuto(s) || 7.0);
+  mcNotaAtual    = notaVals[notaVals.length - 1] ?? 7.0;
+  mcMaxNota      = Math.max(...notaVals);
+  mcMinNota      = Math.min(...notaVals);
+  mcBestNotaSec  = 0; mcWorstNotaSec = 0;
+  mcMaxStreak    = 0; mcMaxPosStreak = 0; mcMaxNegStreak = 0;
+  mcNotaHistory  = []; // no live history for past matches
+  mcSeconds      = 0;
+
+  // Hide "Salvar e Fechar" (only relevant for live MC session)
+  const saveBtn = document.querySelector('#modal-mc-relatorio [onclick="mcSalvarEFechar()"]');
+  if (saveBtn) saveBtn.style.display = 'none';
+
+  mcMostrarRelatorioFinal(segs, pId);
+
+  // Override subtitle to clarify it's historical
+  const subtitleEl = document.getElementById('mc-rel-subtitle');
+  if (subtitleEl) {
+    const parts = [];
+    if (partida.adversario) parts.push(partida.adversario);
+    if (partida.data) parts.push(formatDate(partida.data));
+    parts.push(`${scouts.length} período(s) · Dados históricos`);
+    subtitleEl.textContent = parts.join(' · ');
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
