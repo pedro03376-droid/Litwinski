@@ -5527,14 +5527,13 @@ function _pdfBarChart(labels,values,colors) {
   const bw=cW/values.length;
   for(let i=0;i<=3;i++){
     const gy=pad.t+cH-cH*i/3;
-    c.strokeStyle='rgba(255,255,255,.06)';c.lineWidth=0.5;
+    c.strokeStyle='rgba(255,255,255,0.06)';c.lineWidth=0.5;
     c.beginPath();c.moveTo(pad.l,gy);c.lineTo(W-pad.r,gy);c.stroke();
   }
   values.forEach((v,i)=>{
     const bh=(v/maxV)*cH, bx=pad.l+i*bw+bw*.15, bW2=bw*.7, by=pad.t+cH-bh;
-    const gr=c.createLinearGradient(0,by,0,by+bh);
-    gr.addColorStop(0,colors[i]||'#3B82F6');gr.addColorStop(1,(colors[i]||'#3B82F6')+'60');
-    c.fillStyle=gr;c.fillRect(bx,by,bW2,bh);
+    c.fillStyle=colors[i]||'#3B82F6';
+    c.fillRect(bx,by,bW2,bh);
     if(v>0){c.fillStyle='#E2E8F0';c.font='bold 10px Arial';c.textAlign='center';c.fillText(v,bx+bW2/2,by-3);}
     c.fillStyle='#64748B';c.font='8px Arial';c.fillText(labels[i],bx+bW2/2,H-4);
   });
@@ -5548,11 +5547,13 @@ function _pdfDonut(distC,distE,taxaDist) {
   c.fillStyle='#0F172A';c.fillRect(0,0,W,H);
   const total=distC+distE;
   if(total>0){
-    [[distC,'#34D399'],[distE,'#EF4444']].reduce((ang,[v,col])=>{
-      const sw=(v/total)*Math.PI*2;
+    const slices=[[distC,'#34D399'],[distE,'#EF4444']];
+    let ang=-Math.PI/2;
+    slices.forEach(function(sl){
+      const sw=(sl[0]/total)*Math.PI*2;
       c.beginPath();c.moveTo(cx,cy);c.arc(cx,cy,r,ang,ang+sw);c.closePath();
-      c.fillStyle=col;c.fill();return ang+sw;
-    },-Math.PI/2);
+      c.fillStyle=sl[1];c.fill();ang+=sw;
+    });
   } else {
     c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fillStyle='#1E293B';c.fill();
   }
@@ -5634,7 +5635,7 @@ function _mcExportarRelatorioPDFImpl() {
   const sF=(r,g,b)=>doc.setFillColor(r,g,b);
   const sT=(r,g,b)=>doc.setTextColor(r,g,b);
   const sD=(r,g,b)=>doc.setDrawColor(r,g,b);
-  const rr=(x,y,w,h,rd,style)=>doc.roundedRect(x,y,w,h,rd,rd,style||'F');
+  const rr=(x,y,w,h,rd,style)=>doc.rect(x,y,w,h,style||'F');
 
   // ── COVER ──────────────────────────────────────────────────
   sF(10,14,26);doc.rect(0,0,W,H,'F');
