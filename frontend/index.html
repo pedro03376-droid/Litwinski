@@ -512,6 +512,8 @@
        FORMS
     ════════════════════════════════════════════════════════ */
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .scout-tabs .form-grid { gap: 8px; }
+    .scout-tabs .form-group { margin-bottom: 0; }
     .form-group { display: flex; flex-direction: column; gap: 6px; }
     .form-group.full { grid-column: 1 / -1; }
     .form-label { font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .2px; }
@@ -2117,13 +2119,13 @@
 
 <!-- ══ MODAL: SCOUT ══ -->
 <div class="modal-backdrop" id="modal-scout">
-  <div class="modal" style="max-width:680px;">
+  <div class="modal" style="max-width:560px;">
     <div class="modal-header">
       <span class="modal-title" id="modal-scout-title">Novo Scout</span>
       <button class="modal-close" onclick="closeModal('modal-scout')">&times;</button>
     </div>
-    <div class="modal-body">
-      <div class="form-grid" style="margin-bottom:16px;">
+    <div class="modal-body" style="padding:16px 20px;">
+      <div class="form-grid" style="margin-bottom:12px;gap:10px;">
         <div class="form-group">
           <label class="form-label">Goleira *</label>
           <select class="form-select" id="scout-goleira">
@@ -2143,7 +2145,7 @@
         <button class="tab-btn" onclick="switchTab(this,'tab-distrib')">Distribuição</button>
         <button class="tab-btn" onclick="switchTab(this,'tab-outros')">Outros</button>
       </div>
-      <div id="tab-defesas" class="tab-content active">
+      <div id="tab-defesas" class="tab-content active scout-tabs">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Defesas Altas Dir.</label><input class="form-input" id="s-dad" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Defesas Altas Esq.</label><input class="form-input" id="s-dae" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
@@ -2154,7 +2156,7 @@
           <div class="form-group"><label class="form-label">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0"></div>
         </div>
       </div>
-      <div id="tab-gols" class="tab-content">
+      <div id="tab-gols" class="tab-content scout-tabs">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Gols Dentro da Área</label><input class="form-input" id="s-gda" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Gols Fora da Área</label><input class="form-input" id="s-gfa" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
@@ -2169,7 +2171,7 @@
           <div class="form-group"><label class="form-label">Segunda Trave</label><input class="form-input" id="s-tchst" type="number" min="0" value="0"></div>
         </div>
       </div>
-      <div id="tab-distrib" class="tab-content">
+      <div id="tab-distrib" class="tab-content scout-tabs">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Distribuição Pé Certo</label><input class="form-input" id="s-dpc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Distribuição Pé Errado</label><input class="form-input" id="s-dpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
@@ -2177,7 +2179,7 @@
           <div class="form-group"><label class="form-label">Distribuição Mão Errada</label><input class="form-input" id="s-dme" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
-      <div id="tab-outros" class="tab-content">
+      <div id="tab-outros" class="tab-content scout-tabs">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Interceptações</label><input class="form-input" id="s-int" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Posicionamento Esq.</label><input class="form-input" id="s-pose" type="number" min="0" value="0"></div>
