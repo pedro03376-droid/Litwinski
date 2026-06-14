@@ -5605,6 +5605,9 @@ function _pdfHeatmap(data,totalDef,totalGol) {
 
 // ── PDF Profissional ─────────────────────────────────────────
 function mcExportarRelatorioPDF() {
+  try { _mcExportarRelatorioPDFImpl(); } catch(e) { console.error('PDF error:',e); toast('Erro ao gerar PDF: '+e.message,'error'); }
+}
+function _mcExportarRelatorioPDFImpl() {
   const { jsPDF }=window.jspdf;
   const segs=mcCurrentReportSegs||mcPendingSegmentos||[];
   if(!segs.length){toast('Nenhum dado para exportar','error');return;}
