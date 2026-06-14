@@ -4548,6 +4548,7 @@ let mcMaxSemGolSec = 0;
 let mcMapMode = 'def';
 let mcMomentumChart = null;
 let mcMomentumOpen = false;
+let mcCurrentReportSegs = null;
 // Timeline de Desempenho
 let mcTimelineChart = null;
 let mcTimelineOpen = false;
@@ -5305,6 +5306,7 @@ function mcSalvarEFechar() {
 
 // ── Relatório Pós-Jogo ───────────────────────────────────────
 function mcMostrarRelatorioFinal(segs, pId) {
+  mcCurrentReportSegs = segs;
   const partida=DB.partidas.find(p=>p.id===pId);
   const gkIds=[...new Set(segs.map(s=>s.gkId))];
   const subtitleParts=[];
@@ -5466,53 +5468,364 @@ function mcMostrarRelatorioFinal(segs, pId) {
   openModal('modal-mc-relatorio');
 }
 
+// ── PDF canvas helpers ───────────────────────────────────────
+function _pdfLineChart(history) {
+  if (!history||history.length<2) return null;
+  const W=540,H=140,pad={t:22,r:16,b:28,l:44};
+  const cW=W-pad.l-pad.r, cH=H-pad.t-pad.b;
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const c=cv.getContext('2d');
+  c.fillStyle='#0F172A'; c.fillRect(0,0,W,H);
+  const notaVals=history.map(p=>p.nota);
+  const minN=Math.max(0,Math.min(...notaVals)-0.5), maxN=Math.min(10,Math.max(...notaVals)+0.5);
+  const rng=maxN-minN||1, maxSec=history[history.length-1].sec||1;
+  const tx=s=>pad.l+(s/maxSec)*cW, ty=n=>pad.t+cH-((n-minN)/rng)*cH;
+  // Grid
+  for(let i=0;i<=4;i++){
+    const n=minN+rng*i/4, gy=ty(n);
+    c.strokeStyle='rgba(255,255,255,.07)'; c.lineWidth=0.8;
+    c.beginPath();c.moveTo(pad.l,gy);c.lineTo(W-pad.r,gy);c.stroke();
+    c.fillStyle='#64748B';c.font='11px Arial';c.textAlign='right';
+    c.fillText(n.toFixed(1),pad.l-4,gy+4);
+  }
+  for(let i=0;i<=6;i++){
+    const sec=maxSec*i/6, lx=tx(sec);
+    c.strokeStyle='rgba(255,255,255,.04)';c.lineWidth=0.5;
+    c.beginPath();c.moveTo(lx,pad.t);c.lineTo(lx,pad.t+cH);c.stroke();
+    const m=Math.floor(sec/60),s=Math.floor(sec%60);
+    c.fillStyle='#64748B';c.font='10px Arial';c.textAlign='center';
+    c.fillText(`${m}:${String(s).padStart(2,'0')}`,lx,H-3);
+  }
+  // Area fill
+  const g=c.createLinearGradient(0,pad.t,0,pad.t+cH);
+  g.addColorStop(0,'rgba(59,130,246,.35)');g.addColorStop(1,'rgba(59,130,246,.02)');
+  c.beginPath();c.moveTo(tx(history[0].sec),ty(history[0].nota));
+  history.forEach(p=>c.lineTo(tx(p.sec),ty(p.nota)));
+  c.lineTo(tx(history[history.length-1].sec),pad.t+cH);c.lineTo(tx(history[0].sec),pad.t+cH);
+  c.closePath();c.fillStyle=g;c.fill();
+  // Line
+  c.beginPath();history.forEach((p,i)=>i===0?c.moveTo(tx(p.sec),ty(p.nota)):c.lineTo(tx(p.sec),ty(p.nota)));
+  c.strokeStyle='#3B82F6';c.lineWidth=2.5;c.lineJoin='round';c.stroke();
+  // Best / worst markers
+  const maxP=history.reduce((a,b)=>b.nota>a.nota?b:a);
+  const minP=history.reduce((a,b)=>b.nota<a.nota?b:a);
+  [[maxP,'#34D399',true],[minP,'#EF4444',false]].forEach(([p,col,isMax])=>{
+    c.beginPath();c.arc(tx(p.sec),ty(p.nota),5,0,Math.PI*2);c.fillStyle=col;c.fill();
+    c.fillStyle=col;c.font='bold 11px Arial';c.textAlign='center';
+    c.fillText(`${isMax?'▲':'▼'} ${p.nota.toFixed(1)}`,tx(p.sec),ty(p.nota)+(isMax?-9:17));
+  });
+  return cv;
+}
+
+function _pdfBarChart(labels,values,colors) {
+  const W=260,H=130,pad={t:14,r:8,b:24,l:8};
+  const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const c=cv.getContext('2d');
+  c.fillStyle='#0F172A';c.fillRect(0,0,W,H);
+  const maxV=Math.max(...values,1);
+  const bw=cW/values.length;
+  for(let i=0;i<=3;i++){
+    const gy=pad.t+cH-cH*i/3;
+    c.strokeStyle='rgba(255,255,255,.06)';c.lineWidth=0.5;
+    c.beginPath();c.moveTo(pad.l,gy);c.lineTo(W-pad.r,gy);c.stroke();
+  }
+  values.forEach((v,i)=>{
+    const bh=(v/maxV)*cH, bx=pad.l+i*bw+bw*.15, bW2=bw*.7, by=pad.t+cH-bh;
+    const gr=c.createLinearGradient(0,by,0,by+bh);
+    gr.addColorStop(0,colors[i]||'#3B82F6');gr.addColorStop(1,(colors[i]||'#3B82F6')+'60');
+    c.fillStyle=gr;c.fillRect(bx,by,bW2,bh);
+    if(v>0){c.fillStyle='#E2E8F0';c.font='bold 10px Arial';c.textAlign='center';c.fillText(v,bx+bW2/2,by-3);}
+    c.fillStyle='#64748B';c.font='8px Arial';c.fillText(labels[i],bx+bW2/2,H-4);
+  });
+  return cv;
+}
+
+function _pdfDonut(distC,distE,taxaDist) {
+  const W=140,H=130,cx=58,cy=60,r=48;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const c=cv.getContext('2d');
+  c.fillStyle='#0F172A';c.fillRect(0,0,W,H);
+  const total=distC+distE;
+  if(total>0){
+    [[distC,'#34D399'],[distE,'#EF4444']].reduce((ang,[v,col])=>{
+      const sw=(v/total)*Math.PI*2;
+      c.beginPath();c.moveTo(cx,cy);c.arc(cx,cy,r,ang,ang+sw);c.closePath();
+      c.fillStyle=col;c.fill();return ang+sw;
+    },-Math.PI/2);
+  } else {
+    c.beginPath();c.arc(cx,cy,r,0,Math.PI*2);c.fillStyle='#1E293B';c.fill();
+  }
+  c.beginPath();c.arc(cx,cy,r*.55,0,Math.PI*2);c.fillStyle='#0F172A';c.fill();
+  c.fillStyle='#E2E8F0';c.font='bold 16px Arial';c.textAlign='center';c.textBaseline='middle';
+  c.fillText(taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—',cx,cy-4);
+  c.fillStyle='#64748B';c.font='9px Arial';c.fillText('precisão',cx,cy+11);
+  // Legend
+  [['Certas',distC,'#34D399'],['Erradas',distE,'#EF4444']].forEach(([l,v,col],i)=>{
+    const ly=15+i*26;
+    c.fillStyle=col;c.fillRect(W-42,ly,9,9);
+    c.fillStyle='#94A3B8';c.font='8px Arial';c.textAlign='left';c.fillText(l,W-30,ly+7);
+    c.fillStyle='#E2E8F0';c.font='bold 10px Arial';c.fillText(v,W-42,ly+20);
+  });
+  return cv;
+}
+
+function _pdfHeatmap(data,totalDef,totalGol) {
+  const W=230,H=148,ox=10,oy=18,fw=172,fh=108;
+  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
+  const c=cv.getContext('2d');
+  c.fillStyle='#0A0E1A';c.fillRect(0,0,W,H);
+  // Field bg
+  c.fillStyle='#111827';c.fillRect(ox,oy,fw,fh);
+  const cw=fw/3,ch=fh/3;
+  const flat=data.flat(),maxV=Math.max(...flat,1);
+  data.forEach((row,ri)=>row.forEach((v,ci)=>{
+    const bx=ox+ci*cw,by=oy+ri*ch,int2=v/maxV;
+    c.fillStyle=`rgba(${Math.round(int2*220)},${30},${Math.round((1-int2)*220)},${.15+int2*.65})`;
+    c.fillRect(bx+1,by+1,cw-2,ch-2);
+    if(v>0){c.fillStyle='#F1F5F9';c.font=`bold ${v>9?14:18}px Arial`;c.textAlign='center';c.textBaseline='middle';c.fillText(v,bx+cw/2,by+ch/2);}
+  }));
+  // Grid
+  c.strokeStyle='rgba(255,255,255,.12)';c.lineWidth=0.8;
+  for(let i=1;i<3;i++){
+    c.beginPath();c.moveTo(ox+i*cw,oy);c.lineTo(ox+i*cw,oy+fh);c.stroke();
+    c.beginPath();c.moveTo(ox,oy+i*ch);c.lineTo(ox+fw,oy+i*ch);c.stroke();
+  }
+  c.strokeStyle='#2D3748';c.lineWidth=1.5;c.strokeRect(ox,oy,fw,fh);
+  c.fillStyle='#64748B';c.font='9px Arial';c.textBaseline='top';
+  c.textAlign='left';c.fillText('Esq.',ox,4);c.textAlign='right';c.fillText('Dir.',ox+fw,4);
+  // Right legend
+  const lx=ox+fw+8;
+  c.fillStyle='#64748B';c.font='bold 8px Arial';c.textAlign='left';c.fillText('RESUMO',lx,oy+2);
+  [[`Def: ${totalDef}`,'#3B82F6'],[`Gols: ${totalGol}`,'#EF4444'],[`Taxa: ${totalDef+totalGol>0?(totalDef/(totalDef+totalGol)*100).toFixed(0)+'%':'—'}`,'#34D399']].forEach(([t,col],i)=>{
+    c.fillStyle=col;c.font='9px Arial';c.fillText(t,lx,oy+16+i*14);
+  });
+  return cv;
+}
+
+// ── PDF Profissional ─────────────────────────────────────────
 function mcExportarRelatorioPDF() {
   const { jsPDF }=window.jspdf;
+  const segs=mcCurrentReportSegs||mcPendingSegmentos||[];
+  if(!segs.length){toast('Nenhum dado para exportar','error');return;}
+  const partida=DB.partidas.find(p=>p.id===(mcPendingPId||segs[0]?.partidaId));
+  const gkId=[...new Set(segs.map(s=>s.gkId))][0];
+  const gk=DB.goleiras.find(g=>g.id===gkId);
+  const gkSegs=segs.filter(s=>s.gkId===gkId);
+  const sum=f=>gkSegs.reduce((a,s)=>a+(+s.data[f]||0),0);
+  const def=sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
+  const gol=sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+  const distC=sum('dpc')+sum('dmc'), distE=sum('dpe')+sum('dme');
+  const taxaDef=(def+gol)>0?def/(def+gol):null;
+  const taxaDist=(distC+distE)>0?distC/(distC+distE):null;
+  const nota=mcNotaAtual;
+  const nivel=nota>=9?'ELITE':nota>=7.5?'DESTAQUE':nota>=6?'COMPETITIVA':nota>=4.5?'EM DESENVOLVIMENTO':'NECESSITA EVOLUÇÃO';
+  const nRGB=nota>=9?[52,211,153]:nota>=7.5?[59,130,246]:nota>=6?[245,158,11]:nota>=4.5?[148,163,184]:[239,68,68];
+  // Season comparison
+  const allSc=DB.scouts.filter(s=>s.goalkeeperId===gkId);
+  const seasonNota=allSc.length?allSc.reduce((a,s)=>a+(parseFloat(s.nota)||calcPerformanceAuto(s)||7),0)/allSc.length:null;
+  const seasonDef=allSc.length?allSc.reduce((a,s)=>a+(+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0)+(+s.d1x1||0),0)/allSc.length:null;
+
   const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-  doc.setFillColor(15,23,42); doc.rect(0,0,210,297,'F');
-  doc.setTextColor(248,250,252);
-  doc.setFontSize(18); doc.setFont('helvetica','bold');
-  doc.text('GK Hub — Relatório Pós-Jogo',15,20);
-  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(148,163,184);
-  const subtEl=document.getElementById('mc-rel-subtitle');
-  doc.text(subtEl?.textContent||'',15,28);
-  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`,15,34);
-  const segs=mcPendingSegmentos||[];
-  const gkIds=[...new Set(segs.map(s=>s.gkId))];
-  let yPos=44;
-  gkIds.forEach(gkId=>{
-    const gk=DB.goleiras.find(g=>g.id===gkId);
-    const gkSegs=segs.filter(s=>s.gkId===gkId);
-    const sum=f=>gkSegs.reduce((a,s)=>a+(s.data[f]||0),0);
-    const def=sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
-    const gol=sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
-    const distC=sum('dpc')+sum('dmc'), distE=sum('dpe')+sum('dme');
-    const ap=(distC+distE)>0?Math.round(distC/(distC+distE)*100):0;
-    doc.autoTable({
-      startY:yPos,
-      head:[[gk?.nome||'—','Defesas','Gols','Intercep.','Dist. Aprox.','Nota Final']],
-      body:[[gkSegs.map(s=>s.periodoLabel).join('+'),def,gol,sum('int'),ap+'%',mcNotaAtual.toFixed(1)]],
-      styles:{textColor:[248,250,252],fillColor:[30,41,59],lineColor:[30,41,59]},
-      headStyles:{fillColor:[59,130,246],textColor:[255,255,255],fontStyle:'bold'},
-      theme:'grid'
-    });
-    yPos=doc.lastAutoTable.finalY+10;
-    const evts=mcLog.filter(e=>e.tipo!=='periodo'&&e.key&&e.sec!==undefined).slice(0,15);
-    if(evts.length){
-      doc.autoTable({
-        startY:yPos,
-        head:[['Tempo','Evento','Período']],
-        body:evts.map(e=>[e.time,e.label,`${e.periodo}T`]),
-        styles:{textColor:[248,250,252],fillColor:[30,41,59],lineColor:[30,41,59],fontSize:9},
-        headStyles:{fillColor:[51,65,85],textColor:[148,163,184],fontStyle:'bold'},
-        alternateRowStyles:{fillColor:[36,48,68]},
-        theme:'grid'
-      });
-      yPos=doc.lastAutoTable.finalY+10;
-    }
+  const W=210,H=297;
+  const sF=(r,g,b)=>doc.setFillColor(r,g,b);
+  const sT=(r,g,b)=>doc.setTextColor(r,g,b);
+  const sD=(r,g,b)=>doc.setDrawColor(r,g,b);
+  const rr=(x,y,w,h,rd,style)=>doc.roundedRect(x,y,w,h,rd,rd,style||'F');
+
+  // ── COVER ──────────────────────────────────────────────────
+  sF(10,14,26);doc.rect(0,0,W,H,'F');
+  sF(20,35,65);doc.rect(0,0,W,55,'F');
+  sF(59,130,246);doc.rect(0,0,W,1.5,'F');
+  // Brand
+  doc.setFontSize(8);doc.setFont('helvetica','bold');sT(59,130,246);doc.text('GK HUB',15,10);
+  doc.setFontSize(6.5);doc.setFont('helvetica','normal');sT(100,116,139);
+  doc.text('Análise de Desempenho — Goleiras de Futsal',15,15);
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`,W-15,10,{align:'right'});
+  sD(59,130,246);doc.setLineWidth(0.25);doc.line(15,17,W-15,17);
+  // GK name
+  doc.setFontSize(22);doc.setFont('helvetica','bold');sT(248,250,252);doc.text(gk?.nome||'—',15,31);
+  doc.setFontSize(9);doc.setFont('helvetica','normal');sT(148,163,184);
+  const mp=[];if(partida?.adversario)mp.push('vs. '+partida.adversario);if(partida?.competicao)mp.push(partida.competicao);if(partida?.data)mp.push(formatDate(partida.data));
+  doc.text(mp.join('  ·  '),15,38);
+  // Result pill
+  if(partida?.gf!==undefined&&partida?.gc!==undefined){
+    const r=partida.gf>partida.gc?'V':partida.gf<partida.gc?'D':'E';
+    sF(...(r==='V'?[16,185,129]:r==='D'?[239,68,68]:[245,158,11]));
+    rr(15,42,26,7,2);doc.setFontSize(8);doc.setFont('helvetica','bold');sT(255,255,255);
+    doc.text(`${r}  ${partida.gf}×${partida.gc}`,28,47,{align:'center'});
+  }
+  // Nota badge
+  sF(8,14,28);rr(W-52,16,40,32,4);
+  doc.setFontSize(28);doc.setFont('helvetica','bold');sT(...nRGB);doc.text(nota.toFixed(1),W-32,37,{align:'center'});
+  doc.setFontSize(6.5);doc.setFont('helvetica','bold');sT(...nRGB);doc.text(nivel,W-32,44,{align:'center'});
+  doc.setFontSize(5.5);doc.setFont('helvetica','normal');sT(100,116,139);doc.text('NOTA FINAL',W-32,48.5,{align:'center'});
+
+  // ── STATS ROW ──────────────────────────────────────────────
+  let y=60;
+  const stW=(W-30)/6;
+  const stDefs=[
+    {l:'DEFESAS',v:def,c:[59,130,246]},{l:'GOLS SOFR.',v:gol,c:[239,68,68]},
+    {l:'TAXA DEF.',v:taxaDef!==null?(taxaDef*100).toFixed(0)+'%':'—',c:[52,211,153]},
+    {l:'INTERCEP.',v:sum('int'),c:[139,92,246]},{l:'DIST. PREC.',v:taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—',c:[245,158,11]},
+    {l:'SEQ. MÁX.',v:mcMaxStreak+'x',c:[248,250,252]}
+  ];
+  stDefs.forEach((s,i)=>{
+    sF(18,25,42);rr(15+i*stW+(i?1.5:0),y,stW-1.5,17,2);
+    doc.setFontSize(6);doc.setFont('helvetica','bold');sT(100,116,139);
+    doc.text(s.l,15+i*stW+stW/2,y+5.5,{align:'center'});
+    doc.setFontSize(13);doc.setFont('helvetica','bold');sT(...s.c);
+    doc.text(String(s.v),15+i*stW+stW/2,y+13,{align:'center'});
   });
-  doc.save(`relatorio_jogo_${new Date().toISOString().slice(0,10)}.pdf`);
-  toast('PDF exportado!','success');
+  y+=21;
+
+  // Section header helper
+  const sh=(lbl,yy,rgb=[59,130,246])=>{
+    sF(...rgb);doc.rect(15,yy,2.5,4,'F');
+    doc.setFontSize(7.5);doc.setFont('helvetica','bold');sT(...rgb);
+    doc.text(lbl,19,yy+3.2);return yy+8;
+  };
+
+  // ── TIMELINE CHART ─────────────────────────────────────────
+  y=sh('EVOLUÇÃO DO DESEMPENHO NA PARTIDA',y);
+  const tlCV=_pdfLineChart(mcNotaHistory);
+  if(tlCV){doc.addImage(tlCV.toDataURL('image/png'),'PNG',15,y,W-30,38);y+=41;}
+  else{sF(18,25,42);rr(15,y,W-30,38,3);sT(100,116,139);doc.setFontSize(9);doc.text('Dados de timeline disponíveis ao usar o Match Center ao vivo',W/2,y+20,{align:'center'});y+=41;}
+
+  // ── DEFESAS + DISTRIBUIÇÃO ─────────────────────────────────
+  const hW=(W-35)/2, lX=15, rX=15+hW+5;
+  y=sh('DEFESAS POR TIPO',y);
+  const defCV=_pdfBarChart(['Alta D','Alta E','1×1','Baixas','Central','Esq.'],[sum('dad'),sum('dae'),sum('d1x1'),sum('dbd')+sum('dbe'),sum('dc'),sum('esq')],['#3B82F6','#6366F1','#EC4899','#10B981','#F59E0B','#EF4444']);
+  if(defCV)doc.addImage(defCV.toDataURL('image/png'),'PNG',lX,y,hW,36);
+  sh('DISTRIBUIÇÃO',y-8,[245,158,11]);
+  const dstCV=_pdfDonut(distC,distE,taxaDist);
+  if(dstCV)doc.addImage(dstCV.toDataURL('image/png'),'PNG',rX,y,hW,36);
+  y+=40;
+
+  // ── HEATMAP + TEMPORADA ────────────────────────────────────
+  y=sh('MAPA DE CHUTES / DEFESAS',y);
+  const hmCV=_pdfHeatmap([[sum('dae'),0,sum('dad')],[sum('dc'),sum('esq'),sum('dc')],[sum('dbe'),0,sum('dbd')]],def,gol);
+  if(hmCV)doc.addImage(hmCV.toDataURL('image/png'),'PNG',lX,y,hW+4,40);
+  sh('VS. MÉDIA DA TEMPORADA',y-8,[52,211,153]);
+  const cmpItems=[
+    {l:'Nota Final',cur:nota,avg:seasonNota,fmt:v=>v.toFixed(1)},
+    {l:'Defesas',cur:def,avg:seasonDef,fmt:v=>Math.round(v)},
+    {l:'Taxa Def.',cur:taxaDef!==null?taxaDef*100:null,avg:null,fmt:v=>v.toFixed(0)+'%'},
+  ];
+  let cy2=y;
+  cmpItems.forEach(it=>{
+    if(it.cur===null)return;
+    sF(18,25,42);rr(rX,cy2,hW-2,11,2);
+    doc.setFontSize(7);doc.setFont('helvetica','normal');sT(148,163,184);doc.text(it.l,rX+3,cy2+4.5);
+    const good=it.avg===null||it.cur>=it.avg;
+    doc.setFontSize(9);doc.setFont('helvetica','bold');sT(...(good?[52,211,153]:[239,68,68]));
+    doc.text(it.fmt(it.cur),rX+hW-5,cy2+4.5,{align:'right'});
+    if(it.avg!==null){doc.setFontSize(6.5);doc.setFont('helvetica','normal');sT(100,116,139);doc.text(`μ ${it.fmt(it.avg)}`,rX+hW-5,cy2+8.5,{align:'right'});}
+    const ratio=it.avg?Math.min(1,it.cur/(it.avg*1.4)):0.65;
+    sF(30,41,59);rr(rX+2,cy2+7.5,hW-7,2,1);
+    sF(...(good?[52,211,153]:[239,68,68]));rr(rX+2,cy2+7.5,Math.max(2,(hW-7)*ratio),2,1);
+    cy2+=14;
+  });
+  y+=44;
+
+  // Check page space
+  if(y>200){doc.addPage();sF(10,14,26);doc.rect(0,0,W,H,'F');y=15;}
+
+  // ── ANÁLISE ────────────────────────────────────────────────
+  y=sh('ANÁLISE DA ATUAÇÃO',y);
+  const forcas=[];
+  if(taxaDef!==null&&taxaDef>=.80)forcas.push(`Taxa de defesa ${(taxaDef*100).toFixed(0)}% — excelente`);
+  if(taxaDist!==null&&taxaDist>=.75)forcas.push(`Distribuição com ${(taxaDist*100).toFixed(0)}% de precisão`);
+  if(mcMaxStreak>=4)forcas.push(`${mcMaxStreak} defesas consecutivas sem gol`);
+  if(sum('int')>=2)forcas.push(`${sum('int')} interceptações — boa leitura de jogo`);
+  if(sum('d1x1')>=1)forcas.push(`${sum('d1x1')} defesa(s) 1×1 — alto nível`);
+  if(!forcas.length)forcas.push('Continue acumulando dados para análise completa');
+  const mels=[];
+  if(taxaDef!==null&&taxaDef<.65)mels.push(`Taxa ${(taxaDef*100).toFixed(0)}% — trabalhar posicionamento`);
+  if(taxaDist!==null&&taxaDist<.60)mels.push(`Distribuição ${(taxaDist*100).toFixed(0)}% — foco na precisão`);
+  if(sum('gpe')>0)mels.push(`${sum('gpe')} gol(is) de pênalti — leitura de cobranças`);
+  if(distE>distC)mels.push('Mais distribuições erradas — prioridade no treino');
+  if(!mels.length)mels.push('Manter o nível e continuar evoluindo');
+  const aH=Math.max(forcas.length,mels.length)*6+10;
+  // Strengths
+  sF(6,20,14);rr(lX,y,hW,aH,3);
+  sF(16,185,129);doc.rect(lX,y,hW,5,'F');
+  doc.setFontSize(7);doc.setFont('helvetica','bold');sT(255,255,255);doc.text('✓ PONTOS FORTES',lX+3,y+3.5);
+  forcas.forEach((f,i)=>{doc.setFontSize(7);doc.setFont('helvetica','normal');sT(180,240,200);doc.text('▸ '+f,lX+3,y+10+i*6,{maxWidth:hW-5});});
+  // Improvements
+  sF(22,14,6);rr(rX,y,hW,aH,3);
+  sF(245,158,11);doc.rect(rX,y,hW,5,'F');
+  doc.setFontSize(7);doc.setFont('helvetica','bold');sT(255,255,255);doc.text('⚠ A DESENVOLVER',rX+3,y+3.5);
+  mels.forEach((m,i)=>{doc.setFontSize(7);doc.setFont('helvetica','normal');sT(255,240,200);doc.text('▸ '+m,rX+3,y+10+i*6,{maxWidth:hW-5});});
+  y+=aH+5;
+
+  // ── RECOMENDAÇÕES ──────────────────────────────────────────
+  if(y<240){
+    y=sh('RECOMENDAÇÕES DE TREINO',y);
+    const recs=[];
+    if(taxaDef!==null&&taxaDef<.75)recs.push('Treino de posicionamento com cones e finalizações variadas');
+    if(taxaDist!==null&&taxaDist<.70)recs.push('Sessão de distribuição: 20 min/treino com alvos a 10m e 15m');
+    if(sum('gpe')>1)recs.push('Análise de cobranças de pênalti — padrão de lateralidade dos adversários');
+    recs.push('Revisão em vídeo dos eventos com a comissão técnica');
+    recs.forEach((r,i)=>{
+      if(y>260){doc.addPage();sF(10,14,26);doc.rect(0,0,W,H,'F');y=15;}
+      sF(59,130,246);rr(lX,y,5.5,5.5,1);
+      doc.setFontSize(6.5);doc.setFont('helvetica','bold');sT(255,255,255);doc.text(i+1,lX+2.75,y+4,{align:'center'});
+      doc.setFontSize(7.5);doc.setFont('helvetica','normal');sT(200,210,230);
+      doc.text(r,lX+8,y+4,{maxWidth:W-lX-8-5});
+      y+=8;
+    });
+    y+=3;
+  }
+
+  // ── DESTAQUES ──────────────────────────────────────────────
+  if(y<252){
+    y=sh('DESTAQUES DA PARTIDA',y);
+    const hlItems=[
+      {l:'MELHOR MOMENTO',v:`${mcMaxNota.toFixed(1)} pts  ·  ${mcFormatTime(mcBestNotaSec)}`,c:[52,211,153]},
+      {l:'MAIOR PRESSÃO',v:`${mcMinNota.toFixed(1)} pts  ·  ${mcFormatTime(mcWorstNotaSec)}`,c:[239,68,68]},
+      {l:'DEF. DESTAQUE',v:sum('d1x1')>0?`${sum('d1x1')} defesa(s) 1×1`:sum('esq')>0?`${sum('esq')} esquadro(s)`:`${def} defesas`,c:[59,130,246]},
+      {l:'TENDÊNCIA',v:mcMaxPosStreak>mcMaxNegStreak?'Crescimento':mcMaxNegStreak>mcMaxPosStreak?'Em Queda':'Estável',c:[139,92,246]},
+    ];
+    const hlW=(W-30-9)/4;
+    hlItems.forEach((h,i)=>{
+      const hx=15+i*(hlW+3);
+      sF(...h.c.map(v=>Math.round(v*.12)));rr(hx,y,hlW,17,2);
+      sF(...h.c);doc.rect(hx,y,hlW,4.5,'F');
+      doc.setFontSize(5.5);doc.setFont('helvetica','bold');sT(255,255,255);doc.text(h.l,hx+hlW/2,y+3.2,{align:'center'});
+      doc.setFontSize(7);doc.setFont('helvetica','bold');sT(...h.c);
+      doc.text(h.v,hx+hlW/2,y+12,{align:'center',maxWidth:hlW-2});
+    });
+    y+=21;
+  }
+
+  // ── TIMELINE EVENTOS (pág 2 se precisar) ──────────────────
+  const evts=mcLog.filter(e=>e.tipo!=='periodo'&&e.key).slice(0,18);
+  if(evts.length){
+    if(y>215){doc.addPage();sF(10,14,26);doc.rect(0,0,W,H,'F');y=15;}
+    y=sh('LINHA DO TEMPO DA PARTIDA',y);
+    doc.autoTable({startY:y,head:[['Tempo','Evento','Per.']],
+      body:evts.map(e=>[e.time,e.label,e.periodo+'T']),
+      styles:{textColor:[200,210,230],fillColor:[18,25,40],lineColor:[30,41,59],fontSize:8},
+      headStyles:{fillColor:[30,58,138],textColor:[147,197,253],fontStyle:'bold'},
+      alternateRowStyles:{fillColor:[22,30,50]},theme:'grid',margin:{left:15,right:15}});
+    y=doc.lastAutoTable.finalY+5;
+  }
+
+  // ── FOOTER ─────────────────────────────────────────────────
+  const pages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    sF(12,18,35);doc.rect(0,H-11,W,11,'F');
+    sD(30,58,138);doc.setLineWidth(0.3);doc.line(0,H-11,W,H-11);
+    doc.setFontSize(6.5);doc.setFont('helvetica','normal');sT(100,116,139);
+    doc.text('GK Hub — Plataforma de Análise de Goleiras de Futsal',15,H-3.5);
+    doc.text(`Pág. ${i} / ${pages}`,W-15,H-3.5,{align:'right'});
+    doc.text(new Date().toLocaleDateString('pt-BR'),W/2,H-3.5,{align:'center'});
+  }
+
+  doc.save(`GKHub_${(gk?.nome||'goleira').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+  toast('Relatório profissional exportado!','success');
 }
 
 // ═══════════════════════════════════════════════════════════
