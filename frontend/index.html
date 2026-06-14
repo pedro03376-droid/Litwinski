@@ -5267,8 +5267,13 @@ function _esc(s) {
 // Criar hash inicial para os usuários padrão (sem expor senha no código)
 async function _bootstrapDefaultUsers() {
   const stored = localStorage.getItem(_AUTH_USERS);
-  if (stored) return; // já foram criados
-  // Senhas padrão definidas apenas na primeira execução
+  // Recria se não existir OU se estiver no formato antigo (sem campo salt)
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    if (parsed.length > 0 && parsed[0].salt) return; // formato novo OK
+    // Formato antigo detectado — limpa e recria
+    localStorage.removeItem(_AUTH_USERS);
+  }
   const defaults = [
     { user: 'admin',    pass: 'gkhub2026', nome: 'Admin' },
     { user: 'vinicius', pass: 'prep2026',  nome: 'Vinicius' },
