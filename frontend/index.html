@@ -2741,6 +2741,11 @@ function salvarScout() {
   const obj = { id: editingId.scout || uid(), goalkeeperId,
     partidaId: document.getElementById('scout-partida').value };
   fields.forEach(f => { obj[f] = document.getElementById('s-'+f)?.value || 0; });
+  // Persiste nota calculada automaticamente se não houver nota manual
+  if (!parseFloat(obj.nota)) {
+    const autoNota = calcPerformanceAuto(obj);
+    if (autoNota !== null) obj.nota = autoNota;
+  }
   if (editingId.scout) {
     const idx = scouts.findIndex(s => s.id === editingId.scout);
     if (idx !== -1) scouts[idx] = { ...scouts[idx], ...obj };
@@ -5004,7 +5009,7 @@ function mcEncerrar() {
   if (totalCurrentEvents>0||finalSegmentos.length===0){
     const curData={};
     MC_FIELDS.forEach(f=>curData[f]=mcData[f]||0);
-    finalSegmentos.push({gkId,periodoLabel:`${mcPeriodo}T`,data:curData});
+    finalSegmentos.push({gkId,periodoLabel:`${mcPeriodo}T`,data:curData,notaFinal:mcNotaAtual});
   }
   const totalAll=finalSegmentos.reduce((a,s)=>a+MC_FIELDS.reduce((b,f)=>b+(s.data[f]||0),0),0);
   if (totalAll===0&&finalSegmentos.length===0){toast('Nenhum evento registrado','error');return;}
@@ -5025,6 +5030,10 @@ function mcSalvarEFechar() {
   finalSegmentos.forEach(seg=>{
     const obj={id:uid(),goalkeeperId:seg.gkId,partidaId:pId||'',periodo:seg.periodoLabel};
     MC_FIELDS.forEach(f=>{obj[f]=seg.data[f]||0;});
+    // Salva nota ao vivo calculada pelo MC; se não disponível, calcula pela fórmula
+    const notaMC = seg.notaFinal ?? mcNotaAtual;
+    const notaCalc = calcPerformanceAuto(obj);
+    obj.nota = (notaMC !== 7.0 || notaCalc === null) ? parseFloat(notaMC.toFixed(1)) : notaCalc;
     scouts.push(obj);
     cloudSet('scouts',obj);
   });
@@ -5307,16 +5316,21 @@ function _clearFails() {
 }
 
 function initAuth() {
-  _bootstrapDefaultUsers().then(() => {
-    const stored = JSON.parse(localStorage.getItem(_AUTH_SESSION) || 'null');
-    if (stored?.token && stored?.user && stored?.token === stored?.token) {
-      // Validate token is what we stored (simple integrity check)
-      _loggedUser   = stored.user;
-      _sessionToken = stored.token;
-      document.getElementById('auth-overlay').classList.add('hidden');
-      _updateSidebarUser();
-    }
-  });
+  // Verifica sessão IMEDIATAMENTE (síncrono) — não bloqueia a UI
+  const stored = JSON.parse(localStorage.getItem(_AUTH_SESSION) || 'null');
+  if (stored?.token && stored?.user) {
+    _loggedUser   = stored.user;
+    _sessionToken = stored.token;
+    document.getElementById('auth-overlay').classList.add('hidden');
+    _updateSidebarUser();
+  }
+  // Bootstrap de usuários padrão em background (não bloqueia nada)
+  _bootstrapDefaultUsers();
+  // Hash routing para atalhos PWA (#matchcenter, #scout, etc.)
+  const hash = window.location.hash.replace('#','');
+  if (hash && document.getElementById('page-'+hash)) {
+    setTimeout(() => navigate(hash), 0);
+  }
 }
 
 function _updateSidebarUser() {
