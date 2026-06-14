@@ -1104,7 +1104,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Sair
     </button>
-    GK Hub v1.0 &copy; 2026
+    GK Hub v2.0 &copy; 2026
   </div>
 </aside>
 
@@ -6190,16 +6190,20 @@ let deferredInstallPrompt = null;
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').then(reg => {
-      // When a new SW is waiting, activate it immediately
+      // Force immediate activation of waiting SW
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       reg.addEventListener('updatefound', () => {
         const sw = reg.installing;
         if (sw) sw.addEventListener('statechange', () => {
-          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+          if (sw.state === 'installed') {
             sw.postMessage({ type: 'SKIP_WAITING' });
+            window.location.reload();
           }
         });
       });
     }).catch(() => {});
+    // Reload when new SW takes control
+    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
   });
 }
 
