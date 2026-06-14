@@ -2155,6 +2155,13 @@
           <div class="form-group"><label class="form-label">Gols Penalti</label><input class="form-input" id="s-gpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Gols Falta</label><input class="form-input" id="s-gfl" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
+        <div style="margin:14px 0 10px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;border-top:1px solid var(--border);padding-top:12px;">Tipo de Chute</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Chute de Média</label><input class="form-input" id="s-tchmed" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">1×1</label><input class="form-input" id="s-tc1x1" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Chute de Ala</label><input class="form-input" id="s-tchala" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Segunda Trave</label><input class="form-input" id="s-tchst" type="number" min="0" value="0"></div>
+        </div>
       </div>
       <div id="tab-distrib" class="tab-content">
         <div class="form-grid">
@@ -2718,7 +2725,7 @@ function renderPartidas() {
 // SCOUT
 // ═══════════════════════════════════════════════════════════
 function preencherNotaAuto() {
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   const s = {};
   fields.forEach(f => { s[f] = document.getElementById('s-'+f)?.value || 0; });
   const nota = calcPerformanceAuto(s);
@@ -2729,7 +2736,7 @@ function preencherNotaAuto() {
 }
 
 function atualizarNotaPreview() {
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   const s = {};
   fields.forEach(f => { s[f] = document.getElementById('s-'+f)?.value || 0; });
   const notaManual = document.getElementById('s-nota')?.value;
@@ -2756,7 +2763,7 @@ function salvarScout() {
   const goalkeeperId = document.getElementById('scout-goleira').value;
   if (!goalkeeperId) { toast('Selecione a goleira', 'error'); return; }
   const scouts = DB.scouts;
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
+  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
   const obj = { id: editingId.scout || uid(), goalkeeperId,
     partidaId: document.getElementById('scout-partida').value };
   fields.forEach(f => { obj[f] = document.getElementById('s-'+f)?.value || 0; });
@@ -2785,7 +2792,7 @@ function editarScout(id) {
   document.getElementById('modal-scout-title').textContent = 'Editar Scout';
   document.getElementById('scout-goleira').value = s.goalkeeperId || '';
   document.getElementById('scout-partida').value = s.partidaId || '';
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
+  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
   fields.forEach(f => { const el = document.getElementById('s-'+f); if(el) el.value = s[f] || 0; });
   openModal('modal-scout');
   atualizarNotaPreview();
@@ -3356,7 +3363,7 @@ document.querySelector('[onclick="openModal(\'modal-scout\')"]')?.addEventListen
   document.getElementById('modal-scout-title').textContent = 'Novo Scout';
   document.getElementById('scout-goleira').value='';
   document.getElementById('scout-partida').value='';
-  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+  const fields = ['dad','dae','dbd','dbe','dc','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   fields.forEach(f => { const el=document.getElementById('s-'+f); if(el) el.value=0; });
   document.getElementById('s-nota').value='';
   atualizarNotaPreview();
