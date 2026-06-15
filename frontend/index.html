@@ -705,10 +705,17 @@
       .stats-grid { grid-template-columns: 1fr 1fr; }
       .content { padding: 20px 16px; }
       #sidebar-toggle-desktop { display: none; }
+      /* Modal responsiveness */
+      .modal { max-width: 100%; max-height: 95vh; border-radius: var(--radius) var(--radius) 0 0; margin: auto 0 0; }
+      .modal-backdrop { align-items: flex-end; }
+      .modal-header { padding: 16px 18px 14px; }
+      .modal-body { padding: 16px 18px; }
+      .modal-footer { padding: 12px 18px; }
     }
     @media (max-width: 480px) {
       .stats-grid { grid-template-columns: 1fr; }
       .content { padding: 16px 12px; }
+      .modal-body { padding: 14px 14px; }
     }
 
     /* ── Empty state ── */
@@ -2155,7 +2162,7 @@
           <div class="form-group"><label class="form-label">Defesas Baixas Esq.</label><input class="form-input" id="s-dbe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Defesa Central</label><input class="form-input" id="s-dc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Defesa 1×1</label><input class="form-input" id="s-d1x1" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
       <div id="tab-gols" class="tab-content scout-tabs">
@@ -2184,8 +2191,8 @@
       <div id="tab-outros" class="tab-content scout-tabs">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Interceptações</label><input class="form-input" id="s-int" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Posicionamento Esq.</label><input class="form-input" id="s-pose" type="number" min="0" value="0"></div>
-          <div class="form-group"><label class="form-label">Posicionamento Dir.</label><input class="form-input" id="s-posd" type="number" min="0" value="0"></div>
+          <div class="form-group"><label class="form-label">Posicionamento Esq.</label><input class="form-input" id="s-pose" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label">Posicionamento Dir.</label><input class="form-input" id="s-posd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Saídas do Gol</label><input class="form-input" id="s-sai" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group full">
             <label class="form-label" style="display:flex;align-items:center;gap:8px;">
@@ -2397,10 +2404,15 @@ function openModal(id) {
 }
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
-  // Restore "Salvar e Fechar" button if it was hidden by historical report view
   if (id === 'modal-mc-relatorio') {
+    // Restore save button and clear historical report context
     const saveBtn = document.querySelector('#modal-mc-relatorio [onclick="mcSalvarEFechar()"]');
     if (saveBtn) saveBtn.style.display = '';
+    // If closed without saving (historical view), clear report globals
+    if (!mcPendingSegmentos) {
+      mcCurrentReportSegs = null;
+      mcPendingPId = null;
+    }
   }
 }
 document.querySelectorAll('.modal-backdrop').forEach(m => {
@@ -2422,7 +2434,7 @@ function switchTab(btn, tabId) {
 // PERFORMANCE CALC
 // ═══════════════════════════════════════════════════════════
 function calcPerformanceAuto(scout) {
-  const totalDef = (+scout.dad||0) + (+scout.dae||0) + (+scout.dbd||0) + (+scout.dbe||0) + (+scout.dc||0) + (+scout.d1x1||0);
+  const totalDef = (+scout.dad||0) + (+scout.dae||0) + (+scout.dbd||0) + (+scout.dbe||0) + (+scout.dc||0) + (+scout.d1x1||0) + (+scout.esq||0);
   const gols     = (+scout.gda||0) + (+scout.gfa||0) + (+scout.gpe||0) + (+scout.gfl||0);
   if (totalDef + gols === 0) return null;
   // Base: taxa de defesa → até 8 pontos
@@ -2758,7 +2770,9 @@ function verRelatorioPartida(pId) {
   mcBestNotaSec  = 0; mcWorstNotaSec = 0;
   mcMaxStreak    = 0; mcMaxPosStreak = 0; mcMaxNegStreak = 0;
   mcNotaHistory  = []; // no live history for past matches
+  mcLog          = []; // clear any leftover live session log
   mcSeconds      = 0;
+  mcPendingPId   = pId; // needed for PDF to find partida data
 
   // Hide "Salvar e Fechar" (only relevant for live MC session)
   const saveBtn = document.querySelector('#modal-mc-relatorio [onclick="mcSalvarEFechar()"]');
@@ -4437,6 +4451,13 @@ function updateCompSelect() {
     comps.map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
+function updateSelects() {
+  const el = document.getElementById('pdf-gk-select');
+  if (!el) return;
+  el.innerHTML = '<option value="">Selecione a goleira…</option>' +
+    DB.goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+}
+
 function pdfCompeticao() {
   const comp = document.getElementById('pdf-comp-select').value;
   if (!comp) { toast('Selecione uma competição', 'error'); return; }
@@ -4600,6 +4621,7 @@ function mcReset() {
   mcTimelineOpen = false;
   mcPosStreak = 0; mcNegStreak = 0; mcMaxPosStreak = 0; mcMaxNegStreak = 0;
   mcBestNotaSec = 0; mcWorstNotaSec = 0;
+  mcCurrentReportSegs = null; mcPendingSegmentos = null; mcPendingPId = null;
   if (mcTimerInterval) { clearInterval(mcTimerInterval); mcTimerInterval = null; }
   if (mcMomentumChart) { mcMomentumChart.destroy(); mcMomentumChart = null; }
   if (mcTimelineChart) { mcTimelineChart.destroy(); mcTimelineChart = null; }
@@ -6058,14 +6080,14 @@ function _mcExportarRelatorioPDFImpl() {
   }
 
   // ── EVENT TIMELINE TABLE ───────────────────────────────────
-  const evts=mcLog.filter(e=>e.tipo!=='periodo'&&e.key).slice(0,30);
+  const evts=mcLog.filter(e=>e.tipo!=='periodo'&&e.key&&MC_NOTA_PESOS[e.key]!==undefined).slice(0,30);
   if(evts.length){
     if(y>230){doc.addPage();pageHeader('LINHA DO TEMPO');y=24;}
     y=sh('LINHA DO TEMPO DA PARTIDA',y,[245,158,11]);
     doc.autoTable({
       startY:y,
       head:[['TEMPO','EVENTO','PERÍODO','PESO']],
-      body:evts.map(e=>[e.time||'—',e.label||'—',(e.periodo||'1')+'T',MC_NOTA_PESOS[e.key]>=0?`+${MC_NOTA_PESOS[e.key]?.toFixed(2)||''}`:String(MC_NOTA_PESOS[e.key]?.toFixed(2)||'')]),
+      body:evts.map(e=>{const p=MC_NOTA_PESOS[e.key];const ps=p!==undefined?(p>=0?`+${p.toFixed(2)}`:p.toFixed(2)):'—';return[e.time||'—',e.label||'—',(e.periodo||'1')+'T',ps];}),
       styles:{textColor:[200,210,230],fillColor:[14,20,40],lineColor:[25,38,65],fontSize:7.5,cellPadding:2.5},
       headStyles:{fillColor:[20,38,80],textColor:[147,197,253],fontStyle:'bold',fontSize:7},
       alternateRowStyles:{fillColor:[18,26,50]},
