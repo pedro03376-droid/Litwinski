@@ -6169,14 +6169,12 @@ function _esc(s) {
 
 // Criar hash inicial para os usuários padrão (sem expor senha no código)
 async function _bootstrapDefaultUsers() {
-  const stored = localStorage.getItem(_AUTH_USERS);
+  let stored = null;
+  try { stored = JSON.parse(localStorage.getItem(_AUTH_USERS) || 'null'); } catch(e) { localStorage.removeItem(_AUTH_USERS); }
   // Recria se não existir OU se estiver no formato antigo (sem campo salt)
-  if (stored) {
-    const parsed = JSON.parse(stored);
-    if (parsed.length > 0 && parsed[0].salt) return; // formato novo OK
-    // Formato antigo detectado — limpa e recria
-    localStorage.removeItem(_AUTH_USERS);
-  }
+  if (stored && Array.isArray(stored) && stored.length > 0 && stored[0].salt) return; // formato novo OK
+  // Formato antigo ou ausente — limpa e recria
+  localStorage.removeItem(_AUTH_USERS);
   const defaults = [
     { user: 'admin',    pass: 'gkhub2026', nome: 'Admin' },
     { user: 'vinicius', pass: 'prep2026',  nome: 'Vinicius' },
@@ -6191,8 +6189,10 @@ async function _bootstrapDefaultUsers() {
 }
 
 function _getUsers() {
-  const stored = localStorage.getItem(_AUTH_USERS);
-  return stored ? JSON.parse(stored) : [];
+  try {
+    const stored = localStorage.getItem(_AUTH_USERS);
+    return stored ? JSON.parse(stored) : [];
+  } catch(e) { return []; }
 }
 
 function _saveUsers(users) {
@@ -6225,15 +6225,24 @@ function _clearFails() {
 
 function initAuth() {
   // Verifica sessão IMEDIATAMENTE (síncrono) — não bloqueia a UI
-  const stored = JSON.parse(localStorage.getItem(_AUTH_SESSION) || 'null');
-  if (stored?.token && stored?.user) {
-    _loggedUser   = stored.user;
-    _sessionToken = stored.token;
-    document.getElementById('auth-overlay').classList.add('hidden');
-    _updateSidebarUser();
+  try {
+    const stored = JSON.parse(localStorage.getItem(_AUTH_SESSION) || 'null');
+    if (stored?.token && stored?.user) {
+      _loggedUser   = stored.user;
+      _sessionToken = stored.token;
+      document.getElementById('auth-overlay').classList.add('hidden');
+      _updateSidebarUser();
+    }
+  } catch(e) {
+    localStorage.removeItem(_AUTH_SESSION);
   }
   // Bootstrap de usuários — guarda a Promise para authLogin aguardar
-  _bootstrapDone = _bootstrapDefaultUsers();
+  _bootstrapDone = _bootstrapDefaultUsers().catch(e => {
+    console.warn('Auth bootstrap error:', e);
+    // Tenta recriar a partir do zero se houver falha
+    localStorage.removeItem(_AUTH_USERS);
+    return _bootstrapDefaultUsers();
+  });
   // Hash routing para atalhos PWA (#matchcenter, #scout, etc.)
   const hash = window.location.hash.replace('#','');
   if (hash && document.getElementById('page-'+hash)) {
@@ -6252,46 +6261,51 @@ async function authLogin() {
   const errEl = document.getElementById('auth-err');
   const btn   = document.querySelector('#auth-overlay .btn-primary');
 
-  // Garante que o bootstrap terminou antes de verificar usuários
-  if (_bootstrapDone) await _bootstrapDone;
-
-  // Lockout check
+  // Lockout check (síncrono, antes de qualquer await)
   const locked = _checkLockout();
   if (locked) { errEl.textContent = locked; errEl.style.display = 'block'; return; }
-
   if (!user || !pass) { errEl.textContent = 'Preencha usuário e senha.'; errEl.style.display = 'block'; return; }
 
   if (btn) { btn.disabled = true; btn.textContent = 'Verificando…'; }
 
-  const users = _getUsers();
-  const found = users.find(u => u.user === user);
-  let ok = false;
-  if (found) {
-    const h = await _hashPass(pass, found.salt);
-    ok = h === found.hash;
-  }
+  try {
+    // Garante que o bootstrap terminou antes de verificar usuários
+    if (_bootstrapDone) await _bootstrapDone;
 
-  if (ok) {
-    _clearFails();
-    _loggedUser   = found.nome || found.user;
-    _sessionToken = _randToken();
-    localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
-    document.getElementById('auth-overlay').classList.add('hidden');
-    _updateSidebarUser();
-    errEl.style.display = 'none';
-  } else {
-    _recordFail();
-    const failData = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0}');
-    const remaining = _MAX_FAILS - (failData.count % _MAX_FAILS || _MAX_FAILS);
-    errEl.textContent = remaining > 0
-      ? `Usuário ou senha incorretos. (${remaining} tentativa${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''})`
-      : 'Bloqueado por tentativas excessivas.';
+    const users = _getUsers();
+    const found = users.find(u => u.user === user);
+    let ok = false;
+    if (found && found.salt) {
+      const h = await _hashPass(pass, found.salt);
+      ok = h === found.hash;
+    }
+
+    if (ok) {
+      _clearFails();
+      _loggedUser   = found.nome || found.user;
+      _sessionToken = _randToken();
+      localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+      document.getElementById('auth-overlay').classList.add('hidden');
+      _updateSidebarUser();
+      errEl.style.display = 'none';
+    } else {
+      _recordFail();
+      const failData = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0}');
+      const remaining = _MAX_FAILS - (failData.count % _MAX_FAILS || _MAX_FAILS);
+      errEl.textContent = remaining > 0
+        ? `Usuário ou senha incorretos. (${remaining} tentativa${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''})`
+        : 'Bloqueado por tentativas excessivas.';
+      errEl.style.display = 'block';
+      document.getElementById('auth-pass').value = '';
+      document.getElementById('auth-pass').focus();
+    }
+  } catch(e) {
+    console.error('Login error:', e);
+    errEl.textContent = 'Erro interno. Recarregue a página e tente novamente.';
     errEl.style.display = 'block';
-    document.getElementById('auth-pass').value = '';
-    document.getElementById('auth-pass').focus();
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
   }
-
-  if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
 }
 
 function authLogout() {
