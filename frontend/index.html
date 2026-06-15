@@ -1004,6 +1004,12 @@
       background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.22);
       border-radius: 8px; padding: 9px 12px; display: none;
     }
+    /* iOS: font-size ≥ 16px prevent auto-zoom on input focus */
+    #auth-overlay .form-input { font-size: 16px; }
+    @media (max-width: 480px) {
+      .auth-card { padding: 32px 20px; }
+      .auth-logo-text { font-size: 28px; }
+    }
   </style>
 </head>
 <body>
@@ -1017,7 +1023,8 @@
     </div>
     <div class="form-group" style="margin-bottom:12px;">
       <label class="form-label">Usuário</label>
-      <input class="form-input" id="auth-user" type="text" placeholder="admin" autocomplete="username">
+      <input class="form-input" id="auth-user" type="text" placeholder="admin" autocomplete="username"
+        onkeydown="if(event.key==='Enter')document.getElementById('auth-pass').focus()">
     </div>
     <div class="form-group" style="margin-bottom:4px;">
       <label class="form-label">Senha</label>
@@ -6140,8 +6147,9 @@ const _AUTH_FAIL    = 'gkhub_fails';
 const _MAX_FAILS    = 5;
 const _LOCKOUT_MS   = 30000; // 30 segundos
 
-let _loggedUser   = null;
-let _sessionToken = null;
+let _loggedUser     = null;
+let _sessionToken   = null;
+let _bootstrapDone  = null; // Promise — resolves when users are ready
 
 // SHA-256 via Web Crypto + salt
 async function _hashPass(pass, salt) {
@@ -6224,8 +6232,8 @@ function initAuth() {
     document.getElementById('auth-overlay').classList.add('hidden');
     _updateSidebarUser();
   }
-  // Bootstrap de usuários padrão em background (não bloqueia nada)
-  _bootstrapDefaultUsers();
+  // Bootstrap de usuários — guarda a Promise para authLogin aguardar
+  _bootstrapDone = _bootstrapDefaultUsers();
   // Hash routing para atalhos PWA (#matchcenter, #scout, etc.)
   const hash = window.location.hash.replace('#','');
   if (hash && document.getElementById('page-'+hash)) {
@@ -6243,6 +6251,9 @@ async function authLogin() {
   const pass  = document.getElementById('auth-pass').value;
   const errEl = document.getElementById('auth-err');
   const btn   = document.querySelector('#auth-overlay .btn-primary');
+
+  // Garante que o bootstrap terminou antes de verificar usuários
+  if (_bootstrapDone) await _bootstrapDone;
 
   // Lockout check
   const locked = _checkLockout();
