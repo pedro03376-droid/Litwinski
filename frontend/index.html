@@ -2444,7 +2444,7 @@ function navigate(page) {
   if (page === 'scout') renderScouts();
   if (page === 'performance') renderPerformance();
   if (page === 'heatmap') renderHeatmap();
-  if (page === 'relatorios') { updateSelects(); updateCompSelect(); }
+  if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
   if (page === 'config') { renderConfigStatus(); authRenderUsers(); }
 }
 
@@ -4514,7 +4514,7 @@ function updateCompSelect() {
     comps.map(c => `<option value="${c}">${c}</option>`).join('');
 }
 
-function updateSelects() {
+function updatePdfSelects() {
   const el = document.getElementById('pdf-gk-select');
   if (!el) return;
   el.innerHTML = '<option value="">Selecione a goleira…</option>' +
