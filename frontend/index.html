@@ -2,6 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com; frame-src https://gkhub-4717d.firebaseapp.com;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GK Hub — Goalkeeper Performance Platform</title>
   <!-- PWA -->
@@ -2625,13 +2626,13 @@ function renderGoleiras() {
     const { label, cls } = classifyPerf(avg);
     return `<tr>
       <td>${i + 1}</td>
-      <td><strong>${g.nome}</strong></td>
+      <td><strong>${_esc(g.nome)}</strong></td>
       <td>${g.nasc ? formatDate(g.nasc) : '—'}</td>
       <td>${g.altura ? g.altura + ' cm' : '—'}</td>
       <td>${g.peso ? g.peso + ' kg' : '—'}</td>
-      <td>${g.equipe || '—'}</td>
-      <td>${g.categoria || '—'}</td>
-      <td>${g.pe || '—'}</td>
+      <td>${_esc(g.equipe || '—')}</td>
+      <td>${_esc(g.categoria || '—')}</td>
+      <td>${_esc(g.pe || '—')}</td>
       <td>${avg !== null ? `<span class="badge ${cls}">${label} (${avg})</span>` : '<span style="color:var(--muted)">—</span>'}</td>
       <td>
         <div class="td-actions">
@@ -2782,21 +2783,21 @@ function renderPartidas() {
       const color = r==='V'?'var(--success)':r==='D'?'var(--error)':'var(--warning)';
       res = `<span style="color:${color};font-weight:700">${r} ${p.gf}×${p.gc}</span>`;
     }
-    let gkCell = gk ? gk.nome : '—';
+    let gkCell = gk ? _esc(gk.nome) : '—';
     if (gk2) {
       gkCell = `<span style="display:block;line-height:1.6;">
-        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${p.periodo1||'1º T'}</span><br>
-        <strong>${gk ? gk.nome : '—'}</strong>
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${_esc(p.periodo1||'1º T')}</span><br>
+        <strong>${gk ? _esc(gk.nome) : '—'}</strong>
       </span>
       <span style="display:block;line-height:1.6;margin-top:4px;padding-top:4px;border-top:1px solid var(--border);">
-        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${p.periodo2||'2º T'}</span><br>
-        <strong>${gk2.nome}</strong>
+        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${_esc(p.periodo2||'2º T')}</span><br>
+        <strong>${_esc(gk2.nome)}</strong>
       </span>`;
     }
     return `<tr>
       <td>${p.data ? formatDate(p.data) : '—'}</td>
-      <td><strong>${p.adversario}</strong></td>
-      <td>${p.competicao || '—'}</td>
+      <td><strong>${_esc(p.adversario)}</strong></td>
+      <td>${_esc(p.competicao || '—')}</td>
       <td>${gkCell}</td>
       <td>${res}</td>
       <td>${p.gc ?? '—'}</td>
@@ -2962,8 +2963,8 @@ function renderScouts() {
       ? `<span class="badge ${cls}" title="${isManual ? 'Nota manual' : 'Calculada automaticamente'}">${nota} <small style="opacity:.7">${label}</small></span>`
       : '<span style="color:var(--muted)">—</span>';
     return `<tr>
-      <td><strong>${gk ? gk.nome : '—'}</strong></td>
-      <td>${pt ? `${pt.adversario}${pt.data?' ('+formatDate(pt.data)+')':''}` : '—'}</td>
+      <td><strong>${gk ? _esc(gk.nome) : '—'}</strong></td>
+      <td>${pt ? `${_esc(pt.adversario)}${pt.data?' ('+formatDate(pt.data)+')':''}` : '—'}</td>
       <td>${totalDef}</td>
       <td>${(+s.dbd||0)+(+s.dbe||0)}</td>
       <td>${s.dc || 0}</td>
@@ -2996,7 +2997,7 @@ function renderPerformance() {
     const avg = avgPerformance(g.id);
     const { label, cls } = classifyPerf(avg);
     return `<div onclick="showPerfDetail('${g.id}')" style="cursor:pointer;padding:10px 12px;border-radius:8px;border:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;transition:background .2s;" onmouseover="this.style.background='rgba(255,255,255,.04)'" onmouseout="this.style.background=''">
-      <span style="font-weight:500;font-size:13px;">${g.nome}</span>
+      <span style="font-weight:500;font-size:13px;">${_esc(g.nome)}</span>
       ${avg !== null ? `<span class="badge ${cls}">${avg}</span>` : '<span style="color:var(--muted);font-size:12px;">sem dados</span>'}
     </div>`;
   }).join('');
@@ -3008,7 +3009,7 @@ function showPerfDetail(gkId) {
   const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
   const el = document.getElementById('perf-detail');
   if (!scouts.length) {
-    el.innerHTML = `<div class="card-title" style="margin-bottom:12px;">${gk.nome}</div><div class="empty-state"><p>Nenhum scout registrado para esta goleira.</p></div>`;
+    el.innerHTML = `<div class="card-title" style="margin-bottom:12px;">${_esc(gk.nome)}</div><div class="empty-state"><p>Nenhum scout registrado para esta goleira.</p></div>`;
     return;
   }
   const totalDef = scouts.reduce((a,s) => a+(+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0), 0);
@@ -3028,8 +3029,8 @@ function showPerfDetail(gkId) {
   el.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
       <div>
-        <div style="font-size:16px;font-weight:700;">${gk.nome}</div>
-        <div style="color:var(--muted);font-size:12px;">${gk.equipe||''} ${gk.categoria?'• '+gk.categoria:''}</div>
+        <div style="font-size:16px;font-weight:700;">${_esc(gk.nome)}</div>
+        <div style="color:var(--muted);font-size:12px;">${_esc(gk.equipe||'')} ${gk.categoria?'• '+_esc(gk.categoria):''}</div>
       </div>
       ${avgNota !== null ? `<span class="badge ${cls}" style="font-size:14px;padding:6px 14px;">${label} — ${avgNota}</span>` : ''}
     </div>
@@ -3158,7 +3159,7 @@ function refreshDashboard() {
     destaquesGrid.innerHTML = destaques.map(d => {
       if (!d.gk) return '';
       const foto = d.gk.foto
-        ? `<img src="${d.gk.foto}" style="width:100%;height:100%;object-fit:cover;">`
+        ? `<img src="${(d.gk.foto||'').startsWith('data:image/') ? d.gk.foto : ''}" style="width:100%;height:100%;object-fit:cover;">`
         : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:28px;height:28px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
       return `<div onclick="verPerfil('${d.gk.id}')"
         style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 12px;
@@ -3189,7 +3190,7 @@ function refreshDashboard() {
       ${goleiras.slice(0,5).map(g => {
         const avg = avgPerformance(g.id);
         const { label, cls } = classifyPerf(avg);
-        return `<tr><td><strong>${g.nome}</strong></td><td>${g.equipe||'—'}</td><td>${avg!==null?`<span class="badge ${cls}">${avg}</span>`:'—'}</td></tr>`;
+        return `<tr><td><strong>${_esc(g.nome)}</strong></td><td>${_esc(g.equipe||'—')}</td><td>${avg!==null?`<span class="badge ${cls}">${avg}</span>`:'—'}</td></tr>`;
       }).join('')}
     </tbody></table></div>`;
   }
@@ -3208,7 +3209,7 @@ function refreshDashboard() {
           const c = r==='V'?'var(--success)':r==='D'?'var(--error)':'var(--warning)';
           res = `<span style="color:${c};font-weight:700">${r} ${p.gf}×${p.gc}</span>`;
         }
-        return `<tr><td>${p.data?formatDate(p.data):'—'}</td><td>${p.adversario}</td><td>${p.competicao||'—'}</td><td>${res}</td></tr>`;
+        return `<tr><td>${p.data?formatDate(p.data):'—'}</td><td>${_esc(p.adversario)}</td><td>${_esc(p.competicao||'—')}</td><td>${res}</td></tr>`;
       }).join('')}
     </tbody></table></div>`;
   }
@@ -3238,19 +3239,19 @@ function refreshDashboard() {
 // ═══════════════════════════════════════════════════════════
 function updateGoleiraSelects() {
   const goleiras = DB.goleiras;
-  const opts = `<option value="">Selecionar…</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+  const opts = `<option value="">Selecionar…</option>` + goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}</option>`).join('');
   ['match-goleira','match-gk2','scout-goleira','comp-gk1','comp-gk2'].forEach(id => {
     const el = document.getElementById(id);
     if (el) { const v = el.value; el.innerHTML = opts; el.value = v; }
   });
   const perfilEl = document.getElementById('perfil-gk-select');
-  if (perfilEl) { const v = perfilEl.value; perfilEl.innerHTML = `<option value="">Selecione a goleira…</option>` + goleiras.map(g=>`<option value="${g.id}">${g.nome}</option>`).join(''); perfilEl.value = v; }
+  if (perfilEl) { const v = perfilEl.value; perfilEl.innerHTML = `<option value="">Selecione a goleira…</option>` + goleiras.map(g=>`<option value="${g.id}">${_esc(g.nome)}</option>`).join(''); perfilEl.value = v; }
   const hmEl = document.getElementById('heatmap-gk');
-  if (hmEl) { const v = hmEl.value; hmEl.innerHTML = `<option value="">Todas as goleiras</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join(''); hmEl.value = v; }
+  if (hmEl) { const v = hmEl.value; hmEl.innerHTML = `<option value="">Todas as goleiras</option>` + goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}</option>`).join(''); hmEl.value = v; }
   const pdfEl = document.getElementById('pdf-gk-select');
-  if (pdfEl) pdfEl.innerHTML = `<option value="">Selecione a goleira…</option>` + goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+  if (pdfEl) pdfEl.innerHTML = `<option value="">Selecione a goleira…</option>` + goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}</option>`).join('');
   const partidas = DB.partidas;
-  const popts = `<option value="">Selecionar…</option>` + partidas.map(p => `<option value="${p.id}">${p.adversario}${p.data?' ('+formatDate(p.data)+')':''}</option>`).join('');
+  const popts = `<option value="">Selecionar…</option>` + partidas.map(p => `<option value="${p.id}">${_esc(p.adversario)}${p.data?' ('+formatDate(p.data)+')':''}</option>`).join('');
   const spt = document.getElementById('scout-partida');
   if (spt) spt.innerHTML = popts;
 }
@@ -3400,6 +3401,12 @@ function confirmarImportacao() {
 // ═══════════════════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════════════════
+function _xlsEsc(v) {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
+
 function exportarDados() {
   const wb = XLSX.utils.book_new();
   const goleiras = DB.goleiras;
@@ -3408,25 +3415,25 @@ function exportarDados() {
 
   if (goleiras.length) {
     const wsGk = XLSX.utils.json_to_sheet(goleiras.map(g => ({
-      Nome: g.nome, Nascimento: g.nasc, Número: g.num, Altura: g.altura,
-      Peso: g.peso, Equipe: g.equipe, Categoria: g.categoria, 'Pé': g.pe,
-      Mão: g.mao, Performance: avgPerformance(g.id) ?? '', Observações: g.obs
+      Nome: _xlsEsc(g.nome), Nascimento: g.nasc, Número: g.num, Altura: g.altura,
+      Peso: g.peso, Equipe: _xlsEsc(g.equipe), Categoria: _xlsEsc(g.categoria), 'Pé': _xlsEsc(g.pe),
+      Mão: _xlsEsc(g.mao), Performance: avgPerformance(g.id) ?? '', Observações: _xlsEsc(g.obs)
     })));
     XLSX.utils.book_append_sheet(wb, wsGk, 'Goleiras');
   }
   if (partidas.length) {
     const gkMap = Object.fromEntries(goleiras.map(g => [g.id, g.nome]));
     const wsM = XLSX.utils.json_to_sheet(partidas.map(p => ({
-      Data: p.data, Hora: p.hora, Adversário: p.adversario, Competição: p.competicao,
-      Fase: p.fase, Local: p.local, Goleira: gkMap[p.goalkeeperId]||'',
-      'Gols a Favor': p.gf, 'Gols Contra': p.gc, Observações: p.obs
+      Data: p.data, Hora: p.hora, Adversário: _xlsEsc(p.adversario), Competição: _xlsEsc(p.competicao),
+      Fase: _xlsEsc(p.fase), Local: _xlsEsc(p.local), Goleira: _xlsEsc(gkMap[p.goalkeeperId]||''),
+      'Gols a Favor': p.gf, 'Gols Contra': p.gc, Observações: _xlsEsc(p.obs)
     })));
     XLSX.utils.book_append_sheet(wb, wsM, 'Partidas');
   }
   if (scouts.length) {
     const gkMap = Object.fromEntries(goleiras.map(g => [g.id, g.nome]));
     const wsS = XLSX.utils.json_to_sheet(scouts.map(s => ({
-      Goleira: gkMap[s.goalkeeperId]||s.goalkeeperId,
+      Goleira: _xlsEsc(gkMap[s.goalkeeperId]||s.goalkeeperId),
       'Def. Alta Dir': s.dad, 'Def. Alta Esq': s.dae,
       'Def. Baixa Dir': s.dbd, 'Def. Baixa Esq': s.dbe,
       'Def. Central': s.dc, Esquadros: s.esq,
@@ -3717,7 +3724,7 @@ function renderPerfil() {
   // Foto + nome
   const fotoEl = document.getElementById('perfil-foto');
   fotoEl.innerHTML = gk.foto
-    ? `<img src="${gk.foto}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${(gk.foto||'').startsWith('data:image/') ? gk.foto : ''}" style="width:100%;height:100%;object-fit:cover;">`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:48px;height:48px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
   document.getElementById('perfil-nome').textContent = gk.nome;
   const idade = calcIdade(gk.nasc);
@@ -3762,7 +3769,7 @@ function renderPerfil() {
     <div style="font-size:12px;color:var(--muted);">
       ${ranking.slice(0,5).map((r,i)=>`
         <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);${r.id===gkId?'color:var(--primary);font-weight:700;':''}">
-          <span>#${i+1} ${r.nome}</span><span>${r.avg}</span>
+          <span>#${i+1} ${_esc(r.nome)}</span><span>${r.avg}</span>
         </div>`).join('')}
     </div>`;
 
@@ -3819,8 +3826,8 @@ function renderPerfil() {
     }
     return `<tr>
       <td>${p?.data ? formatDate(p.data) : '—'}</td>
-      <td><strong>${p?.adversario || '—'}</strong></td>
-      <td>${p?.competicao || '—'}</td>
+      <td><strong>${_esc(p?.adversario || '—')}</strong></td>
+      <td>${_esc(p?.competicao || '—')}</td>
       <td>${res}</td>
       <td>${def}</td><td>${gc}</td>
       <td>${nota !== null ? `<span class="badge ${cls}">${nota}</span>` : '—'}</td>
@@ -3960,7 +3967,7 @@ function gerarAnalise(gkId) {
   const nivel = clNota.label;
   const defStr = taxaDef !== null ? `taxa de defesa de ${(taxaDef*100).toFixed(0)}%` : 'dados de defesa em coleta';
   const distStr = taxaDist !== null ? `precisão de distribuição de ${(taxaDist*100).toFixed(0)}%` : 'distribuição em desenvolvimento';
-  const resumo = `${gk.nome} apresenta nível de desempenho classificado como <strong>${nivel}</strong>, com nota média de <strong>${avgNota !== null ? avgNota.toFixed(1) : '—'}/10</strong> ao longo de <strong>${nPartidas} partida(s)</strong> analisada(s). `
+  const resumo = `${_esc(gk.nome)} apresenta nível de desempenho classificado como <strong>${nivel}</strong>, com nota média de <strong>${avgNota !== null ? avgNota.toFixed(1) : '—'}/10</strong> ao longo de <strong>${nPartidas} partida(s)</strong> analisada(s). `
     + `A goleira registra ${defStr}, ${distStr} e média de <strong>${gkPerGame(totalDef)} defesas por jogo</strong>. `
     + `A tendência de evolução é <strong>${tendencia}</strong>${Math.abs(tendenciaDelta) > 0.1 ? ` (${tendenciaDelta > 0 ? '+' : ''}${tendenciaDelta} pts)` : ''}.`
     + (forcas.length ? ` Seus principais pontos fortes são ${forcas.slice(0,2).map(f=>f.texto.split('—')[0].toLowerCase()).join(' e ')}.` : '');
@@ -4212,7 +4219,7 @@ function renderComparacao() {
     ['Esquadros/jogo', sA.esquPJ, sB.esquPJ],
   ];
   document.getElementById('comp-table-detail').innerHTML = `
-    <thead><tr><th>Métrica</th><th style="color:var(--primary);">${gkA.nome}</th><th style="color:var(--warning);">${gkB.nome}</th></tr></thead>
+    <thead><tr><th>Métrica</th><th style="color:var(--primary);">${_esc(gkA.nome)}</th><th style="color:var(--warning);">${_esc(gkB.nome)}</th></tr></thead>
     <tbody>${rows.map(([m,a,b])=>{
       const aw=typeof a==='number'&&typeof b==='number'&&a>b;
       const bw=typeof a==='number'&&typeof b==='number'&&b>a;
@@ -4314,10 +4321,10 @@ function aggScoutsHeatmap() {
   const summary = document.getElementById('hm-filter-summary');
   if (summary) {
     const active = [];
-    if (gkId) { const g=DB.goleiras.find(g=>g.id===gkId); if(g) active.push(`Goleira: <strong>${g.nome}</strong>`); }
-    if (temp) active.push(`Temporada: <strong>${temp}</strong>`);
-    if (comp) active.push(`Competição: <strong>${comp}</strong>`);
-    if (adv)  active.push(`Adversário: <strong>${adv}</strong>`);
+    if (gkId) { const g=DB.goleiras.find(g=>g.id===gkId); if(g) active.push(`Goleira: <strong>${_esc(g.nome)}</strong>`); }
+    if (temp) active.push(`Temporada: <strong>${_esc(temp)}</strong>`);
+    if (comp) active.push(`Competição: <strong>${_esc(comp)}</strong>`);
+    if (adv)  active.push(`Adversário: <strong>${_esc(adv)}</strong>`);
     if (hmPeriodo!=='all') active.push(`Período: <strong>últimos ${hmPeriodo} jogos</strong>`);
     if (active.length) {
       summary.innerHTML = `<span style="color:var(--primary);font-weight:600;margin-right:6px;">Filtros ativos:</span>${active.join(' · ')} <span style="color:var(--muted);margin-left:4px;">(${scouts.length} scout${scouts.length!==1?'s':''})</span>`;
@@ -4518,7 +4525,7 @@ function updatePdfSelects() {
   const el = document.getElementById('pdf-gk-select');
   if (!el) return;
   el.innerHTML = '<option value="">Selecione a goleira…</option>' +
-    DB.goleiras.map(g => `<option value="${g.id}">${g.nome}</option>`).join('');
+    DB.goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}</option>`).join('');
 }
 
 function pdfCompeticao() {
@@ -4694,12 +4701,12 @@ mcReset();
 function mcPopulateSelects() {
   const goleiras = DB.goleiras;
   const partidas = DB.partidas;
-  const opts = `<option value="">Selecionar…</option>` + goleiras.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
+  const opts = `<option value="">Selecionar…</option>` + goleiras.map(g=>`<option value="${g.id}">${_esc(g.nome)}</option>`).join('');
   ['mc-goleira'].forEach(id => { const el=document.getElementById(id); if(el){el.innerHTML=opts;} });
   const pEl = document.getElementById('mc-partida');
   if (pEl) pEl.innerHTML = `<option value="">Selecionar…</option>` +
     [...partidas].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(p =>
-      `<option value="${p.id}">${p.adversario}${p.data?' ('+formatDate(p.data)+')':''}</option>`).join('');
+      `<option value="${p.id}">${_esc(p.adversario)}${p.data?' ('+formatDate(p.data)+')':''}</option>`).join('');
 }
 
 function mcOnPartidaChange() {
@@ -5056,9 +5063,9 @@ function mcUpdateGkComp(segs) {
   const mxDef=Math.max(1,...metrics.map(m=>Math.max(m.va,m.vb)));
   el.innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:4px;margin-bottom:8px;">
-      <div style="font-size:11px;font-weight:700;color:var(--primary);text-align:right;">${gkA?.nome||'GK A'}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--primary);text-align:right;">${_esc(gkA?.nome||'GK A')}</div>
       <div></div>
-      <div style="font-size:11px;font-weight:700;color:var(--warning);">${gkB?.nome||'GK B'}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--warning);">${_esc(gkB?.nome||'GK B')}</div>
     </div>
     ${metrics.map(m=>`
     <div class="comp-row" style="grid-template-columns:1fr 80px 1fr;">
@@ -5294,7 +5301,7 @@ function mcTrocarGoleira() {
   const outras=goleiras.filter(g=>g.id!==atualId);
   if (!outras.length){toast('Não há outras goleiras cadastradas','error');return;}
   const sel=document.getElementById('mc-nova-goleira');
-  if(sel) sel.innerHTML=outras.map(g=>`<option value="${g.id}">${g.nome}</option>`).join('');
+  if(sel) sel.innerHTML=outras.map(g=>`<option value="${g.id}">${_esc(g.nome)}</option>`).join('');
   document.getElementById('mc-trocar-painel').style.display='block';
 }
 
@@ -6242,7 +6249,7 @@ function _initFirebaseAuth() {
 function _googleLoginSuccess(user) {
   _loggedUser   = user.displayName || user.email;
   _sessionToken = _randToken();
-  localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+  localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
   document.getElementById('auth-overlay').classList.add('hidden');
   _updateSidebarUser();
 }
@@ -6391,10 +6398,15 @@ function initAuth() {
   try {
     const stored = JSON.parse(localStorage.getItem(_AUTH_SESSION) || 'null');
     if (stored?.token && stored?.user) {
-      _loggedUser   = stored.user;
-      _sessionToken = stored.token;
-      document.getElementById('auth-overlay').classList.add('hidden');
-      _updateSidebarUser();
+      if (stored.expiresAt && Date.now() > stored.expiresAt) {
+        localStorage.removeItem(_AUTH_SESSION);
+        // don't set _loggedUser — session has expired
+      } else {
+        _loggedUser   = stored.user;
+        _sessionToken = stored.token;
+        document.getElementById('auth-overlay').classList.add('hidden');
+        _updateSidebarUser();
+      }
     }
   } catch(e) {
     localStorage.removeItem(_AUTH_SESSION);
@@ -6493,7 +6505,7 @@ async function _pinSubmit() {
 function _pinLoginSuccess(userName) {
   _loggedUser   = userName;
   _sessionToken = _randToken();
-  localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+  localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
   setTimeout(() => {
     document.getElementById('auth-overlay').classList.add('hidden');
     _updateSidebarUser();
@@ -6549,7 +6561,7 @@ async function authBiometric() {
     if (assertion) {
       _loggedUser = stored.user;
       _sessionToken = _randToken();
-      localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+      localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
       document.getElementById('auth-overlay').classList.add('hidden');
       _updateSidebarUser();
       if (errEl) errEl.style.display = 'none';
@@ -6623,7 +6635,7 @@ async function authLogin() {
       _clearFails();
       _loggedUser   = found.nome || found.user;
       _sessionToken = _randToken();
-      localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+      localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
       document.getElementById('auth-overlay').classList.add('hidden');
       _updateSidebarUser();
       errEl.style.display = 'none';
