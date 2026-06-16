@@ -1023,7 +1023,7 @@
       <div class="auth-logo-text">GK Hub</div>
       <div class="auth-logo-sub">Plataforma de Performance para Goleiras de Futsal</div>
     </div>
-    <form onsubmit="authLogin();return false;" autocomplete="on">
+    <form onsubmit="event.preventDefault();authLogin();" autocomplete="on">
       <div class="form-group" style="margin-bottom:12px;">
         <label class="form-label">Usuário</label>
         <input class="form-input" id="auth-user" type="text" placeholder="admin" autocomplete="username">
