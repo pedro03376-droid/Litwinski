@@ -6220,43 +6220,56 @@ function _initFirebaseAuth() {
       if (raw) cfg = { ..._FB_DEFAULT_CONFIG, ...JSON.parse(raw) };
     } catch(e) {}
     if (!cfg.apiKey || !cfg.authDomain) return false;
-    if (!_firebaseApp) {
-      _firebaseApp  = firebase.initializeApp(cfg);
+    if (!_firebaseAuth) {
+      // Evita "app already exists" em re-inicializações
+      _firebaseApp  = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
       _firebaseAuth = firebase.auth(_firebaseApp);
-      // Persistência entre sessões
       _firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
-      // Observer: se o user já está logado via Google, entra direto
+      // Resultado de redirect (iOS usa signInWithRedirect)
+      _firebaseAuth.getRedirectResult().then(result => {
+        if (result?.user) _googleLoginSuccess(result.user);
+      }).catch(()=>{});
+      // Observer: usuário já logado
       _firebaseAuth.onAuthStateChanged(user => {
-        if (user && !_loggedUser) {
-          _loggedUser   = user.displayName || user.email;
-          _sessionToken = _randToken();
-          localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
-          document.getElementById('auth-overlay').classList.add('hidden');
-          _updateSidebarUser();
-        }
+        if (user && !_loggedUser) _googleLoginSuccess(user);
       });
     }
     return true;
-  } catch(e) { return false; }
+  } catch(e) { console.error('Firebase init error:', e); return false; }
+}
+
+function _googleLoginSuccess(user) {
+  _loggedUser   = user.displayName || user.email;
+  _sessionToken = _randToken();
+  localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+  document.getElementById('auth-overlay').classList.add('hidden');
+  _updateSidebarUser();
 }
 
 async function authGoogle() {
-  const errEl = document.getElementById('auth-err');
-  const ready = _initFirebaseAuth();
+  const errEl  = document.getElementById('auth-err');
+  const ready  = _initFirebaseAuth();
   if (!ready) {
-    if (errEl) { errEl.textContent = 'Configure o Firebase primeiro (página de Configurações).'; errEl.style.display = 'block'; }
+    if (errEl) { errEl.textContent = 'Erro ao inicializar Firebase.'; errEl.style.display = 'block'; }
     return;
   }
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('email');
-    provider.addScope('profile');
-    await _firebaseAuth.signInWithPopup(provider);
-    // onAuthStateChanged cuida do resto
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      // iOS/Android: redirect (popup é bloqueado)
+      await _firebaseAuth.signInWithRedirect(provider);
+    } else {
+      // Desktop: popup
+      const result = await _firebaseAuth.signInWithPopup(provider);
+      if (result?.user) _googleLoginSuccess(result.user);
+    }
   } catch(e) {
     const msg = e.code === 'auth/popup-closed-by-user' ? 'Login cancelado.'
-              : e.code === 'auth/popup-blocked'        ? 'Popup bloqueado. Permita popups para este site.'
-              : 'Erro ao entrar com Google: ' + (e.message || e.code);
+              : e.code === 'auth/popup-blocked'        ? 'Popup bloqueado. Use o celular ou permita popups.'
+              : e.code === 'auth/unauthorized-domain'  ? 'Domínio não autorizado no Firebase. Adicione pedro03376-droid.github.io em Authentication → Authorized domains.'
+              : 'Erro: ' + (e.message || e.code);
     if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
   }
 }
