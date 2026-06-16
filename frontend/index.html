@@ -6530,21 +6530,26 @@ let deferredInstallPrompt = null;
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
+    // Só recarrega para aplicar novo SW se o usuário NÃO estiver autenticado
+    const _swSafeReload = () => {
+      try {
+        const s = JSON.parse(localStorage.getItem('gkhub_session') || 'null');
+        if (!s?.token) window.location.reload();
+        // Se logado, o novo SW entrará em vigor na próxima abertura natural da página
+      } catch(e) { window.location.reload(); }
+    };
+
     navigator.serviceWorker.register('./sw.js').then(reg => {
-      // Force immediate activation of waiting SW
       if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       reg.addEventListener('updatefound', () => {
         const sw = reg.installing;
         if (sw) sw.addEventListener('statechange', () => {
-          if (sw.state === 'installed') {
-            sw.postMessage({ type: 'SKIP_WAITING' });
-            window.location.reload();
-          }
+          if (sw.state === 'installed') sw.postMessage({ type: 'SKIP_WAITING' });
         });
       });
     }).catch(() => {});
-    // Reload when new SW takes control
-    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload());
+    // Reload quando novo SW assume controle — só se não houver sessão ativa
+    navigator.serviceWorker.addEventListener('controllerchange', _swSafeReload);
   });
 }
 
