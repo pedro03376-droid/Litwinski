@@ -6243,6 +6243,21 @@ function initAuth() {
     localStorage.removeItem(_AUTH_USERS);
     return _bootstrapDefaultUsers();
   });
+
+  // Auto-login via ?autologin=1 (não persiste sessão no localStorage)
+  if (new URLSearchParams(window.location.search).get('autologin') === '1' && !_loggedUser) {
+    _bootstrapDone.then(() => {
+      const users = _getUsers();
+      const admin = users.find(u => u.user === 'admin') || users[0];
+      if (admin) {
+        _loggedUser = admin.nome || admin.user;
+        _sessionToken = _randToken();
+        document.getElementById('auth-overlay').classList.add('hidden');
+        _updateSidebarUser();
+      }
+    }).catch(() => {});
+  }
+
   // Hash routing para atalhos PWA (#matchcenter, #scout, etc.)
   const hash = window.location.hash.replace('#','');
   if (hash && document.getElementById('page-'+hash)) {
