@@ -19,8 +19,19 @@ async function bootstrap() {
   app.use(helmet());
   app.use(compression());
 
+  const allowedOrigins = [
+    'http://localhost:8080',
+    'http://localhost:3001',
+    'https://pedro03376-droid.github.io',
+    ...(configService.get<string>('ALLOWED_ORIGINS') ?? '')
+      .split(',').map(s => s.trim()).filter(Boolean),
+  ];
+
   app.enableCors({
-    origin: ['http://localhost:8080', 'http://localhost:3001', '*'],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
