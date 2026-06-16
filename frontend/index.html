@@ -6271,19 +6271,24 @@ async function authGoogle() {
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('email');
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile) {
-      _setBtnText('Redirecionando…');
-      localStorage.setItem('gkhub_google_redirect', '1');
-      await _firebaseAuth.signInWithRedirect(provider);
-    } else {
-      _setBtnText('Abrindo Google…');
+    _setBtnText('Abrindo Google…');
+    try {
+      // Tenta popup (funciona em iOS 16+ e desktop)
       const result = await _firebaseAuth.signInWithPopup(provider);
       if (result?.user) _googleLoginSuccess(result.user);
+    } catch(popupErr) {
+      if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request') {
+        // Fallback: redirect (para browsers que bloqueiam popup)
+        _setBtnText('Redirecionando…');
+        localStorage.setItem('gkhub_google_redirect', '1');
+        await _firebaseAuth.signInWithRedirect(provider);
+      } else {
+        throw popupErr;
+      }
     }
   } catch(e) {
     const msg = e.code === 'auth/popup-closed-by-user' ? 'Login cancelado.'
-              : e.code === 'auth/popup-blocked'        ? 'Popup bloqueado — permita popups para este site.'
+              : e.code === 'auth/popup-blocked'        ? 'Popup bloqueado — abra o site no Safari e permita popups.'
               : e.code === 'auth/unauthorized-domain'  ? 'Domínio não autorizado. Adicione pedro03376-droid.github.io no Firebase → Authentication → Authorized domains.'
               : 'Erro: ' + (e.message || e.code);
     if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
