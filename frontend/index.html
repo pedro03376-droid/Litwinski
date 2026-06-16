@@ -6227,8 +6227,9 @@ function _initFirebaseAuth() {
       _firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
       // Resultado de redirect (iOS usa signInWithRedirect)
       _firebaseAuth.getRedirectResult().then(result => {
+        localStorage.removeItem('gkhub_google_redirect');
         if (result?.user) _googleLoginSuccess(result.user);
-      }).catch(()=>{});
+      }).catch(() => { localStorage.removeItem('gkhub_google_redirect'); });
       // Observer: usuário já logado
       _firebaseAuth.onAuthStateChanged(user => {
         if (user && !_loggedUser) _googleLoginSuccess(user);
@@ -6273,6 +6274,7 @@ async function authGoogle() {
     const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
     if (isMobile) {
       _setBtnText('Redirecionando…');
+      localStorage.setItem('gkhub_google_redirect', '1');
       await _firebaseAuth.signInWithRedirect(provider);
     } else {
       _setBtnText('Abrindo Google…');
@@ -6887,7 +6889,8 @@ if ('serviceWorker' in navigator) {
     const _swSafeReload = () => {
       try {
         const s = JSON.parse(localStorage.getItem('gkhub_session') || 'null');
-        if (!s?.token) window.location.reload();
+        // Não recarrega se houver sessão ativa OU redirect Google pendente
+        if (!s?.token && !localStorage.getItem('gkhub_google_redirect')) window.location.reload();
         // Se logado, o novo SW entrará em vigor na próxima abertura natural da página
       } catch(e) { window.location.reload(); }
     };
