@@ -1043,7 +1043,7 @@
       </button>
       <div class="auth-divider"><span>ou entre com senha</span></div>
     </div>
-    <form onsubmit="event.preventDefault();authLogin();" autocomplete="on">
+    <form autocomplete="on" onsubmit="return false;">
       <div class="form-group" style="margin-bottom:12px;">
         <label class="form-label">Usuário</label>
         <input class="form-input" id="auth-user" type="text" placeholder="admin" autocomplete="username">
@@ -1053,7 +1053,9 @@
         <input class="form-input" id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password">
       </div>
       <div id="auth-err" class="auth-err"></div>
-      <button type="submit" class="btn btn-primary" style="width:100%;margin-top:18px;">Entrar</button>
+      <button type="button" class="btn btn-primary" style="width:100%;margin-top:18px;"
+        ontouchend="event.preventDefault();authLogin();"
+        onclick="authLogin();">Entrar</button>
     </form>
   </div>
 </div>
@@ -6369,7 +6371,10 @@ async function _offerBiometric(userName) {
 }
 // ───────────────────────────────────────────────────────────
 
+let _loginBusy = false;
 async function authLogin() {
+  if (_loginBusy) return;
+  _loginBusy = true;
   const user  = document.getElementById('auth-user').value.trim().toLowerCase();
   const pass  = document.getElementById('auth-pass').value;
   const errEl = document.getElementById('auth-err');
@@ -6421,6 +6426,7 @@ async function authLogin() {
     errEl.style.display = 'block';
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
+    _loginBusy = false;
   }
 }
 
