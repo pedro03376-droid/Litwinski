@@ -984,7 +984,7 @@
       display: flex; align-items: center; justify-content: center;
       padding: 20px;
     }
-    #auth-overlay, #auth-overlay.hidden { display: none; }
+    #auth-overlay.hidden { display: none; }
     .auth-card {
       width: 100%; max-width: 380px;
       background: var(--card);
@@ -6516,9 +6516,7 @@ function renderConfigStatus() {
 }
 
 // INIT
-// Login desativado — acesso direto
-_loggedUser = 'Admin';
-_updateSidebarUser();
+initAuth();
 authRenderUsers();
 updateGoleiraSelects();
 refreshDashboard();
