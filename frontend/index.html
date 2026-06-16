@@ -20,7 +20,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <!-- Firebase Realtime Database via REST API — no SDK needed -->
+  <!-- Firebase Auth SDK para Google Sign-In -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
   <style>
     /* ════════════════════════════════════════════════════════
@@ -999,35 +1001,23 @@
       background: var(--primary-g); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .auth-logo-sub { font-size: 12px; color: var(--muted); margin-top: 4px; margin-bottom: 28px; }
-    /* PIN dots */
-    .pin-dots { display: flex; justify-content: center; gap: 14px; margin-bottom: 28px; }
-    .pin-dot {
-      width: 16px; height: 16px; border-radius: 50%;
-      border: 2px solid var(--border); background: transparent;
-      transition: background .15s, border-color .15s;
-    }
-    .pin-dot.filled { background: var(--primary); border-color: var(--primary); }
-    .pin-dot.error { background: #ef4444; border-color: #ef4444; }
-    /* PIN keypad */
-    .pin-keypad { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
-    .pin-key {
-      aspect-ratio: 1; border-radius: 50%;
-      background: var(--surface); border: 1px solid var(--border);
-      color: var(--text); font-size: 22px; font-weight: 500;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      -webkit-tap-highlight-color: transparent; user-select: none;
-      transition: background .1s, transform .1s;
-    }
-    .pin-key:active, .pin-key.pressed { background: var(--primary); color: #fff; transform: scale(.93); }
-    .pin-key.del { font-size: 18px; }
-    .pin-key.empty { background: transparent; border-color: transparent; cursor: default; }
     .auth-err {
       color: #FCA5A5; font-size: 12px; margin-top: 14px;
       background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.22);
       border-radius: 8px; padding: 9px 12px; display: none;
     }
+    .btn-google {
+      width: 100%; padding: 14px 16px;
+      background: #fff; border: 1.5px solid #dadce0; border-radius: 10px;
+      color: #3c4043; font-size: 15px; font-weight: 600;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+      -webkit-tap-highlight-color: transparent; user-select: none;
+      box-shadow: 0 1px 3px rgba(0,0,0,.12);
+      transition: box-shadow .15s, transform .1s;
+    }
+    .btn-google:active { box-shadow: 0 0 0 3px rgba(66,133,244,.3); transform: scale(.98); }
     .btn-biometric {
-      width: 100%; margin-top: 16px; padding: 13px;
+      width: 100%; padding: 13px;
       background: linear-gradient(135deg,#1d4ed8,#6d28d9);
       border: none; border-radius: var(--radius); color: #fff;
       font-size: 14px; font-weight: 600; cursor: pointer;
@@ -1043,29 +1033,29 @@
 <div id="auth-overlay">
   <div class="auth-card">
     <div class="auth-logo-text">GK Hub</div>
-    <div class="auth-logo-sub">Digite o PIN para entrar</div>
-    <div class="pin-dots">
-      <div class="pin-dot" id="pd0"></div>
-      <div class="pin-dot" id="pd1"></div>
-      <div class="pin-dot" id="pd2"></div>
-      <div class="pin-dot" id="pd3"></div>
+    <div class="auth-logo-sub">Plataforma de Performance para Goleiras de Futsal</div>
+
+    <!-- Google Sign-In (visível quando Firebase está configurado) -->
+    <div id="auth-google-section">
+      <button type="button" class="btn-google"
+        ontouchstart="event.preventDefault();authGoogle();"
+        onclick="authGoogle();">
+        <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Entrar com Google
+      </button>
     </div>
-    <div class="pin-keypad" id="pin-keypad">
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(1)" onclick="pinKey(1)">1</button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(2)" onclick="pinKey(2)">2</button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(3)" onclick="pinKey(3)">3</button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(4)" onclick="pinKey(4)">4</button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(5)" onclick="pinKey(5)">5</button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(6)" onclick="pinKey(6)">6</button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(7)" onclick="pinKey(7)">7</button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(8)" onclick="pinKey(8)">8</button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(9)" onclick="pinKey(9)">9</button>
-      <button class="pin-key empty" disabled></button>
-      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(0)" onclick="pinKey(0)">0</button>
-      <button class="pin-key del" ontouchstart="event.preventDefault();pinDel()" onclick="pinDel()">⌫</button>
+
+    <!-- Aviso se Firebase não configurado -->
+    <div id="auth-config-warn" style="display:none;">
+      <div class="auth-err" style="display:block;margin-top:0;">
+        Configure o Firebase na tela de configurações para habilitar o login com Google.
+      </div>
     </div>
+
     <div id="auth-err" class="auth-err"></div>
-    <div id="auth-bio-section" style="display:none;margin-top:4px;">
+
+    <!-- Face ID (visível se cadastrado) -->
+    <div id="auth-bio-section" style="display:none;margin-top:8px;">
       <button type="button" class="btn-biometric"
         ontouchstart="event.preventDefault();authBiometric();"
         onclick="authBiometric();">
@@ -1963,6 +1953,32 @@
           <button class="btn btn-primary" onclick="authChangeCreds()">Salvar</button>
           <div id="cfg-creds-status" style="margin-top:10px;font-size:13px;"></div>
         </div>
+      </div>
+      <div class="card" style="max-width:680px;margin-bottom:16px;">
+        <div class="card-header"><span class="card-title">Login com Google (Firebase Auth)</span></div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Cole o objeto <code>firebaseConfig</code> do seu projeto para habilitar o login com conta Google.</p>
+        <details style="margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
+          <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--primary);">📖 Como obter o firebaseConfig (passo a passo)</summary>
+          <ol style="margin:12px 0 0 18px;font-size:12px;color:var(--muted);line-height:1.9;">
+            <li>Acesse <strong>console.firebase.google.com</strong> → seu projeto</li>
+            <li><strong>Authentication → Sign-in method → Google → Ativar → Salvar</strong></li>
+            <li>Vá em <strong>Project Settings</strong> (engrenagem) → <strong>General</strong></li>
+            <li>Role até <strong>"Your apps"</strong> → clique em <strong>&lt;/&gt;</strong> (Web) → registre</li>
+            <li>Copie o objeto <code>firebaseConfig</code> e cole abaixo</li>
+            <li>Em <strong>Authentication → Settings → Authorized domains</strong> adicione <code>pedro03376-droid.github.io</code></li>
+          </ol>
+        </details>
+        <div class="form-group" style="margin-bottom:14px;">
+          <label class="form-label">firebaseConfig (JSON)</label>
+          <textarea class="form-input" id="fb-auth-config" rows="7"
+            placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
+            style="font-family:monospace;font-size:12px;resize:vertical;"></textarea>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <button class="btn btn-primary" onclick="salvarFbAuthConfig()">Salvar e ativar</button>
+          <button class="btn btn-ghost" onclick="removerFbAuthConfig()">Remover</button>
+        </div>
+        <div id="fb-auth-status" style="margin-top:10px;font-size:13px;"></div>
       </div>
       <div class="card" style="max-width:680px;">
         <div class="card-header"><span class="card-title">Sincronização na Nuvem (Firebase)</span></div>
@@ -6179,7 +6195,70 @@ function _gerarParecer(nota,taxaDef,taxaDist,def,gol,def1x1,intercep,posStreak,n
 }
 
 // ═══════════════════════════════════════════════════════════
-// AUTH — Login com SHA-256 + salt + sessão por token
+// GOOGLE AUTH via Firebase Authentication
+// ═══════════════════════════════════════════════════════════
+const _FB_CONFIG_KEY = 'gkhub_fb_config';
+let   _firebaseApp   = null;
+let   _firebaseAuth  = null;
+
+function _initFirebaseAuth() {
+  try {
+    const raw = localStorage.getItem(_FB_CONFIG_KEY);
+    if (!raw) return false;
+    const cfg = JSON.parse(raw);
+    if (!cfg.apiKey || !cfg.authDomain) return false;
+    if (!_firebaseApp) {
+      _firebaseApp  = firebase.initializeApp(cfg);
+      _firebaseAuth = firebase.auth(_firebaseApp);
+      // Persistência entre sessões
+      _firebaseAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+      // Observer: se o user já está logado via Google, entra direto
+      _firebaseAuth.onAuthStateChanged(user => {
+        if (user && !_loggedUser) {
+          _loggedUser   = user.displayName || user.email;
+          _sessionToken = _randToken();
+          localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+          document.getElementById('auth-overlay').classList.add('hidden');
+          _updateSidebarUser();
+        }
+      });
+    }
+    return true;
+  } catch(e) { return false; }
+}
+
+async function authGoogle() {
+  const errEl = document.getElementById('auth-err');
+  const ready = _initFirebaseAuth();
+  if (!ready) {
+    if (errEl) { errEl.textContent = 'Configure o Firebase primeiro (página de Configurações).'; errEl.style.display = 'block'; }
+    return;
+  }
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('email');
+    provider.addScope('profile');
+    await _firebaseAuth.signInWithPopup(provider);
+    // onAuthStateChanged cuida do resto
+  } catch(e) {
+    const msg = e.code === 'auth/popup-closed-by-user' ? 'Login cancelado.'
+              : e.code === 'auth/popup-blocked'        ? 'Popup bloqueado. Permita popups para este site.'
+              : 'Erro ao entrar com Google: ' + (e.message || e.code);
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+  }
+}
+
+function _checkGoogleConfigured() {
+  try {
+    const raw = localStorage.getItem(_FB_CONFIG_KEY);
+    if (!raw) return false;
+    const cfg = JSON.parse(raw);
+    return !!(cfg.apiKey && cfg.authDomain);
+  } catch(e) { return false; }
+}
+
+// ═══════════════════════════════════════════════════════════
+// AUTH — Sessão local
 // ═══════════════════════════════════════════════════════════
 const _AUTH_SESSION = 'gkhub_session';
 const _AUTH_USERS   = 'gkhub_users';
@@ -6276,9 +6355,12 @@ function initAuth() {
   } catch(e) {
     localStorage.removeItem(_AUTH_SESSION);
   }
-  // Mostra botão de biometria se cadastrado e inicializa overlay PIN
+  // Inicializa Firebase Auth e mostra/esconde aviso de config
+  const fbReady = _initFirebaseAuth();
+  const warnEl  = document.getElementById('auth-config-warn');
+  if (warnEl) warnEl.style.display = fbReady ? 'none' : 'block';
+  // Mostra botão de biometria se cadastrado
   _initBioButton();
-  _pinInitOverlay();
   // Bootstrap de usuários — guarda a Promise para authLogin aguardar
   _bootstrapDone = _bootstrapDefaultUsers().catch(e => {
     console.warn('Auth bootstrap error:', e);
@@ -6629,6 +6711,35 @@ function initFirebaseFromStorage() {
   const inp = document.getElementById('fb-config'); if (inp) inp.value = saved;
 }
 
+function salvarFbAuthConfig() {
+  const raw = document.getElementById('fb-auth-config').value.trim();
+  const st  = document.getElementById('fb-auth-status');
+  try {
+    // Aceita tanto o objeto JS puro quanto JSON
+    const clean = raw.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
+    const cfg = JSON.parse(clean);
+    if (!cfg.apiKey || !cfg.authDomain) throw new Error('apiKey e authDomain são obrigatórios.');
+    localStorage.setItem(_FB_CONFIG_KEY, JSON.stringify(cfg));
+    // Re-inicializa
+    _firebaseApp = null; _firebaseAuth = null;
+    const ok = _initFirebaseAuth();
+    const warnEl = document.getElementById('auth-config-warn');
+    if (warnEl) warnEl.style.display = ok ? 'none' : 'block';
+    st.innerHTML = '<span style="color:var(--success)">✓ Firebase Auth configurado! Login com Google ativado.</span>';
+  } catch(e) {
+    st.innerHTML = '<span style="color:var(--error)">✗ JSON inválido: ' + e.message + '</span>';
+  }
+}
+
+function removerFbAuthConfig() {
+  localStorage.removeItem(_FB_CONFIG_KEY);
+  _firebaseApp = null; _firebaseAuth = null;
+  const warnEl = document.getElementById('auth-config-warn');
+  if (warnEl) warnEl.style.display = 'block';
+  const st = document.getElementById('fb-auth-status');
+  if (st) st.innerHTML = '<span style="color:var(--muted)">Configuração removida.</span>';
+}
+
 async function conectarFirebase() {
   const raw = document.getElementById('fb-config').value.trim().replace(/\/$/, '');
   if (!raw || !raw.includes('firebaseio.com')) {
@@ -6712,6 +6823,12 @@ function renderConfigStatus() {
     document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Conectado e sincronizando.</span>';
     const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
   }
+  // Popular campo de firebase auth config se já salvo
+  const fbCfg = localStorage.getItem(_FB_CONFIG_KEY);
+  const el = document.getElementById('fb-auth-config');
+  if (el && fbCfg) { el.value = fbCfg; }
+  const st = document.getElementById('fb-auth-status');
+  if (st && fbCfg) st.innerHTML = '<span style="color:var(--success)">✓ Firebase Auth configurado.</span>';
 }
 
 // INIT
