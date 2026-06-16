@@ -6248,6 +6248,10 @@ function _googleLoginSuccess(user) {
 
 async function authGoogle() {
   const errEl  = document.getElementById('auth-err');
+  if (typeof firebase === 'undefined') {
+    if (errEl) { errEl.textContent = 'Firebase não carregado. Recarregue a página (Ctrl+Shift+R).'; errEl.style.display = 'block'; }
+    return;
+  }
   const ready  = _initFirebaseAuth();
   if (!ready) {
     if (errEl) { errEl.textContent = 'Erro ao inicializar Firebase.'; errEl.style.display = 'block'; }
