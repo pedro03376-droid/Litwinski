@@ -1307,9 +1307,14 @@
         <!-- Timer + Período + Placar + Nota -->
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
           <!-- Timer -->
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div id="mc-timer" style="font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--primary);letter-spacing:3px;">00:00</div>
-            <div id="mc-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);"></div>
+          <div style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div id="mc-timer" style="font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--primary);letter-spacing:3px;">00:00</div>
+              <div id="mc-status-dot" style="width:10px;height:10px;border-radius:50%;background:var(--muted);"></div>
+            </div>
+            <div id="mc-tt-badge" style="display:none;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.4);border-radius:8px;padding:3px 10px;font-size:12px;font-weight:700;color:#a78bfa;letter-spacing:.5px;font-variant-numeric:tabular-nums;">
+              ⏱ T. TÉCNICO: <span id="mc-tt-count">60</span>s
+            </div>
           </div>
 
           <!-- Nota ao Vivo -->
@@ -1354,6 +1359,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
               Trocar Goleira
             </button>
+            <button class="btn btn-ghost btn-sm" id="mc-btn-tt" onclick="mcTempoTecnico()" style="color:#a78bfa;border-color:rgba(167,139,250,.35);white-space:nowrap;">⏱ T. Técnico</button>
             <button class="btn btn-ghost btn-sm" onclick="mcDesfazer()" id="mc-btn-undo" style="opacity:.5;" disabled>↩ Desfazer</button>
           </div>
         </div>
@@ -4652,6 +4658,10 @@ let mcWorstNotaSec = 0;
 // Pending data for post-game modal
 let mcPendingSegmentos = null;
 let mcPendingPId = null;
+// Tempo Técnico
+let mcTTInterval = null;
+let mcTTSeconds = 0;
+let mcTTWasRunning = false;
 
 const MC_NOTA_PESOS = {
   dad:+0.20, dae:+0.20,            // defesa difícil
@@ -4667,7 +4677,7 @@ const MC_NOTA_PESOS = {
 
 const MC_ICONS = {
   def:'🧤', gol:'⚽', dist:'🎯', out:'🛡️',
-  sub:'🔄', periodo:'─', 'placar-nos':'⚽', 'placar-adv':'⚽'
+  sub:'🔄', periodo:'─', 'placar-nos':'⚽', 'placar-adv':'⚽', tt:'⏱'
 };
 
 const MC_TIPO_ICONS = {
@@ -4692,7 +4702,9 @@ function mcReset() {
   mcPosStreak = 0; mcNegStreak = 0; mcMaxPosStreak = 0; mcMaxNegStreak = 0;
   mcBestNotaSec = 0; mcWorstNotaSec = 0;
   mcCurrentReportSegs = null; mcPendingSegmentos = null; mcPendingPId = null;
+  mcTTSeconds = 0; mcTTWasRunning = false;
   if (mcTimerInterval) { clearInterval(mcTimerInterval); mcTimerInterval = null; }
+  if (mcTTInterval) { clearInterval(mcTTInterval); mcTTInterval = null; }
   if (mcMomentumChart) { mcMomentumChart.destroy(); mcMomentumChart = null; }
   if (mcTimelineChart) { mcTimelineChart.destroy(); mcTimelineChart = null; }
 }
@@ -4814,8 +4826,8 @@ function mcUpdateLog() {
     el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px 0;font-size:13px;">Nenhum evento registrado</div>';
     return;
   }
-  const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)'};
-  const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)'};
+  const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)',tt:'rgba(167,139,250,.15)'};
+  const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)',tt:'rgba(167,139,250,.4)'};
   el.innerHTML=mcLog.slice(0,60).map((e,i)=>{
     if (e.tipo==='periodo') return `<div style="text-align:center;padding:6px 0;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
     const icon=MC_TIPO_ICONS[e.key]||MC_ICONS[e.tipo]||'●';
@@ -5271,6 +5283,54 @@ function mcIniciarSegundoTempo() {
   mcUpdateLog();
   mcUpdatePeriodStats();
   toast('2º Tempo iniciado — cronômetro zerado!','info');
+}
+
+// ── Tempo Técnico ─────────────────────────────────────────────
+function mcTempoTecnico() {
+  // If TT already running, cancel it
+  if (mcTTInterval) {
+    clearInterval(mcTTInterval); mcTTInterval = null;
+    const badge = document.getElementById('mc-tt-badge');
+    const btn = document.getElementById('mc-btn-tt');
+    if (badge) badge.style.display = 'none';
+    if (btn) { btn.textContent = '⏱ T. Técnico'; btn.style.color = '#a78bfa'; }
+    // Resume timer if it was running before TT
+    if (mcTTWasRunning) mcToggleTimer();
+    mcTTWasRunning = false;
+    toast('Tempo Técnico cancelado', 'info');
+    return;
+  }
+  // Pause main timer if running
+  mcTTWasRunning = mcRunning;
+  if (mcRunning) mcToggleTimer();
+
+  mcTTSeconds = 60;
+  const timeStr = mcFormatTime(mcSeconds);
+  mcLog.unshift({ key: '_tt', label: '⏱ Tempo Técnico', tipo: 'tt', time: timeStr, periodo: mcPeriodo, sec: mcSeconds });
+  mcUpdateLog();
+
+  const badge = document.getElementById('mc-tt-badge');
+  const countEl = document.getElementById('mc-tt-count');
+  const btn = document.getElementById('mc-btn-tt');
+  if (badge) badge.style.display = 'block';
+  if (countEl) countEl.textContent = mcTTSeconds;
+  if (btn) { btn.textContent = '✕ Cancelar TT'; btn.style.color = 'var(--error)'; }
+
+  toast('⏱ Tempo Técnico — 60 segundos', 'info');
+
+  mcTTInterval = setInterval(() => {
+    mcTTSeconds--;
+    if (countEl) countEl.textContent = mcTTSeconds;
+    if (mcTTSeconds <= 0) {
+      clearInterval(mcTTInterval); mcTTInterval = null;
+      if (badge) badge.style.display = 'none';
+      if (btn) { btn.textContent = '⏱ T. Técnico'; btn.style.color = '#a78bfa'; }
+      toast('⏱ Tempo Técnico encerrado!', 'success');
+      // Auto-resume if timer was running before
+      if (mcTTWasRunning) mcToggleTimer();
+      mcTTWasRunning = false;
+    }
+  }, 1000);
 }
 
 // ── Troca de Goleira ─────────────────────────────────────────
