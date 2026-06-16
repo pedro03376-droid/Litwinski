@@ -1008,6 +1008,18 @@
     #auth-overlay .form-input { font-size: 16px; }
     /* Feedback visual imediato no toque mobile */
     #auth-overlay .btn-primary:active { opacity: .75; transform: scale(.98); }
+    .btn-biometric {
+      width: 100%; margin-top: 10px; padding: 13px;
+      background: linear-gradient(135deg,#1d4ed8,#6d28d9);
+      border: none; border-radius: var(--radius); color: #fff;
+      font-size: 15px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn-biometric:active { opacity: .75; transform: scale(.98); }
+    .auth-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; }
+    .auth-divider span { font-size: 11px; color: var(--muted); white-space: nowrap; }
+    .auth-divider::before,.auth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
     @media (max-width: 480px) {
       .auth-card { padding: 32px 20px; }
       .auth-logo-text { font-size: 28px; }
@@ -1022,6 +1034,14 @@
     <div class="auth-logo">
       <div class="auth-logo-text">GK Hub</div>
       <div class="auth-logo-sub">Plataforma de Performance para Goleiras de Futsal</div>
+    </div>
+    <!-- Botão Face ID / biometria (visível só se cadastrado) -->
+    <div id="auth-bio-section" style="display:none;">
+      <button type="button" class="btn-biometric" onclick="authBiometric()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
+        Entrar com Face ID / Biometria
+      </button>
+      <div class="auth-divider"><span>ou entre com senha</span></div>
     </div>
     <form onsubmit="event.preventDefault();authLogin();" autocomplete="on">
       <div class="form-group" style="margin-bottom:12px;">
@@ -6238,6 +6258,8 @@ function initAuth() {
   } catch(e) {
     localStorage.removeItem(_AUTH_SESSION);
   }
+  // Mostra botão de biometria se cadastrado
+  _initBioButton();
   // Bootstrap de usuários — guarda a Promise para authLogin aguardar
   _bootstrapDone = _bootstrapDefaultUsers().catch(e => {
     console.warn('Auth bootstrap error:', e);
@@ -6272,6 +6294,81 @@ function _updateSidebarUser() {
   if (el && _loggedUser) el.textContent = _loggedUser;
 }
 
+// ── WebAuthn / Face ID ─────────────────────────────────────
+const _BIO_KEY = 'gkhub_biometric';
+
+function _bioSupported() {
+  return !!(window.PublicKeyCredential && navigator.credentials?.create);
+}
+
+function _bioStored() {
+  try { return JSON.parse(localStorage.getItem(_BIO_KEY) || 'null'); } catch(e) { return null; }
+}
+
+function _initBioButton() {
+  const sec = document.getElementById('auth-bio-section');
+  if (sec) sec.style.display = (_bioSupported() && _bioStored()) ? 'block' : 'none';
+}
+
+async function authBiometric() {
+  const stored = _bioStored();
+  if (!stored) return;
+  const errEl = document.getElementById('auth-err');
+  try {
+    const credIdBytes = Uint8Array.from(atob(stored.credId), c => c.charCodeAt(0));
+    const assertion = await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ id: credIdBytes, type: 'public-key' }],
+        userVerification: 'required',
+        timeout: 60000
+      }
+    });
+    if (assertion) {
+      _loggedUser = stored.user;
+      _sessionToken = _randToken();
+      localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+      document.getElementById('auth-overlay').classList.add('hidden');
+      _updateSidebarUser();
+      if (errEl) errEl.style.display = 'none';
+    }
+  } catch(e) {
+    if (errEl) { errEl.textContent = 'Biometria cancelada ou não reconhecida.'; errEl.style.display = 'block'; }
+  }
+}
+
+async function _registerBiometric(userName) {
+  if (!_bioSupported()) return false;
+  try {
+    const userId = crypto.getRandomValues(new Uint8Array(16));
+    const credential = await navigator.credentials.create({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        rp: { name: 'GK Hub', id: window.location.hostname },
+        user: { id: userId, name: userName, displayName: userName },
+        pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+        authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required', residentKey: 'preferred' },
+        timeout: 60000
+      }
+    });
+    if (credential) {
+      const credId = btoa(String.fromCharCode(...new Uint8Array(credential.rawId)));
+      localStorage.setItem(_BIO_KEY, JSON.stringify({ credId, user: userName }));
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+async function _offerBiometric(userName) {
+  if (!_bioSupported() || _bioStored()) return;
+  const ok = confirm('Deseja habilitar o Face ID / biometria para entrar mais rápido na próxima vez?');
+  if (!ok) return;
+  const registered = await _registerBiometric(userName);
+  if (registered) alert('Face ID habilitado! Na próxima vez use o botão de biometria.');
+}
+// ───────────────────────────────────────────────────────────
+
 async function authLogin() {
   const user  = document.getElementById('auth-user').value.trim().toLowerCase();
   const pass  = document.getElementById('auth-pass').value;
@@ -6305,6 +6402,8 @@ async function authLogin() {
       document.getElementById('auth-overlay').classList.add('hidden');
       _updateSidebarUser();
       errEl.style.display = 'none';
+      // Oferece cadastrar biometria (Face ID) na primeira vez
+      setTimeout(() => _offerBiometric(_loggedUser), 300);
     } else {
       _recordFail();
       const failData = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0}');
