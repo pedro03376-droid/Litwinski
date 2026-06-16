@@ -6201,11 +6201,24 @@ const _FB_CONFIG_KEY = 'gkhub_fb_config';
 let   _firebaseApp   = null;
 let   _firebaseAuth  = null;
 
+const _FB_DEFAULT_CONFIG = {
+  apiKey: "AIzaSyCtqk0eP9a3ZlLF__OaWS2jUJuN2KgH10o",
+  authDomain: "gkhub-4717d.firebaseapp.com",
+  databaseURL: "https://gkhub-4717d-default-rtdb.firebaseio.com",
+  projectId: "gkhub-4717d",
+  storageBucket: "gkhub-4717d.firebasestorage.app",
+  messagingSenderId: "338475414522",
+  appId: "1:338475414522:web:d9f5e20ea1f583dd392a43"
+};
+
 function _initFirebaseAuth() {
   try {
-    const raw = localStorage.getItem(_FB_CONFIG_KEY);
-    if (!raw) return false;
-    const cfg = JSON.parse(raw);
+    // Usa config salva no localStorage ou a padrão embutida
+    let cfg = _FB_DEFAULT_CONFIG;
+    try {
+      const raw = localStorage.getItem(_FB_CONFIG_KEY);
+      if (raw) cfg = { ..._FB_DEFAULT_CONFIG, ...JSON.parse(raw) };
+    } catch(e) {}
     if (!cfg.apiKey || !cfg.authDomain) return false;
     if (!_firebaseApp) {
       _firebaseApp  = firebase.initializeApp(cfg);
@@ -6249,12 +6262,7 @@ async function authGoogle() {
 }
 
 function _checkGoogleConfigured() {
-  try {
-    const raw = localStorage.getItem(_FB_CONFIG_KEY);
-    if (!raw) return false;
-    const cfg = JSON.parse(raw);
-    return !!(cfg.apiKey && cfg.authDomain);
-  } catch(e) { return false; }
+  return true; // config embutida no código
 }
 
 // ═══════════════════════════════════════════════════════════
