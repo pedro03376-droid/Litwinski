@@ -986,44 +986,55 @@
     }
     #auth-overlay.hidden { display: none; }
     .auth-card {
-      width: 100%; max-width: 380px;
+      width: 100%; max-width: 340px;
       background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
-      padding: 40px 32px;
+      padding: 36px 28px 28px;
       box-shadow: 0 24px 80px rgba(0,0,0,.55);
+      text-align: center;
     }
-    .auth-logo { text-align: center; margin-bottom: 32px; }
     .auth-logo-text {
-      font-size: 36px; font-weight: 800; letter-spacing: -1.5px;
+      font-size: 32px; font-weight: 800; letter-spacing: -1.5px;
       background: var(--primary-g); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .auth-logo-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .auth-logo-sub { font-size: 12px; color: var(--muted); margin-top: 4px; margin-bottom: 28px; }
+    /* PIN dots */
+    .pin-dots { display: flex; justify-content: center; gap: 14px; margin-bottom: 28px; }
+    .pin-dot {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: 2px solid var(--border); background: transparent;
+      transition: background .15s, border-color .15s;
+    }
+    .pin-dot.filled { background: var(--primary); border-color: var(--primary); }
+    .pin-dot.error { background: #ef4444; border-color: #ef4444; }
+    /* PIN keypad */
+    .pin-keypad { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+    .pin-key {
+      aspect-ratio: 1; border-radius: 50%;
+      background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); font-size: 22px; font-weight: 500;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      -webkit-tap-highlight-color: transparent; user-select: none;
+      transition: background .1s, transform .1s;
+    }
+    .pin-key:active, .pin-key.pressed { background: var(--primary); color: #fff; transform: scale(.93); }
+    .pin-key.del { font-size: 18px; }
+    .pin-key.empty { background: transparent; border-color: transparent; cursor: default; }
     .auth-err {
-      color: #FCA5A5; font-size: 12px; margin-top: 10px;
+      color: #FCA5A5; font-size: 12px; margin-top: 14px;
       background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.22);
       border-radius: 8px; padding: 9px 12px; display: none;
     }
-    /* iOS: font-size ≥ 16px prevent auto-zoom on input focus */
-    #auth-overlay .form-input { font-size: 16px; }
-    /* Feedback visual imediato no toque mobile */
-    #auth-overlay .btn-primary:active { opacity: .75; transform: scale(.98); }
     .btn-biometric {
-      width: 100%; margin-top: 10px; padding: 13px;
+      width: 100%; margin-top: 16px; padding: 13px;
       background: linear-gradient(135deg,#1d4ed8,#6d28d9);
       border: none; border-radius: var(--radius); color: #fff;
-      font-size: 15px; font-weight: 600; cursor: pointer;
+      font-size: 14px; font-weight: 600; cursor: pointer;
       display: flex; align-items: center; justify-content: center; gap: 8px;
-      transition: opacity .15s, transform .1s;
+      -webkit-tap-highlight-color: transparent;
     }
-    .btn-biometric:active { opacity: .75; transform: scale(.98); }
-    .auth-divider { display: flex; align-items: center; gap: 10px; margin: 14px 0 4px; }
-    .auth-divider span { font-size: 11px; color: var(--muted); white-space: nowrap; }
-    .auth-divider::before,.auth-divider::after { content:''; flex:1; height:1px; background:var(--border); }
-    @media (max-width: 480px) {
-      .auth-card { padding: 32px 20px; }
-      .auth-logo-text { font-size: 28px; }
-    }
+    .btn-biometric:active { opacity: .8; transform: scale(.98); }
   </style>
 </head>
 <body>
@@ -1031,32 +1042,37 @@
 <!-- ══ LOGIN OVERLAY ══ -->
 <div id="auth-overlay">
   <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-text">GK Hub</div>
-      <div class="auth-logo-sub">Plataforma de Performance para Goleiras de Futsal</div>
+    <div class="auth-logo-text">GK Hub</div>
+    <div class="auth-logo-sub">Digite o PIN para entrar</div>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
     </div>
-    <!-- Botão Face ID / biometria (visível só se cadastrado) -->
-    <div id="auth-bio-section" style="display:none;">
-      <button type="button" class="btn-biometric" onclick="authBiometric()">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>
-        Entrar com Face ID / Biometria
+    <div class="pin-keypad" id="pin-keypad">
+      <button class="pin-key" ontouchstart="pinKey(1)" onclick="pinKey(1)">1</button>
+      <button class="pin-key" ontouchstart="pinKey(2)" onclick="pinKey(2)">2</button>
+      <button class="pin-key" ontouchstart="pinKey(3)" onclick="pinKey(3)">3</button>
+      <button class="pin-key" ontouchstart="pinKey(4)" onclick="pinKey(4)">4</button>
+      <button class="pin-key" ontouchstart="pinKey(5)" onclick="pinKey(5)">5</button>
+      <button class="pin-key" ontouchstart="pinKey(6)" onclick="pinKey(6)">6</button>
+      <button class="pin-key" ontouchstart="pinKey(7)" onclick="pinKey(7)">7</button>
+      <button class="pin-key" ontouchstart="pinKey(8)" onclick="pinKey(8)">8</button>
+      <button class="pin-key" ontouchstart="pinKey(9)" onclick="pinKey(9)">9</button>
+      <button class="pin-key empty" disabled></button>
+      <button class="pin-key" ontouchstart="pinKey(0)" onclick="pinKey(0)">0</button>
+      <button class="pin-key del" ontouchstart="pinDel()" onclick="pinDel()">⌫</button>
+    </div>
+    <div id="auth-err" class="auth-err"></div>
+    <div id="auth-bio-section" style="display:none;margin-top:4px;">
+      <button type="button" class="btn-biometric"
+        ontouchstart="event.preventDefault();authBiometric();"
+        onclick="authBiometric();">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><circle cx="12" cy="12" r="3"/></svg>
+        Face ID / Biometria
       </button>
-      <div class="auth-divider"><span>ou entre com senha</span></div>
     </div>
-    <form autocomplete="on" onsubmit="return false;">
-      <div class="form-group" style="margin-bottom:12px;">
-        <label class="form-label">Usuário</label>
-        <input class="form-input" id="auth-user" type="text" placeholder="admin" autocomplete="username">
-      </div>
-      <div class="form-group" style="margin-bottom:4px;">
-        <label class="form-label">Senha</label>
-        <input class="form-input" id="auth-pass" type="password" placeholder="••••••••" autocomplete="current-password">
-      </div>
-      <div id="auth-err" class="auth-err"></div>
-      <button type="button" class="btn btn-primary" style="width:100%;margin-top:18px;"
-        ontouchend="event.preventDefault();authLogin();"
-        onclick="authLogin();">Entrar</button>
-    </form>
   </div>
 </div>
 
@@ -6260,8 +6276,9 @@ function initAuth() {
   } catch(e) {
     localStorage.removeItem(_AUTH_SESSION);
   }
-  // Mostra botão de biometria se cadastrado
+  // Mostra botão de biometria se cadastrado e inicializa overlay PIN
   _initBioButton();
+  _pinInitOverlay();
   // Bootstrap de usuários — guarda a Promise para authLogin aguardar
   _bootstrapDone = _bootstrapDefaultUsers().catch(e => {
     console.warn('Auth bootstrap error:', e);
@@ -6290,6 +6307,83 @@ function initAuth() {
     setTimeout(() => navigate(hash), 0);
   }
 }
+
+// ── PIN Login ──────────────────────────────────────────────
+const _PIN_KEY   = 'gkhub_pin';
+const _PIN_LEN   = 4;
+let   _pinBuffer = '';
+
+function _pinGetHash()  { try { return JSON.parse(localStorage.getItem(_PIN_KEY)||'null'); } catch(e) { return null; } }
+
+async function _pinHash(pin) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('gkhub_pin_salt:' + pin));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function _pinDots(len, state) {
+  for (let i=0;i<_PIN_LEN;i++) {
+    const d = document.getElementById('pd'+i);
+    if (!d) continue;
+    d.className = 'pin-dot' + (i < len ? (state==='error'?' error':' filled') : '');
+  }
+}
+
+function pinKey(n) {
+  if (_pinBuffer.length >= _PIN_LEN) return;
+  _pinBuffer += String(n);
+  _pinDots(_pinBuffer.length, 'ok');
+  if (_pinBuffer.length === _PIN_LEN) setTimeout(_pinSubmit, 120);
+}
+
+function pinDel() {
+  if (!_pinBuffer.length) return;
+  _pinBuffer = _pinBuffer.slice(0,-1);
+  _pinDots(_pinBuffer.length, 'ok');
+}
+
+async function _pinSubmit() {
+  const stored = _pinGetHash();
+  const errEl  = document.getElementById('auth-err');
+  if (!stored) {
+    // Primeiro uso: salvar o PIN
+    const h = await _pinHash(_pinBuffer);
+    localStorage.setItem(_PIN_KEY, JSON.stringify({ hash: h, user: 'Admin' }));
+    _pinDots(_PIN_LEN, 'ok');
+    _pinLoginSuccess('Admin');
+    return;
+  }
+  const h = await _pinHash(_pinBuffer);
+  if (h === stored.hash) {
+    _pinDots(_PIN_LEN, 'ok');
+    _pinLoginSuccess(stored.user || 'Admin');
+    if (errEl) errEl.style.display = 'none';
+  } else {
+    _pinDots(_PIN_LEN, 'error');
+    if (errEl) { errEl.textContent = 'PIN incorreto. Tente novamente.'; errEl.style.display = 'block'; }
+    setTimeout(() => { _pinBuffer = ''; _pinDots(0,'ok'); }, 700);
+  }
+}
+
+function _pinLoginSuccess(userName) {
+  _loggedUser   = userName;
+  _sessionToken = _randToken();
+  localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken }));
+  setTimeout(() => {
+    document.getElementById('auth-overlay').classList.add('hidden');
+    _updateSidebarUser();
+    _pinBuffer = '';
+    _pinDots(0,'ok');
+    setTimeout(() => _offerBiometric(_loggedUser), 400);
+  }, 200);
+}
+
+// Inicializa PIN na primeira visita: se não tem PIN salvo, instrução é criá-lo
+function _pinInitOverlay() {
+  const stored = _pinGetHash();
+  const sub = document.querySelector('.auth-logo-sub');
+  if (sub) sub.textContent = stored ? 'Digite o PIN para entrar' : 'Crie um PIN de 4 dígitos';
+}
+// ───────────────────────────────────────────────────────────
 
 function _updateSidebarUser() {
   const el = document.getElementById('auth-sidebar-user');
