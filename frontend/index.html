@@ -1051,18 +1051,18 @@
       <div class="pin-dot" id="pd3"></div>
     </div>
     <div class="pin-keypad" id="pin-keypad">
-      <button class="pin-key" ontouchstart="pinKey(1)" onclick="pinKey(1)">1</button>
-      <button class="pin-key" ontouchstart="pinKey(2)" onclick="pinKey(2)">2</button>
-      <button class="pin-key" ontouchstart="pinKey(3)" onclick="pinKey(3)">3</button>
-      <button class="pin-key" ontouchstart="pinKey(4)" onclick="pinKey(4)">4</button>
-      <button class="pin-key" ontouchstart="pinKey(5)" onclick="pinKey(5)">5</button>
-      <button class="pin-key" ontouchstart="pinKey(6)" onclick="pinKey(6)">6</button>
-      <button class="pin-key" ontouchstart="pinKey(7)" onclick="pinKey(7)">7</button>
-      <button class="pin-key" ontouchstart="pinKey(8)" onclick="pinKey(8)">8</button>
-      <button class="pin-key" ontouchstart="pinKey(9)" onclick="pinKey(9)">9</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(1)" onclick="pinKey(1)">1</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(2)" onclick="pinKey(2)">2</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(3)" onclick="pinKey(3)">3</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(4)" onclick="pinKey(4)">4</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(5)" onclick="pinKey(5)">5</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(6)" onclick="pinKey(6)">6</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(7)" onclick="pinKey(7)">7</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(8)" onclick="pinKey(8)">8</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(9)" onclick="pinKey(9)">9</button>
       <button class="pin-key empty" disabled></button>
-      <button class="pin-key" ontouchstart="pinKey(0)" onclick="pinKey(0)">0</button>
-      <button class="pin-key del" ontouchstart="pinDel()" onclick="pinDel()">⌫</button>
+      <button class="pin-key" ontouchstart="event.preventDefault();pinKey(0)" onclick="pinKey(0)">0</button>
+      <button class="pin-key del" ontouchstart="event.preventDefault();pinDel()" onclick="pinDel()">⌫</button>
     </div>
     <div id="auth-err" class="auth-err"></div>
     <div id="auth-bio-section" style="display:none;margin-top:4px;">
