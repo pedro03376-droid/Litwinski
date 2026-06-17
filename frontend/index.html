@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com; frame-src https://gkhub-4717d.firebaseapp.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src https://gkhub-4717d.firebaseapp.com https://accounts.google.com;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GK Hub — Goalkeeper Performance Platform</title>
   <!-- PWA -->
@@ -6357,6 +6357,7 @@ async function authGoogle() {
     const msg = e.code === 'auth/popup-closed-by-user' ? 'Login cancelado.'
               : e.code === 'auth/popup-blocked'        ? 'Popup bloqueado — abra o site no Safari e permita popups.'
               : e.code === 'auth/unauthorized-domain'  ? 'Domínio não autorizado. Adicione pedro03376-droid.github.io no Firebase → Authentication → Authorized domains.'
+              : e.code === 'auth/internal-error'       ? 'Erro interno do Firebase. Verifique se o domínio está autorizado no Firebase Console → Authentication → Authorized domains.'
               : 'Erro: ' + (e.message || e.code);
     if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
   } finally {
