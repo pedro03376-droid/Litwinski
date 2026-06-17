@@ -30,7 +30,7 @@ export const databaseConfig = (
       PerformanceIndex, Video, Report, AiAnalysis,
       Notification, Season, Competition,
     ],
-    synchronize: !isProd,
+    synchronize: !isProd || configService.get('DB_SYNC') === 'true',
     logging: !isProd,
     ssl: isProd ? { rejectUnauthorized: false } : false,
   };
