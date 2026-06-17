@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; frame-src https://gkhub-4717d.firebaseapp.com https://accounts.google.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://litwinski-production.up.railway.app; frame-src https://gkhub-4717d.firebaseapp.com https://accounts.google.com;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GK Hub — Goalkeeper Performance Platform</title>
   <!-- PWA -->
@@ -6798,6 +6798,55 @@ function setCloudStatus(connected, label) {
 
 function rtdbPath(path) {
   return rtdbUrl + path + '.json';
+}
+
+// ── Backend API Client ────────────────────────────────────────
+const _API_URL = 'https://litwinski-production.up.railway.app/api/v1';
+const _API_TOKEN_KEY = 'gkhub_api_token';
+
+function _apiToken() { return localStorage.getItem(_API_TOKEN_KEY); }
+
+async function apiRequest(method, path, body) {
+  const token = _apiToken();
+  const res = await fetch(_API_URL + path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: 'Bearer ' + token } : {}),
+    },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  if (!res.ok) throw new Error('API ' + res.status + ' ' + path);
+  return res.json();
+}
+
+const api = {
+  get:    (path)       => apiRequest('GET',    path),
+  post:   (path, body) => apiRequest('POST',   path, body),
+  patch:  (path, body) => apiRequest('PATCH',  path, body),
+  delete: (path)       => apiRequest('DELETE', path),
+};
+
+async function apiLogin(email, password) {
+  const res = await fetch(_API_URL + '/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (data?.data?.accessToken) {
+    localStorage.setItem(_API_TOKEN_KEY, data.data.accessToken);
+    return data.data;
+  }
+  return null;
+}
+
+async function apiPing() {
+  try {
+    const res = await fetch(_API_URL.replace('/api/v1','') + '/api/docs-json', { method: 'HEAD' });
+    return res.ok || res.status === 404;
+  } catch { return false; }
 }
 
 async function rtdbGet(path) {
