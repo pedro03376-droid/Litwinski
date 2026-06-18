@@ -6312,6 +6312,7 @@ function _googleLoginSuccess(user) {
   localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
   document.getElementById('auth-overlay').classList.add('hidden');
   _updateSidebarUser();
+  navigate('dashboard');
 }
 
 async function authGoogle() {
