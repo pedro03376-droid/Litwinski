@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, OneToMany, JoinColumn,
+  UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, Index,
 } from 'typeorm';
 import { Goalkeeper } from '../../goalkeepers/entities/goalkeeper.entity';
 import { Exercise } from './exercise.entity';
@@ -58,6 +58,7 @@ export class TrainingSession {
   @JoinColumn({ name: 'goalkeeperId' })
   goalkeeper: Goalkeeper;
 
+  @Index()
   @Column()
   goalkeeperId: string;
 

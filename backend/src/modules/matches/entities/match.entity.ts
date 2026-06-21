@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, OneToMany, JoinColumn,
+  UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, Index,
 } from 'typeorm';
 import { Goalkeeper } from '../../goalkeepers/entities/goalkeeper.entity';
 import { MatchScout } from '../../scouts/entities/match-scout.entity';
@@ -54,6 +54,7 @@ export class Match {
   @JoinColumn({ name: 'goalkeeperId' })
   goalkeeper: Goalkeeper;
 
+  @Index()
   @Column()
   goalkeeperId: string;
 

@@ -2737,11 +2737,14 @@ function editarPartida(id) {
 }
 
 function excluirPartida(id) {
-  if (!confirm('Excluir esta partida?')) return;
+  if (!confirm('Excluir esta partida e todos os scouts vinculados a ela?')) return;
   DB.savePartidas(DB.partidas.filter(p => p.id !== id));
+  const scoutsVinculados = DB.scouts.filter(s => s.partidaId === id);
+  DB.saveScouts(DB.scouts.filter(s => s.partidaId !== id));
+  scoutsVinculados.forEach(s => cloudDelete('scouts', s.id));
   cloudDelete('partidas', id);
   renderPartidas();
-  toast('Partida excluída.', 'info');
+  toast('Partida e scouts vinculados excluídos.', 'info');
 }
 
 let filtroCompeticao = '';
@@ -3383,11 +3386,13 @@ function confirmarImportacao() {
     const existing = DB.goleiras;
     const novo = importData.mapped.filter(r => r.nome);
     DB.saveGoleiras([...existing, ...novo]);
+    novo.forEach(r => cloudSet('goleiras', r));
     toast(`${novo.length} goleiras importadas!`, 'success');
   } else if (type === 'partidas') {
     const existing = DB.partidas;
     const novo = importData.mapped.filter(r => r.adversario || r.data);
     DB.savePartidas([...existing, ...novo]);
+    novo.forEach(r => cloudSet('partidas', r));
     toast(`${novo.length} partidas importadas!`, 'success');
   } else if (type === 'scouts') {
     const existing = DB.scouts;
@@ -3400,6 +3405,7 @@ function confirmarImportacao() {
       return r;
     });
     DB.saveScouts([...existing, ...novo]);
+    novo.forEach(r => cloudSet('scouts', r));
     toast(`${novo.length} scouts importados!`, 'success');
   }
   updateGoleiraSelects();
