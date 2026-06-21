@@ -2676,6 +2676,9 @@ function salvarPartida() {
   const data = document.getElementById('match-data').value;
   const adv = document.getElementById('match-adv').value.trim();
   if (!adv) { toast('Informe o adversário', 'error'); return; }
+  if (!data) { toast('Informe a data da partida', 'error'); return; }
+  const gkIdCheck = document.getElementById('match-goleira').value;
+  if (!gkIdCheck) { toast('Selecione a goleira da partida', 'error'); return; }
   const partidas = DB.partidas;
   const gk2Id = document.getElementById('match-gk2').value;
   const temGk2 = document.getElementById('secao-gk2').style.display !== 'none' && gk2Id;
@@ -5387,6 +5390,7 @@ function mcEncerrar() {
   const gkId=document.getElementById('mc-goleira')?.value;
   const pId=document.getElementById('mc-partida')?.value;
   if (!gkId){toast('Selecione a goleira antes de encerrar','error');return;}
+  if (!pId && !confirm('Nenhuma partida selecionada. Os scouts serão salvos sem vínculo com uma partida. Continuar?')) return;
   const finalSegmentos=[...mcGkSegmentos];
   const totalCurrentEvents=MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
   if (totalCurrentEvents>0||finalSegmentos.length===0){
@@ -6404,7 +6408,13 @@ async function _bootstrapDefaultUsers() {
   let stored = null;
   try { stored = JSON.parse(localStorage.getItem(_AUTH_USERS) || 'null'); } catch(e) { localStorage.removeItem(_AUTH_USERS); }
   // Recria se não existir OU se estiver no formato antigo (sem campo salt)
-  if (stored && Array.isArray(stored) && stored.length > 0 && stored[0].salt) return; // formato novo OK
+  // Se existem usuários no novo formato (com salt), preserva todos
+  if (stored && Array.isArray(stored) && stored.length > 0 && stored.every(u => u.salt)) return;
+  // Se existem usuários novos misturados com antigos, preserva só os novos
+  if (stored && Array.isArray(stored) && stored.some(u => u.salt)) {
+    localStorage.setItem(_AUTH_USERS, JSON.stringify(stored.filter(u => u.salt)));
+    return;
+  }
   // Formato antigo ou ausente — limpa e recria
   localStorage.removeItem(_AUTH_USERS);
   const defaults = [
