@@ -47,7 +47,7 @@ class RankingListItem extends StatelessWidget {
                 fontSize: 14),
           ),
         ),
-        GKAvatar(name: name, imageUrl: photoUrl, radius: 20),
+        GKAvatar(name: name, imageUrl: photoUrl, size: 40),
         const SizedBox(width: 12),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

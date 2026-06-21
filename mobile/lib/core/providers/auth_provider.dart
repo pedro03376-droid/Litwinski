@@ -70,6 +70,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         key: AppConstants.tokenKey,
         value: data['access_token'],
       );
+      await _storage.write(
+        key: AppConstants.refreshTokenKey,
+        value: data['refresh_token'] ?? '',
+      );
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
