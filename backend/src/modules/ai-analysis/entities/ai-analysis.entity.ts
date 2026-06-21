@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  ManyToOne, JoinColumn,
+  ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { Goalkeeper } from '../../goalkeepers/entities/goalkeeper.entity';
 import { Match } from '../../matches/entities/match.entity';
@@ -17,6 +17,7 @@ export class AiAnalysis {
   @JoinColumn({ name: 'goalkeeperId' })
   goalkeeper: Goalkeeper;
 
+  @Index()
   @Column()
   goalkeeperId: string;
 
@@ -24,6 +25,7 @@ export class AiAnalysis {
   @JoinColumn({ name: 'matchId' })
   match?: Match;
 
+  @Index()
   @Column({ nullable: true })
   matchId?: string;
 

@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, JoinColumn,
+  UpdateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { Goalkeeper } from '../../goalkeepers/entities/goalkeeper.entity';
 
@@ -26,6 +26,7 @@ export class PerformanceIndex {
   @JoinColumn({ name: 'goalkeeperId' })
   goalkeeper: Goalkeeper;
 
+  @Index()
   @Column()
   goalkeeperId: string;
 

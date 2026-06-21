@@ -18,22 +18,34 @@ import { Competition } from '../modules/competitions/entities/competition.entity
 
 export const databaseConfig = (
   configService: ConfigService,
-): TypeOrmModuleOptions => ({
-  type: 'postgres',
-  host: configService.get('DB_HOST', 'localhost'),
-  port: configService.get<number>('DB_PORT', 5432),
-  database: configService.get('DB_NAME', 'gkhub'),
-  username: configService.get('DB_USER', 'gkhub'),
-  password: configService.get('DB_PASSWORD', 'gkhub_secret'),
-  entities: [
-    User, Team, Goalkeeper, Match, MatchScout,
-    TrainingSession, Exercise, ExerciseResult,
-    PerformanceIndex, Video, Report, AiAnalysis,
-    Notification, Season, Competition,
-  ],
-  synchronize: configService.get('NODE_ENV') !== 'production',
-  logging: configService.get('NODE_ENV') === 'development',
-  ssl: configService.get('NODE_ENV') === 'production'
-    ? { rejectUnauthorized: false }
-    : false,
-});
+): TypeOrmModuleOptions => {
+  const isProd = configService.get('NODE_ENV') === 'production';
+  const databaseUrl = configService.get<string>('DATABASE_URL');
+
+  const base: TypeOrmModuleOptions = {
+    type: 'postgres',
+    entities: [
+      User, Team, Goalkeeper, Match, MatchScout,
+      TrainingSession, Exercise, ExerciseResult,
+      PerformanceIndex, Video, Report, AiAnalysis,
+      Notification, Season, Competition,
+    ],
+    synchronize: !isProd || configService.get('DB_SYNC') === 'true',
+    logging: !isProd,
+    ssl: isProd ? { rejectUnauthorized: false } : false,
+  };
+
+  // Railway (and most PaaS) provide a DATABASE_URL — use it when available
+  if (databaseUrl) {
+    return { ...base, url: databaseUrl } as TypeOrmModuleOptions;
+  }
+
+  return {
+    ...base,
+    host: configService.get('DB_HOST', 'localhost'),
+    port: configService.get<number>('DB_PORT', 5432),
+    database: configService.get('DB_NAME', 'gkhub'),
+    username: configService.get('DB_USER', 'gkhub'),
+    password: configService.get('DB_PASSWORD', 'gkhub_secret'),
+  } as TypeOrmModuleOptions;
+};
