@@ -6468,6 +6468,7 @@ function initAuth() {
         _sessionToken = stored.token;
         document.getElementById('auth-overlay').classList.add('hidden');
         _updateSidebarUser();
+        navigate('dashboard');
       }
     }
   } catch(e) {
@@ -6497,6 +6498,7 @@ function initAuth() {
         _sessionToken = _randToken();
         document.getElementById('auth-overlay').classList.add('hidden');
         _updateSidebarUser();
+        navigate('dashboard');
       }
     }).catch(() => {});
   }
@@ -6626,6 +6628,7 @@ async function authBiometric() {
       localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
       document.getElementById('auth-overlay').classList.add('hidden');
       _updateSidebarUser();
+      navigate('dashboard');
       if (errEl) errEl.style.display = 'none';
     }
   } catch(e) {
@@ -6700,6 +6703,7 @@ async function authLogin() {
       localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
       document.getElementById('auth-overlay').classList.add('hidden');
       _updateSidebarUser();
+      navigate('dashboard');
       errEl.style.display = 'none';
       // Oferece cadastrar biometria (Face ID) na primeira vez
       setTimeout(() => _offerBiometric(_loggedUser), 300);
