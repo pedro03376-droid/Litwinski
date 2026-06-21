@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, ManyToOne, JoinColumn,
+  CreateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { Goalkeeper } from '../../goalkeepers/entities/goalkeeper.entity';
 
@@ -39,6 +39,7 @@ export class Report {
   @JoinColumn({ name: 'goalkeeperId' })
   goalkeeper: Goalkeeper;
 
+  @Index()
   @Column()
   goalkeeperId: string;
 

@@ -134,12 +134,18 @@ export class ImportService {
       const headers: string[] = [];
       sheet.getRow(1).eachCell((cell) => headers.push(String(cell.value || '')));
 
-      sheet.eachRow(async (row, rowNumber) => {
+      const collectedRows: { rowNumber: number; rowMap: Record<string, any> }[] = [];
+      sheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) return;
-        try {
-          const rowMap: Record<string, any> = {};
-          headers.forEach((h, i) => { rowMap[h] = (row.getCell(i + 1)).value; });
+        const rowMap: Record<string, any> = {};
+        headers.forEach((h, i) => { rowMap[h] = (row.getCell(i + 1)).value; });
+        collectedRows.push({ rowNumber, rowMap });
+      });
 
+      fs.unlinkSync(filePath);
+
+      for (const { rowNumber, rowMap } of collectedRows) {
+        try {
           const gkData: Partial<Goalkeeper> = {
             teamId,
             name: String(rowMap[columnMapping['name']] || ''),
@@ -156,9 +162,7 @@ export class ImportService {
         } catch (err) {
           errors.push(`Linha ${rowNumber}: ${err.message}`);
         }
-      });
-
-      fs.unlinkSync(filePath);
+      }
     } catch (err) {
       throw new BadRequestException(`Erro ao processar arquivo: ${err.message}`);
     }

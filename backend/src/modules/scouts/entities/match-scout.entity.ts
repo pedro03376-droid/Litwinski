@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, JoinColumn,
+  UpdateDateColumn, ManyToOne, JoinColumn, Index,
 } from 'typeorm';
 import { Match } from '../../matches/entities/match.entity';
 
@@ -13,6 +13,7 @@ export class MatchScout {
   @JoinColumn({ name: 'matchId' })
   match: Match;
 
+  @Index()
   @Column()
   matchId: string;
 
