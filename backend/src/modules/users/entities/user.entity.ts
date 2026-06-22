@@ -34,6 +34,9 @@ export class User {
   isActive: boolean;
 
   @Column({ nullable: true })
+  teamId?: string;
+
+  @Column({ nullable: true })
   lastLoginAt?: Date;
 
   @CreateDateColumn()

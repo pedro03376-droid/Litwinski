@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -543,8 +544,8 @@ class _PhotoPickerSection extends StatelessWidget {
           ),
           child: photoPath != null
               ? ClipOval(
-                  child: Image.asset(
-                    photoPath!,
+                  child: Image.file(
+                    File(photoPath!),
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => _PhotoPlaceholder(),
                   ),

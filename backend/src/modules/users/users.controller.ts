@@ -51,6 +51,7 @@ export class UsersController {
   @ApiQuery({ name: 'search', required: false, type: String, description: 'Search by name or email' })
   @ApiQuery({ name: 'role', required: false, enum: UserRole })
   @ApiQuery({ name: 'isActive', required: false, type: Boolean })
+  @ApiQuery({ name: 'teamId', required: false, type: String, description: 'Filter users by teamId' })
   @ApiResponse({ status: 200, description: 'Paginated user list.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
   @ApiResponse({ status: 403, description: 'Forbidden.' })
@@ -60,6 +61,7 @@ export class UsersController {
     @Query('search') search?: string,
     @Query('role') role?: UserRole,
     @Query('isActive') isActive?: boolean,
+    @Query('teamId') teamId?: string,
   ) {
     return this.usersService.findAll({
       page: page ? Number(page) : 1,
@@ -67,6 +69,7 @@ export class UsersController {
       search,
       role,
       isActive: isActive !== undefined ? isActive === (true as any) || isActive === ('true' as any) : undefined,
+      teamId,
     });
   }
 

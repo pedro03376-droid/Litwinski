@@ -1,27 +1,7 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:gkhub/core/theme/app_theme.dart';
-
-// ---------------------------------------------------------------------------
-// Data model
-// ---------------------------------------------------------------------------
-
-class ExerciseResult {
-  final int attempts;
-  final int successes;
-  final int errors;
-  final double? reactionTimeMs;
-
-  const ExerciseResult({
-    required this.attempts,
-    required this.successes,
-    required this.errors,
-    this.reactionTimeMs,
-  });
-
-  double get successRate =>
-      attempts == 0 ? 0.0 : successes / attempts;
-}
+import '../../domain/entities/training_session.dart';
 
 // ---------------------------------------------------------------------------
 // ExerciseCard widget
@@ -94,7 +74,9 @@ class _ExerciseCardState extends State<ExerciseCard>
 
   @override
   Widget build(BuildContext context) {
-    final rate = widget.result.successRate;
+    final rate = widget.result.attempts == 0
+        ? 0.0
+        : widget.result.successes / widget.result.attempts;
     final rateColor = _rateColor(rate);
 
     return Container(
@@ -356,7 +338,7 @@ class _ResultsSection extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              '${(result.successRate * 100).toStringAsFixed(1)}%',
+              '${((result.attempts == 0 ? 0.0 : result.successes / result.attempts) * 100).toStringAsFixed(1)}%',
               style: TextStyle(
                 color: rateColor,
                 fontSize: 12,
@@ -369,14 +351,14 @@ class _ResultsSection extends StatelessWidget {
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
           child: LinearProgressIndicator(
-            value: result.successRate,
+            value: result.attempts == 0 ? 0.0 : result.successes / result.attempts,
             backgroundColor: rateColor.withOpacity(0.15),
             valueColor: AlwaysStoppedAnimation<Color>(rateColor),
             minHeight: 6,
           ),
         ),
         // Reaction time
-        if (result.reactionTimeMs != null) ...[
+        if (result.reactionTimeSeconds != null) ...[
           const SizedBox(height: 10),
           Row(
             children: [
@@ -394,7 +376,7 @@ class _ResultsSection extends StatelessWidget {
                 ),
               ),
               Text(
-                '${result.reactionTimeMs!.toStringAsFixed(0)}ms',
+                '${result.reactionTimeSeconds!.toStringAsFixed(2)}s',
                 style: const TextStyle(
                   color: AppColors.warning,
                   fontSize: 11,

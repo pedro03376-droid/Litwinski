@@ -5,92 +5,81 @@ import 'package:gkhub/core/theme/app_theme.dart';
 import '../widgets/training_card.dart';
 
 // ---------------------------------------------------------------------------
-// Mock domain model
+// Mock data (using domain entity fields)
 // ---------------------------------------------------------------------------
 
-class TrainingSession {
+// Local view model that pairs the domain entity with a parsed date and intensity
+class _TrainingSessionView {
   final String id;
   final DateTime date;
   final String category;
   final TrainingIntensity intensity;
   final int durationMinutes;
   final String objective;
-  final double successRate; // 0..1
 
-  const TrainingSession({
+  const _TrainingSessionView({
     required this.id,
     required this.date,
     required this.category,
     required this.intensity,
     required this.durationMinutes,
     required this.objective,
-    required this.successRate,
   });
 }
 
-// ---------------------------------------------------------------------------
-// Mock provider
-// ---------------------------------------------------------------------------
-
-final _mockSessions = <TrainingSession>[
-  TrainingSession(
+final _mockSessions = <_TrainingSessionView>[
+  _TrainingSessionView(
     id: '1',
     date: DateTime(2026, 6, 7),
     category: 'Reflexo',
     intensity: TrainingIntensity.alta,
     durationMinutes: 90,
     objective: 'Trabalhar tempo de reação em defesas de curta distância',
-    successRate: 0.82,
   ),
-  TrainingSession(
+  _TrainingSessionView(
     id: '2',
     date: DateTime(2026, 6, 5),
     category: 'Defesa Alta',
     intensity: TrainingIntensity.media,
     durationMinutes: 75,
     objective: 'Aperfeiçoar posicionamento em cruzamentos e bolas altas',
-    successRate: 0.74,
   ),
-  TrainingSession(
+  _TrainingSessionView(
     id: '3',
     date: DateTime(2026, 6, 3),
     category: 'Posicionamento',
     intensity: TrainingIntensity.baixa,
     durationMinutes: 60,
     objective: 'Ajustar angulação defensiva nas bolas nas costas da zaga',
-    successRate: 0.91,
   ),
-  TrainingSession(
+  _TrainingSessionView(
     id: '4',
     date: DateTime(2026, 6, 1),
     category: 'Defesa Baixa',
     intensity: TrainingIntensity.maxima,
     durationMinutes: 100,
     objective: 'Treino de raspões, espaladas e rebotes',
-    successRate: 0.63,
   ),
-  TrainingSession(
+  _TrainingSessionView(
     id: '5',
     date: DateTime(2026, 5, 29),
     category: 'Saída',
     intensity: TrainingIntensity.media,
     durationMinutes: 80,
     objective: 'Saídas de gol e comando da área em bolas aéreas',
-    successRate: 0.78,
   ),
-  TrainingSession(
+  _TrainingSessionView(
     id: '6',
     date: DateTime(2026, 5, 26),
     category: 'Jogo com os Pés',
     intensity: TrainingIntensity.baixa,
     durationMinutes: 60,
     objective: 'Construção pelo goleiro — passe curto e longo',
-    successRate: 0.85,
   ),
 ];
 
 final trainingSessionsProvider =
-    Provider<List<TrainingSession>>((_) => _mockSessions);
+    Provider<List<_TrainingSessionView>>((_) => _mockSessions);
 
 final _selectedCategoryProvider = StateProvider<String?>((ref) => null);
 
@@ -124,12 +113,9 @@ class TrainingListScreen extends ConsumerWidget {
 
     // Stats
     final totalSessions = sessions.length;
-    final avgSuccess = sessions.isEmpty
+    final totalHours = sessions.isEmpty
         ? 0.0
-        : sessions.map((s) => s.successRate).reduce((a, b) => a + b) /
-            sessions.length;
-    final totalHours =
-        sessions.map((s) => s.durationMinutes).reduce((a, b) => a + b) / 60.0;
+        : sessions.map((s) => s.durationMinutes).reduce((a, b) => a + b) / 60.0;
 
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
@@ -154,7 +140,6 @@ class TrainingListScreen extends ConsumerWidget {
           // Stats summary bar
           _StatsSummaryBar(
             totalSessions: totalSessions,
-            avgSuccess: avgSuccess,
             totalHours: totalHours,
           ),
           // Category filter chips
@@ -198,12 +183,10 @@ class TrainingListScreen extends ConsumerWidget {
 
 class _StatsSummaryBar extends StatelessWidget {
   final int totalSessions;
-  final double avgSuccess;
   final double totalHours;
 
   const _StatsSummaryBar({
     required this.totalSessions,
-    required this.avgSuccess,
     required this.totalHours,
   });
 
@@ -226,12 +209,6 @@ class _StatsSummaryBar extends StatelessWidget {
             label: 'Sessões',
             value: '$totalSessions',
             color: AppColors.cyan,
-          ),
-          _Divider(),
-          _SummaryItem(
-            label: 'Média Acerto',
-            value: '${(avgSuccess * 100).toStringAsFixed(0)}%',
-            color: AppColors.success,
           ),
           _Divider(),
           _SummaryItem(

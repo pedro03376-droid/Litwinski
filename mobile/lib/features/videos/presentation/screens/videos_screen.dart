@@ -10,8 +10,8 @@ final _videosProvider = FutureProvider.family<List<dynamic>, String>(
   (ref, type) async {
     final data = await ref
         .read(apiClientProvider)
-        .get<Map<String, dynamic>>('/videos', queryParameters: {'type': type});
-    return data['data'] as List? ?? [];
+        .get<List<dynamic>>('/videos', queryParameters: {'type': type});
+    return data ?? [];
   },
 );
 
@@ -23,7 +23,9 @@ class VideosScreen extends ConsumerWidget {
     final type = ref.watch(_videoTypeProvider);
     final videosAsync = ref.watch(_videosProvider(type));
 
-    return Scaffold(
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
       backgroundColor: AppColors.darkBackground,
       appBar: AppBar(
         title: const Text('Vídeos e Fotos'),
@@ -50,6 +52,7 @@ class VideosScreen extends ConsumerWidget {
           _PhotoGrid(async: videosAsync),
         ],
       ),
+    ),
     );
   }
 

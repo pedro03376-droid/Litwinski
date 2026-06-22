@@ -7,6 +7,7 @@ import {
   Body,
   Param,
   Query,
+  Request,
   UseGuards,
   ParseUUIDPipe,
   HttpCode,
@@ -29,17 +30,32 @@ import {
   CreateTeamDto,
   UpdateTeamDto,
 } from './teams.service';
+import { RegisterClubDto } from './dto/register-club.dto';
 
 @ApiTags('teams')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
+  // ─── POST /teams/register (public) ────────────────────────────────────────
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Club self-registration',
+    description: 'Public endpoint. Registers a new club and creates the owner admin account. Starts a 30-day trial.',
+  })
+  @ApiResponse({ status: 201, description: 'Club registered successfully.' })
+  @ApiResponse({ status: 409, description: 'Slug or email already in use.' })
+  async registerClub(@Body() dto: RegisterClubDto) {
+    return this.teamsService.registerClub(dto);
+  }
+
   // ─── GET /teams ────────────────────────────────────────────────────────────
 
   @Get()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'List all teams',
     description: 'Returns a paginated list of teams with optional filtering.',
@@ -76,6 +92,8 @@ export class TeamsController {
   // ─── GET /teams/categories ─────────────────────────────────────────────────
 
   @Get('categories')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'List all team categories',
     description: 'Returns a distinct list of category values from active teams.',
@@ -89,6 +107,8 @@ export class TeamsController {
   // ─── GET /teams/:id ────────────────────────────────────────────────────────
 
   @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get team by ID' })
   @ApiParam({ name: 'id', type: String, format: 'uuid', description: 'Team UUID' })
   @ApiQuery({ name: 'withGoalkeepers', required: false, type: Boolean, description: 'Include goalkeepers relation' })
@@ -104,6 +124,8 @@ export class TeamsController {
   // ─── POST /teams ───────────────────────────────────────────────────────────
 
   @Post()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.TECHNICAL_STAFF)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -120,6 +142,8 @@ export class TeamsController {
   // ─── PATCH /teams/:id ─────────────────────────────────────────────────────
 
   @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.TECHNICAL_STAFF)
   @ApiOperation({
     summary: 'Update a team',
@@ -140,6 +164,8 @@ export class TeamsController {
   // ─── DELETE /teams/:id ────────────────────────────────────────────────────
 
   @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
@@ -152,5 +178,54 @@ export class TeamsController {
   @ApiResponse({ status: 403, description: 'Forbidden – Admin only.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.teamsService.remove(id);
+  }
+
+  // ─── GET /teams/my-workspaces ─────────────────────────────────────────────
+
+  @Get('my-workspaces')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'List all workspaces (teams) for the current user' })
+  async myWorkspaces(@Request() req) {
+    return this.teamsService.getUserWorkspaces(req.user.id || req.user.sub);
+  }
+
+  // ─── GET /teams/:teamId/members ───────────────────────────────────────────
+
+  @Get(':teamId/members')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'List members of a team' })
+  async getMembers(@Param('teamId') teamId: string, @Request() req) {
+    return this.teamsService.getTeamMembers(teamId, req.user);
+  }
+
+  // ─── POST /teams/:teamId/members ──────────────────────────────────────────
+
+  @Post(':teamId/members')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Add user to a team' })
+  async addMember(
+    @Param('teamId') teamId: string,
+    @Body() dto: { userId?: string; email?: string; role?: string },
+  ) {
+    return this.teamsService.addTeamMember(teamId, dto);
+  }
+
+  // ─── DELETE /teams/:teamId/members/:userId ────────────────────────────────
+
+  @Delete(':teamId/members/:userId')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Remove user from a team' })
+  async removeMember(
+    @Param('teamId') teamId: string,
+    @Param('userId') userId: string,
+  ) {
+    return this.teamsService.removeTeamMember(teamId, userId);
   }
 }
