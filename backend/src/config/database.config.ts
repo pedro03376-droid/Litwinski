@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { User } from '../modules/users/entities/user.entity';
 import { Team } from '../modules/teams/entities/team.entity';
+import { UserTeamMembership } from '../modules/teams/entities/user-team-membership.entity';
 import { Goalkeeper } from '../modules/goalkeepers/entities/goalkeeper.entity';
 import { Match } from '../modules/matches/entities/match.entity';
 import { MatchScout } from '../modules/scouts/entities/match-scout.entity';
@@ -25,7 +26,7 @@ export const databaseConfig = (
   const base: TypeOrmModuleOptions = {
     type: 'postgres',
     entities: [
-      User, Team, Goalkeeper, Match, MatchScout,
+      User, Team, UserTeamMembership, Goalkeeper, Match, MatchScout,
       TrainingSession, Exercise, ExerciseResult,
       PerformanceIndex, Video, Report, AiAnalysis,
       Notification, Season, Competition,

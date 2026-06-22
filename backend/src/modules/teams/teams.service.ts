@@ -20,6 +20,7 @@ import {
 import * as bcrypt from 'bcryptjs';
 import { Team } from './entities/team.entity';
 import { User, UserRole } from '../users/entities/user.entity';
+import { UserTeamMembership, TeamMemberRole } from './entities/user-team-membership.entity';
 import { RegisterClubDto } from './dto/register-club.dto';
 
 export { RegisterClubDto };
@@ -126,6 +127,8 @@ export class TeamsService {
     private readonly teamRepository: Repository<Team>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(UserTeamMembership)
+    private readonly membershipRepo: Repository<UserTeamMembership>,
   ) {}
 
   /**
@@ -360,5 +363,84 @@ export class TeamsService {
       .getRawMany<{ category: string }>();
 
     return rows.map((r) => r.category);
+  }
+
+  /**
+   * Returns all active members of a team with basic user info.
+   */
+  async getTeamMembers(teamId: string, requestingUser: any) {
+    // Only admins or members of the team can see the list
+    const memberships = await this.membershipRepo.find({
+      where: { teamId, isActive: true },
+      relations: ['user'],
+      order: { joinedAt: 'ASC' },
+    });
+    return memberships.map(m => ({
+      id: m.id,
+      userId: m.userId,
+      name: m.user?.name,
+      email: m.user?.email,
+      avatar: m.user?.avatar,
+      role: m.role,
+      joinedAt: m.joinedAt,
+    }));
+  }
+
+  /**
+   * Adds a user to a team by userId or email. Reactivates soft-removed memberships.
+   */
+  async addTeamMember(teamId: string, dto: { userId?: string; email?: string; role?: string }) {
+    let user: User | null = null;
+    if (dto.userId) {
+      user = await this.userRepository.findOne({ where: { id: dto.userId } });
+    } else if (dto.email) {
+      user = await this.userRepository.findOne({ where: { email: dto.email.toLowerCase().trim() } });
+    }
+    if (!user) throw new NotFoundException('User not found');
+
+    const existing = await this.membershipRepo.findOne({ where: { userId: user.id, teamId } });
+    if (existing) {
+      // Reactivate if inactive
+      existing.isActive = true;
+      existing.role = (dto.role as TeamMemberRole) ?? existing.role;
+      return this.membershipRepo.save(existing);
+    }
+
+    const membership = this.membershipRepo.create({
+      userId: user.id,
+      teamId,
+      role: (dto.role as TeamMemberRole) ?? TeamMemberRole.VIEWER,
+      isActive: true,
+    });
+    return this.membershipRepo.save(membership);
+  }
+
+  /**
+   * Soft-removes a user from a team by marking the membership inactive.
+   */
+  async removeTeamMember(teamId: string, userId: string) {
+    const membership = await this.membershipRepo.findOne({ where: { userId, teamId } });
+    if (!membership) throw new NotFoundException('Membership not found');
+    membership.isActive = false;
+    await this.membershipRepo.save(membership);
+    return { message: 'Member removed from team' };
+  }
+
+  /**
+   * Returns all active team memberships for a given user.
+   */
+  async getUserWorkspaces(userId: string) {
+    const memberships = await this.membershipRepo.find({
+      where: { userId, isActive: true },
+      relations: ['team'],
+      order: { joinedAt: 'ASC' },
+    });
+    return memberships.map(m => ({
+      membershipId: m.id,
+      teamId: m.teamId,
+      teamName: m.team?.name,
+      role: m.role,
+      joinedAt: m.joinedAt,
+    }));
   }
 }

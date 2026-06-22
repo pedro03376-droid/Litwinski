@@ -51,6 +51,7 @@ export interface UserQueryParams {
   search?: string;
   role?: UserRole;
   isActive?: boolean;
+  teamId?: string;
 }
 
 // ─── Service ─────────────────────────────────────────────────────────────────
@@ -72,6 +73,7 @@ export class UsersService {
       search,
       role,
       isActive,
+      teamId,
     } = params;
 
     if (page < 1 || limit < 1 || limit > 100) {
@@ -93,6 +95,10 @@ export class UsersService {
 
     if (isActive !== undefined) {
       qb.andWhere('user.isActive = :isActive', { isActive });
+    }
+
+    if (teamId) {
+      qb.andWhere('user.teamId = :teamId', { teamId });
     }
 
     const [data, total] = await qb

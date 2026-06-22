@@ -1218,6 +1218,23 @@
       <span id="cloud-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
       <span id="cloud-label" style="font-size:11px;">Nuvem: offline</span>
     </div>
+
+    <!-- Workspace switcher -->
+    <div id="workspace-switcher" style="display:none;position:relative;margin-bottom:6px;">
+      <button onclick="toggleWorkspaceMenu()" style="width:100%;display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:8px;cursor:pointer;text-align:left;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="13" height="13"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        <span id="workspace-name" style="font-size:11px;font-weight:600;color:#a78bfa;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="10" height="10"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="workspace-menu" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:6px;margin-bottom:4px;z-index:100;box-shadow:0 8px 32px rgba(0,0,0,.4);">
+        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 8px 6px;">Meus Workspaces</div>
+        <div id="workspace-list"></div>
+        <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;">
+          <button onclick="navigate('config');toggleWorkspaceMenu();" style="width:100%;text-align:left;padding:6px 8px;font-size:11px;color:var(--primary);background:none;border:none;cursor:pointer;border-radius:6px;">+ Gerenciar membros</button>
+        </div>
+      </div>
+    </div>
+
     <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:6px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.15);border-radius:8px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" width="13" height="13"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
       <span id="auth-sidebar-user" style="font-size:12px;font-weight:600;color:var(--text);flex:1;"></span>
@@ -2019,8 +2036,44 @@
 
     <!-- ══ CONFIG FIREBASE ══ -->
     <div id="page-config" class="page">
+
+      <!-- Membros do Clube (backend) -->
+      <div class="card" style="max-width:680px;margin-bottom:16px;" id="club-members-card">
+        <div class="card-header">
+          <span class="card-title">Membros do Clube</span>
+          <button class="btn btn-primary btn-sm" onclick="openAddMemberModal()">+ Adicionar</button>
+        </div>
+        <div id="club-members-list" style="min-height:48px;">
+          <div style="color:var(--muted);font-size:13px;padding:8px 0;">Carregando membros...</div>
+        </div>
+      </div>
+
+      <!-- Modal adicionar membro -->
+      <div id="add-member-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);align-items:center;justify-content:center;padding:20px;">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;width:100%;max-width:380px;box-shadow:0 24px 80px rgba(0,0,0,.5);">
+          <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Adicionar membro ao clube</h3>
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">Email do usuário</label>
+            <input class="form-input" id="add-member-email" type="email" placeholder="email@clube.com" />
+          </div>
+          <div class="form-group" style="margin-bottom:16px;">
+            <label class="form-label">Função</label>
+            <select class="form-input" id="add-member-role">
+              <option value="coach">Preparador / Treinador</option>
+              <option value="viewer">Visualizador</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <div id="add-member-err" style="color:var(--error);font-size:12px;margin-bottom:10px;display:none;"></div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" style="flex:1;" onclick="submitAddMember()">Adicionar</button>
+            <button class="btn btn-ghost" onclick="closeAddMemberModal()">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
       <div class="card" style="max-width:680px;margin-bottom:16px;">
-        <div class="card-header"><span class="card-title">Usuários do Sistema</span></div>
+        <div class="card-header"><span class="card-title">Usuários do Sistema (local)</span></div>
         <div id="cfg-users-list" style="margin-bottom:16px;"></div>
         <div style="border-top:1px solid var(--border);padding-top:16px;">
           <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Adicionar / Alterar senha</div>
@@ -2529,7 +2582,7 @@ function navigate(page) {
   if (page === 'performance') renderPerformance();
   if (page === 'heatmap') renderHeatmap();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
-  if (page === 'config') { renderConfigStatus(); authRenderUsers(); }
+  if (page === 'config') { renderConfigStatus(); authRenderUsers(); loadClubMembers(); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -6683,6 +6736,7 @@ function _pinInitOverlay() {
 function _updateSidebarUser() {
   const el = document.getElementById('auth-sidebar-user');
   if (el && _loggedUser) el.textContent = _loggedUser;
+  initWorkspaceSwitcher();
 }
 
 // ── WebAuthn / Face ID ─────────────────────────────────────
@@ -6895,6 +6949,142 @@ async function submitRegisterClub() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Criar Conta do Clube';
+  }
+}
+
+/* ── Workspace Switcher ──────────────────────────────── */
+let _workspaces = [];
+let _activeWorkspaceId = null;
+
+function toggleWorkspaceMenu() {
+  const menu = document.getElementById('workspace-menu');
+  const isOpen = menu.style.display === 'block';
+  menu.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) loadWorkspaces();
+}
+
+async function loadWorkspaces() {
+  const token = _apiToken();
+  if (!token) return;
+  try {
+    const data = await api.get('/teams/my-workspaces');
+    _workspaces = Array.isArray(data) ? data : (data.data || []);
+    const list = document.getElementById('workspace-list');
+    if (!_workspaces.length) {
+      list.innerHTML = '<div style="padding:6px 8px;font-size:12px;color:var(--muted);">Nenhum workspace encontrado</div>';
+      return;
+    }
+    list.innerHTML = _workspaces.map(w => `
+      <button onclick="switchWorkspace('${_esc(w.teamId)}','${_esc(w.teamName)}')"
+        style="width:100%;text-align:left;padding:7px 8px;font-size:12px;border-radius:6px;
+               background:${_activeWorkspaceId===w.teamId?'rgba(59,130,246,.12)':'none'};
+               border:none;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:6px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:${_activeWorkspaceId===w.teamId?'var(--primary)':'var(--muted)'};flex-shrink:0;"></span>
+        <span style="flex:1;">${_esc(w.teamName)}</span>
+        <span style="font-size:10px;color:var(--muted);">${_esc(w.role)}</span>
+      </button>`).join('');
+    document.getElementById('workspace-switcher').style.display = 'block';
+  } catch(e) { /* API not available or user has no memberships */ }
+}
+
+function switchWorkspace(teamId, teamName) {
+  _activeWorkspaceId = teamId;
+  document.getElementById('workspace-name').textContent = teamName;
+  document.getElementById('workspace-menu').style.display = 'none';
+  // Store active workspace
+  localStorage.setItem('gkhub_active_workspace', JSON.stringify({ teamId, teamName }));
+  loadClubMembers();
+  toast('Workspace: ' + teamName, 'success');
+}
+
+function initWorkspaceSwitcher() {
+  const token = _apiToken();
+  if (!token) return;
+  const saved = localStorage.getItem('gkhub_active_workspace');
+  if (saved) {
+    try {
+      const ws = JSON.parse(saved);
+      _activeWorkspaceId = ws.teamId;
+      document.getElementById('workspace-name').textContent = ws.teamName;
+      document.getElementById('workspace-switcher').style.display = 'block';
+    } catch(e) {}
+  }
+  loadWorkspaces();
+}
+
+/* ── Club Members ────────────────────────────────────── */
+async function loadClubMembers() {
+  const token = _apiToken();
+  const container = document.getElementById('club-members-list');
+  if (!container) return;
+  if (!token || !_activeWorkspaceId) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Faça login no backend e selecione um workspace para ver os membros.</div>';
+    return;
+  }
+  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Carregando...</div>';
+  try {
+    const data = await api.get('/teams/' + _activeWorkspaceId + '/members');
+    const members = Array.isArray(data) ? data : (data.data || []);
+    if (!members.length) {
+      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhum membro cadastrado.</div>';
+      return;
+    }
+    const roleLabel = { admin:'Admin', coach:'Preparador', viewer:'Visualizador' };
+    const roleColor = { admin:'var(--primary)', coach:'var(--success)', viewer:'var(--muted)' };
+    container.innerHTML = members.map(m => `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
+        <div style="width:34px;height:34px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0;">
+          ${_esc((m.name||m.email||'?')[0].toUpperCase())}
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(m.name||'—')}</div>
+          <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(m.email||'')}</div>
+        </div>
+        <span style="font-size:10px;font-weight:700;color:${roleColor[m.role]||'var(--muted)'};background:rgba(255,255,255,.06);padding:2px 8px;border-radius:20px;white-space:nowrap;">${roleLabel[m.role]||m.role}</span>
+        <button onclick="removeMember('${_esc(m.userId)}')" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>`).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="color:var(--error);font-size:13px;padding:8px 0;">Erro ao carregar membros. Verifique o backend.</div>';
+  }
+}
+
+function openAddMemberModal() {
+  const modal = document.getElementById('add-member-modal');
+  modal.style.display = 'flex';
+  document.getElementById('add-member-email').value = '';
+  document.getElementById('add-member-err').style.display = 'none';
+}
+function closeAddMemberModal() {
+  document.getElementById('add-member-modal').style.display = 'none';
+}
+
+async function submitAddMember() {
+  const email = document.getElementById('add-member-email').value.trim();
+  const role  = document.getElementById('add-member-role').value;
+  const errEl = document.getElementById('add-member-err');
+  if (!email) { errEl.textContent='Informe o email.'; errEl.style.display='block'; return; }
+  if (!_activeWorkspaceId) { errEl.textContent='Selecione um workspace primeiro.'; errEl.style.display='block'; return; }
+  try {
+    await api.post('/teams/' + _activeWorkspaceId + '/members', { email, role });
+    closeAddMemberModal();
+    loadClubMembers();
+    toast('Membro adicionado com sucesso!', 'success');
+  } catch(e) {
+    errEl.textContent = e.message || 'Erro ao adicionar membro.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function removeMember(userId) {
+  if (!confirm('Remover este membro do clube?')) return;
+  try {
+    await api.delete('/teams/' + _activeWorkspaceId + '/members/' + userId);
+    loadClubMembers();
+    toast('Membro removido.', 'info');
+  } catch(e) {
+    toast('Erro ao remover membro.', 'error');
   }
 }
 
