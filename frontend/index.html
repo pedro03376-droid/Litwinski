@@ -3155,7 +3155,7 @@ function classifyPerf(score) {
 }
 
 function avgPerformance(goalkeeperId) {
-  const scouts = DB.scouts.filter(s => s.goalkeeperId == goalkeeperId);
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId == goalkeeperId));
   if (!scouts.length) return null;
   const scores = scouts.map(calcPerformance).filter(s => s !== null);
   if (!scores.length) return null;
@@ -3573,10 +3573,29 @@ function excluirScout(id) {
   toast('Scout excluído.', 'info');
 }
 
+// Merge scout records with the same goalkeeper + game into one combined entry.
+// Numeric stat fields are summed; manual nota is averaged when present.
+function _mergeScouts(scouts) {
+  const _STAT_FIELDS = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','int','sai','dpc','dpe','dmc','dme','pose','posd'];
+  const map = new Map();
+  for (const s of scouts) {
+    const key = `${s.goalkeeperId}__${s.partidaId}`;
+    if (!map.has(key)) {
+      map.set(key, { ...s });
+    } else {
+      const m = map.get(key);
+      for (const f of _STAT_FIELDS) m[f] = (+m[f]||0) + (+s[f]||0);
+      // average manual notas when both have one
+      if (m.nota && s.nota) m.nota = ((parseFloat(m.nota)||0) + (parseFloat(s.nota)||0)) / 2;
+    }
+  }
+  return [...map.values()];
+}
+
 function renderScouts() {
   const goleiras = DB.goleiras;
   const partidas = DB.partidas;
-  const scouts = DB.scouts;
+  const scouts = _mergeScouts(DB.scouts);
   const tbody = document.getElementById('tbody-scouts');
   if (!scouts.length) {
     tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><p>Nenhum scout registrado.</p></div></td></tr>`;
@@ -3639,7 +3658,7 @@ function renderPerformance() {
 function showPerfDetail(gkId) {
   const gk = DB.goleiras.find(g => g.id === gkId);
   if (!gk) return;
-  const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
   const el = document.getElementById('perf-detail');
   if (!scouts.length) {
     el.innerHTML = `<div class="card-title" style="margin-bottom:12px;">${_esc(gk.nome)}</div><div class="empty-state"><p>Nenhum scout registrado para esta goleira.</p></div>`;
@@ -4237,8 +4256,8 @@ function renderPerfil() {
         </div>`).join('')}
     </div>`;
 
-  // Stats acumulados
-  const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  // Stats acumulados (scouts merged por jogo)
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
   const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
   const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1');
   const totalGols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
@@ -4314,7 +4333,7 @@ function abrirAnalise() {
 function gerarAnalise(gkId) {
   analiseGkId = gkId;
   const gk      = DB.goleiras.find(g => g.id === gkId);
-  const scouts   = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  const scouts   = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
   const partidas = DB.partidas;
   if (!gk) return;
   if (scouts.length < 1) { toast('Sem scouts registrados para análise', 'error'); return; }
