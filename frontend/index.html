@@ -1108,48 +1108,75 @@
     <div class="auth-logo-text">GK Hub</div>
     <div class="auth-logo-sub">Plataforma de Performance para Goleiras de Futsal</div>
 
-    <!-- Google Sign-In (visível quando Firebase está configurado) -->
+    <!-- Email + Senha (backend login — principal) -->
+    <div style="margin-bottom:12px;">
+      <input class="form-input" id="auth-email" type="email" placeholder="Email"
+        style="margin-bottom:8px;background:var(--surface);"
+        onkeydown="if(event.key==='Enter')document.getElementById('auth-pass').focus()" />
+      <input class="form-input" id="auth-pass" type="password" placeholder="Senha"
+        style="background:var(--surface);"
+        onkeydown="if(event.key==='Enter')authLogin()" />
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-bottom:4px;" id="auth-login-btn" onclick="authLogin()">
+      Entrar
+    </button>
+
+    <div id="auth-err" class="auth-err"></div>
+
+    <!-- Google Sign-In -->
+    <div class="auth-divider"><span>ou</span></div>
     <div id="auth-google-section">
       <button type="button" class="btn-google"
         ontouchstart="event.preventDefault();authGoogle();"
         onclick="authGoogle();">
-        <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Entrar com Google
       </button>
     </div>
 
-    <!-- Aviso se Firebase não configurado -->
     <div id="auth-config-warn" style="display:none;">
-      <div class="auth-err" style="display:block;margin-top:0;">
-        Configure o Firebase na tela de configurações para habilitar o login com Google.
+      <div class="auth-err" style="display:block;margin-top:8px;margin-bottom:0;">
+        Configure o Firebase nas configurações para habilitar o login com Google.
       </div>
     </div>
 
-    <div id="auth-err" class="auth-err"></div>
-
-    <!-- Face ID (visível se cadastrado) -->
+    <!-- Face ID -->
     <div id="auth-bio-section" style="display:none;margin-top:8px;">
       <button type="button" class="btn-biometric"
         ontouchstart="event.preventDefault();authBiometric();"
         onclick="authBiometric();">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><circle cx="12" cy="12" r="3"/></svg>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><circle cx="12" cy="12" r="3"/></svg>
         Face ID / Biometria
       </button>
     </div>
 
-    <div class="auth-divider"><span>ou</span></div>
+    <div class="auth-divider"><span></span></div>
     <div class="auth-register-link">
-      Ainda não tem conta? <a onclick="openRegister()">Cadastrar clube</a>
+      Novo clube? <a onclick="openRegister()">Cadastrar agora — 30 dias grátis</a>
     </div>
+  </div>
+</div>
+
+<!-- ══ CLUB SELECTOR OVERLAY ══ -->
+<div id="club-selector-overlay" style="display:none;position:fixed;inset:0;z-index:9998;background:var(--bg);align-items:center;justify-content:center;padding:20px;">
+  <div style="width:100%;max-width:440px;">
+    <div style="text-align:center;margin-bottom:28px;">
+      <div style="font-size:28px;font-weight:800;letter-spacing:-1px;background:var(--primary-g);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">GK Hub</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;">Selecione o clube para continuar</div>
+    </div>
+    <div id="club-selector-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+    <button class="btn btn-ghost btn-sm" onclick="authLogout()" style="width:100%;margin-top:20px;color:var(--muted);justify-content:center;">
+      Sair
+    </button>
   </div>
 </div>
 
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-logo-text">
-      <h1>GKHub</h1>
-      <p>Goalkeeper Performance Platform</p>
+    <div class="sidebar-logo-text" onclick="showClubSelector()" style="cursor:pointer;" title="Trocar clube">
+      <h1 id="sidebar-club-name">GKHub</h1>
+      <p id="sidebar-club-sub">Goalkeeper Performance Platform</p>
     </div>
     <button class="sidebar-toggle" id="sidebar-toggle-desktop" onclick="toggleSidebar()" title="Recolher menu">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
@@ -1218,31 +1245,20 @@
       <span id="cloud-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
       <span id="cloud-label" style="font-size:11px;">Nuvem: offline</span>
     </div>
-
-    <!-- Workspace switcher -->
-    <div id="workspace-switcher" style="display:none;position:relative;margin-bottom:6px;">
-      <button onclick="toggleWorkspaceMenu()" style="width:100%;display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:8px;cursor:pointer;text-align:left;">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="13" height="13"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-        <span id="workspace-name" style="font-size:11px;font-weight:600;color:#a78bfa;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">—</span>
-        <svg viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2" width="10" height="10"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div id="workspace-menu" style="display:none;position:absolute;bottom:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:6px;margin-bottom:4px;z-index:100;box-shadow:0 8px 32px rgba(0,0,0,.4);">
-        <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 8px 6px;">Meus Workspaces</div>
-        <div id="workspace-list"></div>
-        <div style="border-top:1px solid var(--border);margin-top:4px;padding-top:4px;">
-          <button onclick="navigate('config');toggleWorkspaceMenu();" style="width:100%;text-align:left;padding:6px 8px;font-size:11px;color:var(--primary);background:none;border:none;cursor:pointer;border-radius:6px;">+ Gerenciar membros</button>
-        </div>
-      </div>
-    </div>
-
     <div style="display:flex;align-items:center;gap:6px;padding:6px 8px;margin-bottom:6px;background:rgba(59,130,246,.07);border:1px solid rgba(59,130,246,.15);border-radius:8px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" width="13" height="13"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
-      <span id="auth-sidebar-user" style="font-size:12px;font-weight:600;color:var(--text);flex:1;"></span>
+      <span id="auth-sidebar-user" style="font-size:12px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     </div>
-    <button class="btn btn-ghost btn-sm" onclick="authLogout()" style="width:100%;justify-content:center;color:var(--muted);font-size:11px;margin-bottom:6px;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-      Sair
-    </button>
+    <div style="display:flex;gap:6px;margin-bottom:6px;">
+      <button class="btn btn-ghost btn-sm" onclick="showClubSelector()" style="flex:1;justify-content:center;color:var(--muted);font-size:11px;" title="Trocar clube">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+        Trocar Clube
+      </button>
+      <button class="btn btn-ghost btn-sm" onclick="authLogout()" style="flex:1;justify-content:center;color:var(--muted);font-size:11px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Sair
+      </button>
+    </div>
     GK Hub v2.0 &copy; 2026
   </div>
 </aside>
@@ -2036,34 +2052,6 @@
 
     <!-- ══ CONFIG FIREBASE ══ -->
     <div id="page-config" class="page">
-
-      <!-- Conexão Backend GK Hub -->
-      <div class="card" style="max-width:680px;margin-bottom:16px;" id="backend-connect-card">
-        <div class="card-header">
-          <span class="card-title">Backend GK Hub</span>
-          <span id="backend-status-badge" style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(239,68,68,.12);color:var(--error);">Desconectado</span>
-        </div>
-        <div id="backend-connected-info" style="display:none;margin-bottom:14px;">
-          <div style="font-size:13px;color:var(--success);">✅ Conectado como <strong id="backend-logged-email"></strong></div>
-          <button class="btn btn-ghost btn-sm" style="margin-top:8px;color:var(--muted);" onclick="backendDisconnect()">Desconectar</button>
-        </div>
-        <div id="backend-login-form">
-          <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Entre com o email e senha cadastrados no clube para acessar membros e workspaces.</p>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Email</label>
-              <input class="form-input" id="backend-email" type="email" placeholder="admin@clube.com" />
-            </div>
-            <div class="form-group">
-              <label class="form-label">Senha</label>
-              <input class="form-input" id="backend-pass" type="password" placeholder="••••••••"
-                onkeydown="if(event.key==='Enter') backendConnect()" />
-            </div>
-          </div>
-          <div id="backend-err" style="color:var(--error);font-size:12px;margin-bottom:10px;display:none;"></div>
-          <button class="btn btn-primary" onclick="backendConnect()" id="backend-connect-btn">Conectar ao Backend</button>
-        </div>
-      </div>
 
       <!-- Membros do Clube (backend) -->
       <div class="card" style="max-width:680px;margin-bottom:16px;" id="club-members-card">
@@ -6474,13 +6462,19 @@ function _initFirebaseAuth() {
   } catch(e) { console.error('Firebase init error:', e); return false; }
 }
 
-function _googleLoginSuccess(user) {
+async function _googleLoginSuccess(user) {
   _loggedUser   = user.displayName || user.email;
   _sessionToken = _randToken();
   localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
   document.getElementById('auth-overlay').classList.add('hidden');
   _updateSidebarUser();
-  navigate('dashboard');
+  // Try to load workspaces if backend token exists (from previous session)
+  const token = _apiToken();
+  if (token) {
+    await _afterLoginLoadClubs();
+  } else {
+    navigate('dashboard');
+  }
 }
 
 async function authGoogle() {
@@ -6764,8 +6758,18 @@ function _pinInitOverlay() {
 function _updateSidebarUser() {
   const el = document.getElementById('auth-sidebar-user');
   if (el && _loggedUser) el.textContent = _loggedUser;
-  initWorkspaceSwitcher();
-  _renderBackendStatus();
+  // Restore active workspace in sidebar
+  const saved = localStorage.getItem('gkhub_active_workspace');
+  if (saved) {
+    try {
+      const ws = JSON.parse(saved);
+      _activeWorkspaceId = ws.teamId;
+      const nameEl = document.getElementById('sidebar-club-name');
+      const subEl  = document.getElementById('sidebar-club-sub');
+      if (nameEl) nameEl.textContent = ws.teamName;
+      if (subEl)  subEl.textContent  = 'GK Hub';
+    } catch(e) {}
+  }
 }
 
 // ── WebAuthn / Face ID ─────────────────────────────────────
@@ -6848,55 +6852,41 @@ let _loginBusy = false;
 async function authLogin() {
   if (_loginBusy) return;
   _loginBusy = true;
-  const user  = document.getElementById('auth-user').value.trim().toLowerCase();
-  const pass  = document.getElementById('auth-pass').value;
-  const errEl = document.getElementById('auth-err');
-  const btn   = document.querySelector('#auth-overlay .btn-primary');
+  const email  = (document.getElementById('auth-email')?.value || '').trim();
+  const pass   = (document.getElementById('auth-pass')?.value || '');
+  const errEl  = document.getElementById('auth-err');
+  const btn    = document.getElementById('auth-login-btn');
 
-  // Lockout check (síncrono, antes de qualquer await)
-  const locked = _checkLockout();
-  if (locked) { errEl.textContent = locked; errEl.style.display = 'block'; return; }
-  if (!user || !pass) { errEl.textContent = 'Preencha usuário e senha.'; errEl.style.display = 'block'; return; }
-
-  if (btn) { btn.disabled = true; btn.textContent = 'Verificando…'; }
+  errEl.style.display = 'none';
+  if (!email || !pass) {
+    errEl.textContent = 'Preencha email e senha.';
+    errEl.style.display = 'block';
+    _loginBusy = false;
+    return;
+  }
+  if (btn) { btn.disabled = true; btn.textContent = 'Entrando…'; }
 
   try {
-    // Garante que o bootstrap terminou antes de verificar usuários
-    if (_bootstrapDone) await _bootstrapDone;
-
-    const users = _getUsers();
-    const found = users.find(u => u.user === user);
-    let ok = false;
-    if (found && found.salt) {
-      const h = await _hashPass(pass, found.salt);
-      ok = h === found.hash;
-    }
-
-    if (ok) {
-      _clearFails();
-      _loggedUser   = found.nome || found.user;
-      _sessionToken = _randToken();
-      localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
+    const result = await apiLogin(email, pass);
+    if (result) {
+      localStorage.setItem('gkhub_backend_email', email);
+      _loggedUser   = result.user?.name || email;
+      _sessionToken = result.accessToken;
+      localStorage.setItem(_AUTH_SESSION, JSON.stringify({
+        user: _loggedUser, token: _sessionToken,
+        expiresAt: Date.now() + 86400000,
+        isBackend: true,
+      }));
       document.getElementById('auth-overlay').classList.add('hidden');
       _updateSidebarUser();
-      navigate('dashboard');
-      errEl.style.display = 'none';
-      // Oferece cadastrar biometria (Face ID) na primeira vez
-      setTimeout(() => _offerBiometric(_loggedUser), 300);
+      await _afterLoginLoadClubs();
     } else {
-      _recordFail();
-      const failData = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0}');
-      const remaining = _MAX_FAILS - (failData.count % _MAX_FAILS || _MAX_FAILS);
-      errEl.textContent = remaining > 0
-        ? `Usuário ou senha incorretos. (${remaining} tentativa${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''})`
-        : 'Bloqueado por tentativas excessivas.';
+      errEl.textContent = 'Email ou senha incorretos.';
       errEl.style.display = 'block';
       document.getElementById('auth-pass').value = '';
-      document.getElementById('auth-pass').focus();
     }
   } catch(e) {
-    console.error('Login error:', e);
-    errEl.textContent = 'Erro interno. Recarregue a página e tente novamente.';
+    errEl.textContent = 'Erro de conexão com o servidor. Verifique sua internet.';
     errEl.style.display = 'block';
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Entrar'; }
@@ -6904,14 +6894,88 @@ async function authLogin() {
   }
 }
 
+/* ── Post-login: load clubs and show selector or go directly ── */
+async function _afterLoginLoadClubs() {
+  try {
+    const workspaces = await api.get('/teams/my-workspaces');
+    _workspaces = Array.isArray(workspaces) ? workspaces : (workspaces?.data || []);
+  } catch(e) { _workspaces = []; }
+
+  if (_workspaces.length === 0) {
+    // No clubs — go to dashboard directly
+    navigate('dashboard');
+    toast('Bem-vindo! Nenhum clube vinculado ainda.', 'info');
+  } else if (_workspaces.length === 1) {
+    // Single club — auto-select
+    _setActiveWorkspace(_workspaces[0].teamId, _workspaces[0].teamName);
+    navigate('dashboard');
+  } else {
+    // Multiple clubs — show selector
+    showClubSelector();
+  }
+}
+
+function showClubSelector() {
+  if (!_workspaces.length) {
+    // Load first
+    api.get('/teams/my-workspaces').then(data => {
+      _workspaces = Array.isArray(data) ? data : (data?.data || []);
+      _renderClubSelector();
+    }).catch(() => { navigate('dashboard'); });
+    return;
+  }
+  _renderClubSelector();
+}
+
+function _renderClubSelector() {
+  const overlay = document.getElementById('club-selector-overlay');
+  const list    = document.getElementById('club-selector-list');
+  if (!overlay || !list) return;
+  const roleLabel = { admin:'Administrador', coach:'Preparador', viewer:'Visualizador' };
+  list.innerHTML = _workspaces.map(w => `
+    <button onclick="_setActiveWorkspace('${_esc(w.teamId)}','${_esc(w.teamName)}');navigate('dashboard');"
+      style="width:100%;text-align:left;padding:16px 18px;background:var(--card);
+             border:1px solid ${_activeWorkspaceId===w.teamId?'var(--primary)':'var(--border)'};
+             border-radius:var(--radius);cursor:pointer;transition:border-color .2s;
+             display:flex;align-items:center;gap:14px;">
+      <div style="width:42px;height:42px;border-radius:10px;background:var(--primary-g);
+                  display:flex;align-items:center;justify-content:center;
+                  font-size:18px;font-weight:800;color:#fff;flex-shrink:0;">
+        ${_esc(w.teamName[0].toUpperCase())}
+      </div>
+      <div style="flex:1;">
+        <div style="font-weight:700;font-size:15px;">${_esc(w.teamName)}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${roleLabel[w.role]||w.role}</div>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" width="16" height="16"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>`).join('');
+  overlay.style.display = 'flex';
+}
+
+function _setActiveWorkspace(teamId, teamName) {
+  _activeWorkspaceId = teamId;
+  localStorage.setItem('gkhub_active_workspace', JSON.stringify({ teamId, teamName }));
+  document.getElementById('sidebar-club-name').textContent = teamName;
+  document.getElementById('sidebar-club-sub').textContent = 'GK Hub';
+  document.getElementById('club-selector-overlay').style.display = 'none';
+}
+
 function authLogout() {
   _loggedUser   = null;
   _sessionToken = null;
+  _activeWorkspaceId = null;
+  _workspaces = [];
   localStorage.removeItem(_AUTH_SESSION);
+  localStorage.removeItem(_API_TOKEN_KEY);
+  localStorage.removeItem('gkhub_backend_email');
+  localStorage.removeItem('gkhub_active_workspace');
   document.getElementById('auth-overlay').classList.remove('hidden');
-  document.getElementById('auth-user').value = '';
-  document.getElementById('auth-pass').value = '';
+  document.getElementById('club-selector-overlay').style.display = 'none';
+  if (document.getElementById('auth-email')) document.getElementById('auth-email').value = '';
+  if (document.getElementById('auth-pass'))  document.getElementById('auth-pass').value  = '';
   document.getElementById('auth-err').style.display = 'none';
+  document.getElementById('sidebar-club-name').textContent = 'GKHub';
+  document.getElementById('sidebar-club-sub').textContent  = 'Goalkeeper Performance Platform';
 }
 
 /* ── Club Registration ───────────────────────────────── */
