@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
-  CreateDateColumn, UpdateDateColumn, OneToMany,
+  CreateDateColumn, UpdateDateColumn, OneToMany, Index,
 } from 'typeorm';
 import { Goalkeeper } from '../../goalkeepers/entities/goalkeeper.entity';
 
@@ -11,6 +11,19 @@ export class Team {
 
   @Column()
   name: string;
+
+  @Index({ unique: true })
+  @Column({ unique: true, nullable: true })
+  slug: string; // e.g. "atletico-mg"
+
+  @Column({ default: 'trial' })
+  planStatus: string; // 'trial' | 'active' | 'suspended' | 'cancelled'
+
+  @Column({ type: 'timestamp', nullable: true })
+  trialEndsAt: Date;
+
+  @Column({ nullable: true })
+  ownerEmail: string;
 
   @Column({ nullable: true })
   shield?: string;

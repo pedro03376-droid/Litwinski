@@ -10,6 +10,8 @@ export interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  teamId?: string | null;
+  planStatus?: string | null;
   iat?: number;
   exp?: number;
 }
@@ -28,7 +30,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<User> {
+  async validate(payload: JwtPayload): Promise<User & { teamId: string | null; planStatus: string | null }> {
     const user = await this.userRepository.findOne({
       where: { id: payload.sub, isActive: true },
     });
@@ -37,6 +39,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Token is invalid or user account is deactivated');
     }
 
-    return user;
+    // Attach teamId and planStatus from the JWT payload so guards can use them
+    return {
+      ...user,
+      teamId: payload.teamId ?? user.teamId ?? null,
+      planStatus: payload.planStatus ?? null,
+    };
   }
 }

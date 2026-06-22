@@ -29,17 +29,32 @@ import {
   CreateTeamDto,
   UpdateTeamDto,
 } from './teams.service';
+import { RegisterClubDto } from './dto/register-club.dto';
 
 @ApiTags('teams')
-@ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('teams')
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
+  // ─── POST /teams/register (public) ────────────────────────────────────────
+
+  @Post('register')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Club self-registration',
+    description: 'Public endpoint. Registers a new club and creates the owner admin account. Starts a 30-day trial.',
+  })
+  @ApiResponse({ status: 201, description: 'Club registered successfully.' })
+  @ApiResponse({ status: 409, description: 'Slug or email already in use.' })
+  async registerClub(@Body() dto: RegisterClubDto) {
+    return this.teamsService.registerClub(dto);
+  }
+
   // ─── GET /teams ────────────────────────────────────────────────────────────
 
   @Get()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'List all teams',
     description: 'Returns a paginated list of teams with optional filtering.',
@@ -76,6 +91,8 @@ export class TeamsController {
   // ─── GET /teams/categories ─────────────────────────────────────────────────
 
   @Get('categories')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({
     summary: 'List all team categories',
     description: 'Returns a distinct list of category values from active teams.',
@@ -89,6 +106,8 @@ export class TeamsController {
   // ─── GET /teams/:id ────────────────────────────────────────────────────────
 
   @Get(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Get team by ID' })
   @ApiParam({ name: 'id', type: String, format: 'uuid', description: 'Team UUID' })
   @ApiQuery({ name: 'withGoalkeepers', required: false, type: Boolean, description: 'Include goalkeepers relation' })
@@ -104,6 +123,8 @@ export class TeamsController {
   // ─── POST /teams ───────────────────────────────────────────────────────────
 
   @Post()
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.TECHNICAL_STAFF)
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({
@@ -120,6 +141,8 @@ export class TeamsController {
   // ─── PATCH /teams/:id ─────────────────────────────────────────────────────
 
   @Patch(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.TECHNICAL_STAFF)
   @ApiOperation({
     summary: 'Update a team',
@@ -140,6 +163,8 @@ export class TeamsController {
   // ─── DELETE /teams/:id ────────────────────────────────────────────────────
 
   @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
