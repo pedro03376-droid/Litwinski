@@ -7545,8 +7545,354 @@ function topbarSearch(val) {
   }, 200); }
 }
 
+// ═══════════════════════════════════════════════════════════
+// USER AREA
+// ═══════════════════════════════════════════════════════════
+const _PROFILE_KEY    = 'gkhub_user_profile';
+const _ACTIVITY_KEY   = 'gkhub_activity_log';
+const _FAVORITES_KEY  = 'gkhub_favorites';
+const _PREFS_KEY      = 'gkhub_prefs';
+
+// ── Dropdown ─────────────────────────────────────────────
+function toggleUserMenu() {
+  const el = document.getElementById('user-dropdown');
+  if (!el) return;
+  if (el.style.display === 'none' || !el.style.display) {
+    el.style.display = 'block';
+    document.addEventListener('click', _closeMenuOutside, true);
+  } else {
+    closeUserMenu();
+  }
+}
+function closeUserMenu() {
+  const el = document.getElementById('user-dropdown');
+  if (el) el.style.display = 'none';
+  document.removeEventListener('click', _closeMenuOutside, true);
+}
+function _closeMenuOutside(e) {
+  const wrap = document.getElementById('user-dropdown')?.parentElement;
+  if (wrap && !wrap.contains(e.target)) closeUserMenu();
+}
+
+// ── Profile ───────────────────────────────────────────────
+function loadProfile() {
+  try { return JSON.parse(localStorage.getItem(_PROFILE_KEY) || '{}'); } catch(e) { return {}; }
+}
+function saveProfile() {
+  const profile = {
+    nome:      document.getElementById('up-nome')?.value.trim() || '',
+    email:     document.getElementById('up-email')?.value.trim() || '',
+    telefone:  document.getElementById('up-telefone')?.value.trim() || '',
+    cargo:     document.getElementById('up-cargo')?.value.trim() || '',
+    clube:     document.getElementById('up-clube')?.value.trim() || '',
+    categoria: document.getElementById('up-categoria')?.value.trim() || '',
+    bio:       document.getElementById('up-bio')?.value.trim() || '',
+    updatedAt: new Date().toISOString(),
+  };
+  const existing = loadProfile();
+  const merged = { ...existing, ...profile };
+  localStorage.setItem(_PROFILE_KEY, JSON.stringify(merged));
+  _refreshProfileUI(merged);
+  const st = document.getElementById('up-status');
+  if (st) st.innerHTML = '<span style="color:var(--success)">✓ Perfil salvo!</span>';
+  setTimeout(() => { if (st) st.innerHTML = ''; }, 3000);
+  toast('Perfil atualizado!', 'success');
+  _logAction('Perfil atualizado', 'primary');
+}
+function handleProfilePhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const dataUrl = e.target.result;
+    const profile = loadProfile();
+    profile.foto = dataUrl;
+    profile.updatedAt = new Date().toISOString();
+    localStorage.setItem(_PROFILE_KEY, JSON.stringify(profile));
+    _applyProfilePhoto(dataUrl);
+    toast('Foto atualizada!', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+function _applyProfilePhoto(dataUrl) {
+  const preview = document.getElementById('up-foto-preview');
+  if (preview) preview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+  const avatar = document.getElementById('topbar-user-avatar');
+  if (avatar) avatar.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  const udAv = document.getElementById('ud-avatar');
+  if (udAv) udAv.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+}
+function _refreshProfileUI(profile) {
+  // Header
+  const nameEl = document.getElementById('up-display-name');
+  const roleEl = document.getElementById('up-display-role');
+  const clubEl = document.getElementById('up-display-club');
+  if (nameEl) nameEl.textContent = profile.nome || _loggedUser || '—';
+  if (roleEl) roleEl.textContent = profile.cargo || '';
+  if (clubEl) clubEl.textContent = profile.clube || '';
+  // Initial in photo
+  const initial = document.getElementById('up-foto-initial');
+  if (initial && !profile.foto) initial.textContent = (profile.nome || _loggedUser || '?')[0].toUpperCase();
+  if (profile.foto) _applyProfilePhoto(profile.foto);
+  // Topbar avatar
+  const avatar = document.getElementById('topbar-user-avatar');
+  if (avatar && !profile.foto) {
+    avatar.innerHTML = `<span style="font-size:13px;font-weight:700;">${(profile.nome || _loggedUser || '?')[0].toUpperCase()}</span>`;
+  }
+  // Dropdown
+  const udName = document.getElementById('ud-name');
+  const udRole = document.getElementById('ud-role');
+  const udAv   = document.getElementById('ud-avatar');
+  if (udName) udName.textContent = profile.nome || _loggedUser || '—';
+  if (udRole) udRole.textContent = profile.cargo || profile.clube || 'GK Hub';
+  if (udAv && !profile.foto) udAv.textContent = (profile.nome || _loggedUser || '?')[0].toUpperCase();
+}
+function loadUserPage() {
+  const profile = loadProfile();
+  // Fill form fields
+  ['nome','email','telefone','cargo','clube','categoria','bio'].forEach(k => {
+    const el = document.getElementById('up-'+k);
+    if (el) el.value = profile[k] || '';
+  });
+  _refreshProfileUI(profile);
+  // Account summary
+  const joinDate = profile.createdAt || new Date().toISOString();
+  if (!profile.createdAt) {
+    profile.createdAt = joinDate;
+    localStorage.setItem(_PROFILE_KEY, JSON.stringify(profile));
+  }
+  profile.lastAccess = new Date().toISOString();
+  localStorage.setItem(_PROFILE_KEY, JSON.stringify(profile));
+  const fmt = s => s ? new Date(s).toLocaleDateString('pt-BR', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+  const infoJoin  = document.getElementById('up-info-join');
+  const infoLast  = document.getElementById('up-info-last');
+  const infoClub  = document.getElementById('up-info-club');
+  const infoScout = document.getElementById('up-info-scouts');
+  const infoMatch = document.getElementById('up-info-matches');
+  const infoGks   = document.getElementById('up-info-gks');
+  const upJoin    = document.getElementById('up-display-join');
+  if (infoJoin)  infoJoin.textContent  = fmt(profile.createdAt);
+  if (infoLast)  infoLast.textContent  = fmt(profile.lastAccess);
+  if (infoClub)  infoClub.textContent  = _activeWorkspaceId ? (document.getElementById('sidebar-club-name')?.textContent || '—') : (profile.clube || '—');
+  if (infoScout) infoScout.textContent = DB.scouts.length;
+  if (infoMatch) infoMatch.textContent = DB.partidas.length;
+  if (infoGks)   infoGks.textContent   = DB.goleiras.length;
+  if (upJoin)    upJoin.textContent    = 'Membro desde ' + fmt(profile.createdAt);
+  // Session info
+  const ua = navigator.userAgent;
+  const browser = ua.includes('Chrome') ? 'Chrome' : ua.includes('Firefox') ? 'Firefox' : ua.includes('Safari') ? 'Safari' : 'Navegador';
+  const device  = /Mobi|Android/i.test(ua) ? 'Dispositivo móvel' : 'Computador / Desktop';
+  const secDev  = document.getElementById('sec-device');
+  const secBrow = document.getElementById('sec-browser');
+  const secSess = document.getElementById('sec-session-start');
+  if (secDev)  secDev.textContent  = device;
+  if (secBrow) secBrow.textContent = browser;
+  if (secSess) secSess.textContent = fmt(new Date().toISOString());
+  // Activity stats
+  const actS = document.getElementById('act-scouts');
+  const actP = document.getElementById('act-partidas');
+  const actG = document.getElementById('act-gks');
+  const actPdf = document.getElementById('act-pdfs');
+  if (actS) actS.textContent = DB.scouts.length;
+  if (actP) actP.textContent = DB.partidas.length;
+  if (actG) actG.textContent = DB.goleiras.length;
+  const log = loadActivityLog();
+  if (actPdf) actPdf.textContent = log.filter(l => l.text.toLowerCase().includes('pdf')).length;
+  renderActivityLog();
+  renderFavorites();
+  loadPreferences();
+}
+
+// ── Activity Log ──────────────────────────────────────────
+function loadActivityLog() {
+  try { return JSON.parse(localStorage.getItem(_ACTIVITY_KEY) || '[]'); } catch(e) { return []; }
+}
+function _logAction(text, color) {
+  const log = loadActivityLog();
+  log.unshift({ text, color: color || 'primary', time: new Date().toISOString() });
+  if (log.length > 50) log.length = 50;
+  localStorage.setItem(_ACTIVITY_KEY, JSON.stringify(log));
+}
+function renderActivityLog() {
+  const el = document.getElementById('activity-log');
+  if (!el) return;
+  const log = loadActivityLog();
+  if (!log.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma atividade registrada ainda.</div>';
+    return;
+  }
+  const colorMap = { primary: 'var(--primary)', success: 'var(--success)', warning: 'var(--warning)', error: 'var(--error)' };
+  el.innerHTML = log.map(l => {
+    const d = new Date(l.time);
+    const timeStr = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+    return `<div class="activity-item">
+      <div class="activity-dot" style="background:${colorMap[l.color]||'var(--primary)'};"></div>
+      <div style="flex:1;">
+        <div style="font-size:13px;">${_esc(l.text)}</div>
+        <div class="activity-time">${timeStr} · ${dateStr}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function clearActivityLog() {
+  localStorage.removeItem(_ACTIVITY_KEY);
+  renderActivityLog();
+  toast('Histórico limpo', 'info');
+}
+
+// ── Favorites ─────────────────────────────────────────────
+function loadFavorites() {
+  try { return JSON.parse(localStorage.getItem(_FAVORITES_KEY) || '{"goleiras":[],"partidas":[]}'); } catch(e) { return {goleiras:[],partidas:[]}; }
+}
+function toggleFavorite(type, id) {
+  const favs = loadFavorites();
+  if (!favs[type]) favs[type] = [];
+  const idx = favs[type].indexOf(id);
+  if (idx >= 0) { favs[type].splice(idx, 1); } else { favs[type].push(id); }
+  localStorage.setItem(_FAVORITES_KEY, JSON.stringify(favs));
+  return idx < 0;
+}
+function isFavorite(type, id) {
+  const favs = loadFavorites();
+  return (favs[type] || []).includes(id);
+}
+function renderFavorites() {
+  const favs = loadFavorites();
+  const gkEl = document.getElementById('fav-goleiras-list');
+  const ptEl = document.getElementById('fav-partidas-list');
+  const gks  = DB.goleiras.filter(g => favs.goleiras?.includes(g.id));
+  const pts  = DB.partidas.filter(p => favs.partidas?.includes(p.id));
+  if (gkEl) {
+    gkEl.innerHTML = gks.length
+      ? gks.map(g => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:600;">${_esc(g.nome)}</div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleFavorite('goleiras','${g.id}');renderFavorites();" style="color:var(--warning);">★</button>
+        </div>`).join('')
+      : '<div style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma goleira favoritada.<br><small>Clique ★ na lista de goleiras.</small></div>';
+  }
+  if (ptEl) {
+    ptEl.innerHTML = pts.length
+      ? pts.map(p => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
+          <div style="font-size:13px;font-weight:600;">${_esc(p.adversario||'—')}</div>
+          <div style="font-size:11px;color:var(--muted);">${p.data||''}</div>
+          <button class="btn btn-ghost btn-sm" onclick="toggleFavorite('partidas','${p.id}');renderFavorites();" style="color:var(--warning);">★</button>
+        </div>`).join('')
+      : '<div style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma partida favoritada.</div>';
+  }
+}
+
+// ── Preferences ───────────────────────────────────────────
+function loadPreferences() {
+  try { return JSON.parse(localStorage.getItem(_PREFS_KEY) || '{}'); } catch(e) { return {}; }
+}
+function savePreferences() {
+  const prefs = {
+    theme:      document.querySelector('.theme-btn.active')?.dataset.theme || 'dark',
+    color:      document.querySelector('.color-swatch.active')?.dataset.color || 'blue',
+    homePage:   document.getElementById('pref-home')?.value || 'dashboard',
+    categoria:  document.getElementById('pref-categoria')?.value || '',
+    notifScouts:  !!(document.getElementById('notif-scouts')?.checked),
+    notifPartidas:!!(document.getElementById('notif-partidas')?.checked),
+    notifPdf:     !!(document.getElementById('notif-pdf')?.checked),
+    notifMatch:   !!(document.getElementById('notif-match')?.checked),
+  };
+  localStorage.setItem(_PREFS_KEY, JSON.stringify(prefs));
+  toast('Preferências salvas!', 'success');
+}
+function applyPreferences() {
+  const prefs = loadPreferences();
+  if (prefs.theme) _applyTheme(prefs.theme);
+  if (prefs.color) {
+    const colorMap = { blue:['#3B82F6','#2563EB'], green:['#10B981','#059669'], purple:['#8B5CF6','#7C3AED'], red:['#EF4444','#DC2626'], orange:['#F59E0B','#D97706'] };
+    const c = colorMap[prefs.color];
+    if (c) _applyPrimaryColor(c[0], c[1]);
+  }
+  // Restore UI state when preferences page is open
+  const homeEl = document.getElementById('pref-home');
+  const catEl  = document.getElementById('pref-categoria');
+  if (homeEl && prefs.homePage) homeEl.value = prefs.homePage;
+  if (catEl  && prefs.categoria) catEl.value = prefs.categoria;
+  ['notif-scouts','notif-partidas','notif-pdf','notif-match'].forEach(id => {
+    const key = id.replace('-','').replace('notif','notif').replace(/-/g,'');
+    const el = document.getElementById(id);
+    const prefKey = 'notif' + id.replace('notif-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
+    if (el && prefs[prefKey] !== undefined) el.checked = prefs[prefKey];
+  });
+  document.querySelectorAll('.theme-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.theme === (prefs.theme || 'dark'));
+  });
+  document.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('active', s.dataset.color === (prefs.color || 'blue'));
+  });
+}
+
+// ── Theme ─────────────────────────────────────────────────
+function setAppTheme(theme) {
+  _applyTheme(theme);
+  document.querySelectorAll('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+  const prefs = loadPreferences();
+  prefs.theme = theme;
+  localStorage.setItem(_PREFS_KEY, JSON.stringify(prefs));
+}
+function _applyTheme(theme) {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = theme === 'dark' || (theme === 'auto' && prefersDark);
+  document.body.classList.toggle('theme-light', !isDark);
+}
+
+// ── Primary Color ─────────────────────────────────────────
+function setPrimaryColor(name, color, dark) {
+  _applyPrimaryColor(color, dark);
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.toggle('active', s.dataset.color === name));
+  const prefs = loadPreferences();
+  prefs.color = name;
+  localStorage.setItem(_PREFS_KEY, JSON.stringify(prefs));
+}
+function _applyPrimaryColor(color, dark) {
+  const root = document.documentElement;
+  root.style.setProperty('--primary', color);
+  root.style.setProperty('--primary-d', dark);
+  root.style.setProperty('--primary-g', `linear-gradient(135deg,${color},${dark})`);
+}
+
+// ── Security ──────────────────────────────────────────────
+async function changePassword() {
+  const oldPass = document.getElementById('sec-pass-old')?.value;
+  const newPass = document.getElementById('sec-pass-new')?.value;
+  const confirm = document.getElementById('sec-pass-confirm')?.value;
+  const st = document.getElementById('sec-pass-status');
+  if (!oldPass || !newPass) { if(st) st.innerHTML='<span style="color:var(--error)">Preencha todos os campos.</span>'; return; }
+  if (newPass.length < 6) { if(st) st.innerHTML='<span style="color:var(--error)">Nova senha precisa ter ao menos 6 caracteres.</span>'; return; }
+  if (newPass !== confirm) { if(st) st.innerHTML='<span style="color:var(--error)">As senhas não coincidem.</span>'; return; }
+  const token = _apiToken();
+  if (!token) { if(st) st.innerHTML='<span style="color:var(--error)">Faça login no backend para alterar a senha.</span>'; return; }
+  try {
+    await api.patch('/auth/change-password', { currentPassword: oldPass, newPassword: newPass });
+    if(st) st.innerHTML='<span style="color:var(--success)">✓ Senha alterada com sucesso!</span>';
+    document.getElementById('sec-pass-old').value='';
+    document.getElementById('sec-pass-new').value='';
+    document.getElementById('sec-pass-confirm').value='';
+    toast('Senha alterada!', 'success');
+    _logAction('Senha alterada', 'success');
+  } catch(e) {
+    if(st) st.innerHTML='<span style="color:var(--error)">Erro ao alterar senha. Verifique a senha atual.</span>';
+  }
+}
+
+// ── Tab switcher ──────────────────────────────────────────
+function switchUserTab(tab) {
+  document.querySelectorAll('.user-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.querySelectorAll('.user-tab-content').forEach(c => {
+    const match = c.id === 'user-tab-' + tab;
+    c.classList.toggle('active', match);
+  });
+  if (tab === 'preferencias') applyPreferences();
+}
+
 // INIT
 initAuth();
+applyPreferences();
 updateGoleiraSelects();
 refreshDashboard();
 initFirebaseFromStorage();
