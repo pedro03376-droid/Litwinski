@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - main
-      - claude/optimistic-goldberg-waoobu
-      - claude/exciting-einstein-daneaq
     paths:
       - 'frontend/**'
 
