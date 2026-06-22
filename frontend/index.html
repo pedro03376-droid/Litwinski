@@ -6870,8 +6870,23 @@ async function loadClubMembers() {
   const token = _apiToken();
   const container = document.getElementById('club-members-list');
   if (!container) return;
-  if (!token || !_activeWorkspaceId) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Faça login no backend e selecione um workspace para ver os membros.</div>';
+  if (!token) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Faça login para ver os membros do clube.</div>';
+    return;
+  }
+  // Auto-resolve workspace if not set yet
+  if (!_activeWorkspaceId) {
+    try {
+      const ws = await api.get('/teams/my-workspaces');
+      _workspaces = Array.isArray(ws) ? ws : (ws?.data || []);
+      if (_workspaces.length > 0) {
+        const first = _workspaces[0];
+        _setActiveWorkspace(first.teamId, first.teamName);
+      }
+    } catch(e) {}
+  }
+  if (!_activeWorkspaceId) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhum clube vinculado à sua conta.</div>';
     return;
   }
   container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Carregando...</div>';
