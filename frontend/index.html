@@ -2037,6 +2037,34 @@
     <!-- ══ CONFIG FIREBASE ══ -->
     <div id="page-config" class="page">
 
+      <!-- Conexão Backend GK Hub -->
+      <div class="card" style="max-width:680px;margin-bottom:16px;" id="backend-connect-card">
+        <div class="card-header">
+          <span class="card-title">Backend GK Hub</span>
+          <span id="backend-status-badge" style="font-size:11px;font-weight:700;padding:2px 10px;border-radius:20px;background:rgba(239,68,68,.12);color:var(--error);">Desconectado</span>
+        </div>
+        <div id="backend-connected-info" style="display:none;margin-bottom:14px;">
+          <div style="font-size:13px;color:var(--success);">✅ Conectado como <strong id="backend-logged-email"></strong></div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:8px;color:var(--muted);" onclick="backendDisconnect()">Desconectar</button>
+        </div>
+        <div id="backend-login-form">
+          <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Entre com o email e senha cadastrados no clube para acessar membros e workspaces.</p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input class="form-input" id="backend-email" type="email" placeholder="admin@clube.com" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Senha</label>
+              <input class="form-input" id="backend-pass" type="password" placeholder="••••••••"
+                onkeydown="if(event.key==='Enter') backendConnect()" />
+            </div>
+          </div>
+          <div id="backend-err" style="color:var(--error);font-size:12px;margin-bottom:10px;display:none;"></div>
+          <button class="btn btn-primary" onclick="backendConnect()" id="backend-connect-btn">Conectar ao Backend</button>
+        </div>
+      </div>
+
       <!-- Membros do Clube (backend) -->
       <div class="card" style="max-width:680px;margin-bottom:16px;" id="club-members-card">
         <div class="card-header">
@@ -2582,7 +2610,7 @@ function navigate(page) {
   if (page === 'performance') renderPerformance();
   if (page === 'heatmap') renderHeatmap();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
-  if (page === 'config') { renderConfigStatus(); authRenderUsers(); loadClubMembers(); }
+  if (page === 'config') { renderConfigStatus(); authRenderUsers(); _renderBackendStatus(); loadClubMembers(); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -6737,6 +6765,7 @@ function _updateSidebarUser() {
   const el = document.getElementById('auth-sidebar-user');
   if (el && _loggedUser) el.textContent = _loggedUser;
   initWorkspaceSwitcher();
+  _renderBackendStatus();
 }
 
 // ── WebAuthn / Face ID ─────────────────────────────────────
@@ -7181,6 +7210,68 @@ const api = {
   patch:  (path, body) => apiRequest('PATCH',  path, body),
   delete: (path)       => apiRequest('DELETE', path),
 };
+
+/* ── Backend Connect UI ──────────────────────────────── */
+function _renderBackendStatus() {
+  const token  = _apiToken();
+  const badge  = document.getElementById('backend-status-badge');
+  const info   = document.getElementById('backend-connected-info');
+  const form   = document.getElementById('backend-login-form');
+  if (!badge) return;
+  if (token) {
+    badge.textContent = 'Conectado';
+    badge.style.background = 'rgba(16,185,129,.12)';
+    badge.style.color = 'var(--success)';
+    if (info) info.style.display = 'block';
+    if (form) form.style.display = 'none';
+    const emailEl = document.getElementById('backend-logged-email');
+    if (emailEl) emailEl.textContent = localStorage.getItem('gkhub_backend_email') || '—';
+  } else {
+    badge.textContent = 'Desconectado';
+    badge.style.background = 'rgba(239,68,68,.12)';
+    badge.style.color = 'var(--error)';
+    if (info) info.style.display = 'none';
+    if (form) form.style.display = 'block';
+  }
+}
+
+async function backendConnect() {
+  const email = document.getElementById('backend-email').value.trim();
+  const pass  = document.getElementById('backend-pass').value;
+  const errEl = document.getElementById('backend-err');
+  const btn   = document.getElementById('backend-connect-btn');
+  errEl.style.display = 'none';
+  if (!email || !pass) { errEl.textContent='Preencha email e senha.'; errEl.style.display='block'; return; }
+  btn.disabled = true; btn.textContent = 'Conectando...';
+  try {
+    const result = await apiLogin(email, pass);
+    if (result) {
+      localStorage.setItem('gkhub_backend_email', email);
+      _renderBackendStatus();
+      loadWorkspaces();
+      loadClubMembers();
+      toast('Backend conectado com sucesso!', 'success');
+    } else {
+      errEl.textContent = 'Email ou senha incorretos.';
+      errEl.style.display = 'block';
+    }
+  } catch(e) {
+    errEl.textContent = 'Erro de conexão com o servidor.';
+    errEl.style.display = 'block';
+  } finally {
+    btn.disabled = false; btn.textContent = 'Conectar ao Backend';
+  }
+}
+
+function backendDisconnect() {
+  localStorage.removeItem(_API_TOKEN_KEY);
+  localStorage.removeItem('gkhub_backend_email');
+  localStorage.removeItem('gkhub_active_workspace');
+  document.getElementById('workspace-switcher').style.display = 'none';
+  _renderBackendStatus();
+  loadClubMembers();
+  toast('Backend desconectado.', 'info');
+}
 
 async function apiLogin(email, password) {
   const res = await fetch(_API_URL + '/auth/login', {
