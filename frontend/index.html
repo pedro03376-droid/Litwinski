@@ -17,8 +17,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <!-- Firebase Auth SDK para Google Sign-In -->
@@ -540,22 +539,6 @@
     .form-select option { background: var(--card); color: var(--text); }
     .form-textarea { resize: vertical; min-height: 80px; }
 
-    /* ── Upload zone ── */
-    .upload-zone {
-      border: 2px dashed rgba(255,255,255,.12);
-      border-radius: var(--radius-lg);
-      padding: 44px 20px;
-      text-align: center;
-      cursor: pointer;
-      transition: all .2s;
-    }
-    .upload-zone:hover, .upload-zone.drag {
-      border-color: var(--primary);
-      background: rgba(59,130,246,.04);
-    }
-    .upload-zone svg { width: 40px; height: 40px; color: var(--muted); margin: 0 auto 14px; opacity: .6; }
-    .upload-zone p { color: var(--muted); font-size: 13px; }
-    .upload-zone strong { color: var(--primary); }
 
     /* ── Preview table ── */
     .preview-table-wrap {
@@ -572,8 +555,6 @@
     }
 
     /* ── Mapping grid ── */
-    .mapping-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-    .mapping-row { display: flex; flex-direction: column; gap: 4px; }
     .mapping-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .2px; }
 
     /* ════════════════════════════════════════════════════════
@@ -704,7 +685,6 @@
       .sidebar.open { transform: translateX(0); }
       .main { margin-left: 0 !important; }
       .form-grid { grid-template-columns: 1fr; }
-      .mapping-grid { grid-template-columns: 1fr; }
       .stats-grid { grid-template-columns: 1fr 1fr; }
       .content { padding: 20px 16px; }
       #sidebar-toggle-desktop { display: none; }
@@ -755,30 +735,7 @@
     .tab-content { display: none; }
     .tab-content.active { display: block; animation: fadeIn .2s ease; }
 
-    /* ── Import steps ── */
-    .import-steps { display: flex; gap: 0; margin-bottom: 28px; }
-    .import-step {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 12px 16px;
-      font-size: 13px;
-      color: var(--muted);
-      border-bottom: 2px solid var(--border);
-    }
-    .import-step.active { color: var(--primary); border-bottom-color: var(--primary); }
-    .import-step.done { color: var(--success); border-bottom-color: var(--success); }
-    .step-num {
-      width: 24px; height: 24px;
-      border-radius: 50%;
-      background: rgba(255,255,255,.08);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 11px; font-weight: 700;
-      flex-shrink: 0;
-    }
-    .import-step.active .step-num { background: var(--primary); color: #fff; }
-    .import-step.done .step-num { background: var(--success); color: #fff; }
+
 
     /* ── Checkbox ── */
     input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; }
@@ -1221,15 +1178,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span class="nav-item-label">Relatórios PDF</span>
     </div>
-    <div class="nav-section-label">Dados</div>
-    <div class="nav-item" data-page="importar" data-tooltip="Importar Excel" onclick="navigate('importar')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span class="nav-item-label">Importar Excel</span>
-    </div>
-    <div class="nav-item" data-tooltip="Exportar Excel" onclick="exportarDados()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span class="nav-item-label">Exportar Excel</span>
-    </div>
     <div class="nav-item" data-page="config" data-tooltip="Nuvem (Firebase)" onclick="navigate('config')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><circle cx="12" cy="12" r="3"/><path d="M19 5l-7 7"/></svg>
       <span class="nav-item-label">Nuvem (Firebase)</span>
@@ -1271,10 +1219,6 @@
       <button class="btn-install" id="btn-install" onclick="installPWA()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Instalar App
-      </button>
-      <button class="btn btn-primary btn-sm" onclick="navigate('importar')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        Importar
       </button>
     </div>
   </header>
@@ -1710,79 +1654,6 @@
             <div class="chart-container">
               <canvas id="chart-evolucao"></canvas>
             </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ══ IMPORTAR EXCEL ══ -->
-    <div id="page-importar" class="page">
-      <div class="card" style="max-width:800px;">
-        <div class="import-steps" id="import-steps">
-          <div class="import-step active" id="step-1">
-            <div class="step-num">1</div>
-            <span>Upload do arquivo</span>
-          </div>
-          <div class="import-step" id="step-2">
-            <div class="step-num">2</div>
-            <span>Mapear colunas</span>
-          </div>
-          <div class="import-step" id="step-3">
-            <div class="step-num">3</div>
-            <span>Confirmar importação</span>
-          </div>
-        </div>
-
-        <!-- Step 1: Upload -->
-        <div id="import-step-1">
-          <div style="margin-bottom:16px;">
-            <div class="form-group">
-              <label class="form-label">Tipo de dados</label>
-              <select class="form-select" id="import-type">
-                <option value="goleiras">Goleiras</option>
-                <option value="partidas">Partidas</option>
-                <option value="scouts">Scout de Jogos</option>
-              </select>
-            </div>
-          </div>
-          <label id="upload-label">
-            <div class="upload-zone" id="upload-zone">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <p>Arraste seu arquivo <strong>.xlsx</strong> ou <strong>.xls</strong> aqui</p>
-              <p style="margin-top:8px;font-size:12px;">ou clique para selecionar</p>
-            </div>
-            <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleFileUpload(this)">
-          </label>
-          <div style="margin-top:16px;display:flex;justify-content:space-between;align-items:center;">
-            <button class="btn btn-ghost btn-sm" onclick="baixarTemplate()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Baixar template Excel
-            </button>
-          </div>
-        </div>
-
-        <!-- Step 2: Mapping -->
-        <div id="import-step-2" style="display:none;">
-          <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Associe as colunas da sua planilha com os campos do sistema:</p>
-          <div class="mapping-grid" id="mapping-grid"></div>
-          <div class="preview-table-wrap" id="preview-wrap" style="margin-top:16px;"></div>
-          <div style="display:flex;justify-content:space-between;margin-top:20px;">
-            <button class="btn btn-ghost" onclick="importStep(1)">Voltar</button>
-            <button class="btn btn-primary" onclick="importStep(3)">Pré-visualizar</button>
-          </div>
-        </div>
-
-        <!-- Step 3: Confirm -->
-        <div id="import-step-3" style="display:none;">
-          <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Dados que serão importados:</p>
-          <div id="confirm-preview" class="preview-table-wrap" style="max-height:360px;"></div>
-          <p id="import-count" style="margin-top:12px;font-size:13px;color:var(--muted);"></p>
-          <div style="display:flex;justify-content:space-between;margin-top:20px;">
-            <button class="btn btn-ghost" onclick="importStep(2)">Voltar</button>
-            <button class="btn btn-success" onclick="confirmarImportacao()">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg>
-              Confirmar Importação
-            </button>
           </div>
         </div>
       </div>
@@ -2479,7 +2350,6 @@ const DB = {
 };
 
 let editingId = { goleira: null, partida: null, scout: null };
-let importData = { raw: [], headers: [], mapped: [], type: 'goleiras' };
 let chartPerf = null, chartEvolucao = null;
 
 // ═══════════════════════════════════════════════════════════
@@ -2520,7 +2390,7 @@ const pageTitles = {
   perfil: 'Perfil da Goleira', comparacao: 'Comparação Entre Goleiras',
   matchcenter: 'Match Center — Ao Vivo',
   partidas: 'Partidas', scout: 'Scout de Jogo',
-  performance: 'Performance', importar: 'Importar Excel',
+  performance: 'Performance',
   heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)'
 };
 
@@ -3361,207 +3231,6 @@ const updateSelects = updateGoleiraSelects;
 // ═══════════════════════════════════════════════════════════
 // EXCEL IMPORT
 // ═══════════════════════════════════════════════════════════
-const FIELD_DEFS = {
-  goleiras: [
-    { key: 'nome',      label: 'Nome *' },
-    { key: 'nasc',      label: 'Data Nasc.' },
-    { key: 'num',       label: 'Número' },
-    { key: 'altura',    label: 'Altura (cm)' },
-    { key: 'peso',      label: 'Peso (kg)' },
-    { key: 'equipe',    label: 'Equipe' },
-    { key: 'categoria', label: 'Categoria' },
-    { key: 'pe',        label: 'Pé Dominante' },
-    { key: 'mao',       label: 'Mão Dominante' },
-    { key: 'obs',       label: 'Observações' },
-  ],
-  partidas: [
-    { key: 'data',       label: 'Data *' },
-    { key: 'adversario', label: 'Adversário *' },
-    { key: 'competicao', label: 'Competição' },
-    { key: 'fase',       label: 'Fase' },
-    { key: 'local',      label: 'Local' },
-    { key: 'gf',         label: 'Gols a Favor' },
-    { key: 'gc',         label: 'Gols Contra' },
-    { key: 'obs',        label: 'Observações' },
-  ],
-  scouts: [
-    { key: 'goalkeeperId', label: 'Nome Goleira *' },
-    { key: 'dad',  label: 'Def. Alta Dir.' },
-    { key: 'dae',  label: 'Def. Alta Esq.' },
-    { key: 'dbd',  label: 'Def. Baixa Dir.' },
-    { key: 'dbe',  label: 'Def. Baixa Esq.' },
-    { key: 'dc',   label: 'Def. Central' },
-    { key: 'esq',  label: 'Esquadros' },
-    { key: 'gda',  label: 'Gols Dentro' },
-    { key: 'gfa',  label: 'Gols Fora' },
-    { key: 'int',  label: 'Interceptações' },
-    { key: 'dpc',  label: 'Dist. Pé Certo' },
-    { key: 'dpe',  label: 'Dist. Pé Errado' },
-    { key: 'nota', label: 'Nota (0-10)' },
-  ],
-};
-
-function handleFileUpload(input) {
-  const file = input.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try {
-      const wb = XLSX.read(e.target.result, { type: 'binary', cellDates: true });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
-      if (rows.length < 2) { toast('Planilha sem dados suficientes.', 'error'); return; }
-      importData.headers = rows[0].map(String);
-      importData.raw = rows.slice(1).filter(r => r.some(c => c !== ''));
-      importData.type = document.getElementById('import-type').value;
-      importStep(2);
-      toast(`${importData.raw.length} linhas carregadas!`, 'success');
-    } catch (err) { toast('Erro ao ler arquivo: ' + err.message, 'error'); }
-  };
-  reader.readAsBinaryString(file);
-}
-
-function importStep(step) {
-  [1,2,3].forEach(n => {
-    document.getElementById('import-step-'+n).style.display = n===step?'block':'none';
-    const s = document.getElementById('step-'+n);
-    s.className = 'import-step ' + (n < step ? 'done' : n === step ? 'active' : '');
-  });
-  if (step === 2) buildMappingUI();
-  if (step === 3) buildConfirmPreview();
-}
-
-function buildMappingUI() {
-  const fields = FIELD_DEFS[importData.type] || [];
-  const grid = document.getElementById('mapping-grid');
-  grid.innerHTML = fields.map(f => `
-    <div class="mapping-row">
-      <div class="mapping-label">${f.label}</div>
-      <select class="form-select" id="map-${f.key}">
-        <option value="">— ignorar —</option>
-        ${importData.headers.map((h,i) => `<option value="${i}" ${h.toLowerCase().includes(f.key.toLowerCase())||h.toLowerCase().includes(f.label.toLowerCase().replace(' *',''))?'selected':''}>${h}</option>`).join('')}
-      </select>
-    </div>
-  `).join('');
-
-  // Preview
-  const pw = document.getElementById('preview-wrap');
-  pw.innerHTML = `<table><thead><tr>${importData.headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
-    <tbody>${importData.raw.slice(0,5).map(r=>`<tr>${importData.headers.map((_,i)=>`<td>${r[i]??''}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-}
-
-function buildConfirmPreview() {
-  const fields = FIELD_DEFS[importData.type] || [];
-  const mapped = importData.raw.map(row => {
-    const obj = { id: uid() };
-    fields.forEach(f => {
-      const sel = document.getElementById('map-'+f.key);
-      if (sel && sel.value !== '') obj[f.key] = row[+sel.value] ?? '';
-    });
-    return obj;
-  });
-  importData.mapped = mapped;
-  document.getElementById('import-count').textContent = `${mapped.length} registros prontos para importação.`;
-  const fields2 = fields.filter(f => { const s = document.getElementById('map-'+f.key); return s && s.value !== ''; });
-  document.getElementById('confirm-preview').innerHTML = `<table>
-    <thead><tr>${fields2.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead>
-    <tbody>${mapped.slice(0,10).map(r=>`<tr>${fields2.map(f=>`<td>${r[f.key]??''}</td>`).join('')}</tr>`).join('')}</tbody>
-  </table>`;
-}
-
-function confirmarImportacao() {
-  const type = importData.type;
-  if (type === 'goleiras') {
-    const existing = DB.goleiras;
-    const novo = importData.mapped.filter(r => r.nome);
-    DB.saveGoleiras([...existing, ...novo]);
-    novo.forEach(r => cloudSet('goleiras', r));
-    toast(`${novo.length} goleiras importadas!`, 'success');
-  } else if (type === 'partidas') {
-    const existing = DB.partidas;
-    const novo = importData.mapped.filter(r => r.adversario || r.data);
-    DB.savePartidas([...existing, ...novo]);
-    novo.forEach(r => cloudSet('partidas', r));
-    toast(`${novo.length} partidas importadas!`, 'success');
-  } else if (type === 'scouts') {
-    const existing = DB.scouts;
-    const goleiras = DB.goleiras;
-    const novo = importData.mapped.map(r => {
-      if (r.goalkeeperId) {
-        const match = goleiras.find(g => g.nome.toLowerCase() === String(r.goalkeeperId).toLowerCase());
-        if (match) r.goalkeeperId = match.id;
-      }
-      return r;
-    });
-    DB.saveScouts([...existing, ...novo]);
-    novo.forEach(r => cloudSet('scouts', r));
-    toast(`${novo.length} scouts importados!`, 'success');
-  }
-  updateGoleiraSelects();
-  importStep(1);
-  document.getElementById('file-input').value = '';
-}
-
-// ═══════════════════════════════════════════════════════════
-// EXPORT
-// ═══════════════════════════════════════════════════════════
-function _xlsEsc(v) {
-  if (v === null || v === undefined) return '';
-  const s = String(v);
-  return /^[=+\-@]/.test(s) ? "'" + s : s;
-}
-
-function exportarDados() {
-  const wb = XLSX.utils.book_new();
-  const goleiras = DB.goleiras;
-  const partidas = DB.partidas;
-  const scouts = DB.scouts;
-
-  if (goleiras.length) {
-    const wsGk = XLSX.utils.json_to_sheet(goleiras.map(g => ({
-      Nome: _xlsEsc(g.nome), Nascimento: g.nasc, Número: g.num, Altura: g.altura,
-      Peso: g.peso, Equipe: _xlsEsc(g.equipe), Categoria: _xlsEsc(g.categoria), 'Pé': _xlsEsc(g.pe),
-      Mão: _xlsEsc(g.mao), Performance: avgPerformance(g.id) ?? '', Observações: _xlsEsc(g.obs)
-    })));
-    XLSX.utils.book_append_sheet(wb, wsGk, 'Goleiras');
-  }
-  if (partidas.length) {
-    const gkMap = Object.fromEntries(goleiras.map(g => [g.id, g.nome]));
-    const wsM = XLSX.utils.json_to_sheet(partidas.map(p => ({
-      Data: p.data, Hora: p.hora, Adversário: _xlsEsc(p.adversario), Competição: _xlsEsc(p.competicao),
-      Fase: _xlsEsc(p.fase), Local: _xlsEsc(p.local), Goleira: _xlsEsc(gkMap[p.goalkeeperId]||''),
-      'Gols a Favor': p.gf, 'Gols Contra': p.gc, Observações: _xlsEsc(p.obs)
-    })));
-    XLSX.utils.book_append_sheet(wb, wsM, 'Partidas');
-  }
-  if (scouts.length) {
-    const gkMap = Object.fromEntries(goleiras.map(g => [g.id, g.nome]));
-    const wsS = XLSX.utils.json_to_sheet(scouts.map(s => ({
-      Goleira: _xlsEsc(gkMap[s.goalkeeperId]||s.goalkeeperId),
-      'Def. Alta Dir': s.dad, 'Def. Alta Esq': s.dae,
-      'Def. Baixa Dir': s.dbd, 'Def. Baixa Esq': s.dbe,
-      'Def. Central': s.dc, Esquadros: s.esq,
-      'Gols Dentro': s.gda, 'Gols Fora': s.gfa, 'Gols Penalti': s.gpe, 'Gols Falta': s.gfl,
-      'Dist. Pé Certo': s.dpc, 'Dist. Pé Errado': s.dpe,
-      'Dist. Mão Certa': s.dmc, 'Dist. Mão Errada': s.dme,
-      Interceptações: s.int, 'Pos. Esq': s.pose, 'Pos. Dir': s.posd,
-      'Saídas': s.sai, Nota: s.nota, Performance: calcPerformance(s) ?? ''
-    })));
-    XLSX.utils.book_append_sheet(wb, wsS, 'Scouts');
-  }
-  XLSX.writeFile(wb, `gkhub_export_${new Date().toISOString().slice(0,10)}.xlsx`);
-  toast('Exportação concluída!', 'success');
-}
-
-function baixarTemplate() {
-  const type = document.getElementById('import-type').value;
-  const fields = FIELD_DEFS[type];
-  const wb = XLSX.utils.book_new();
-  const ws = XLSX.utils.aoa_to_sheet([fields.map(f => f.label.replace(' *',''))]);
-  XLSX.utils.book_append_sheet(wb, ws, 'Template');
-  XLSX.writeFile(wb, `template_${type}.xlsx`);
-  toast('Template baixado!', 'info');
-}
 
 // ═══════════════════════════════════════════════════════════
 // UTILS
@@ -3569,19 +3238,6 @@ function baixarTemplate() {
 function formatDate(d) {
   if (!d) return '—';
   try { const dt = new Date(d+'T00:00:00'); return dt.toLocaleDateString('pt-BR'); } catch { return d; }
-}
-
-// ═══════════════════════════════════════════════════════════
-// DRAG-OVER UPLOAD
-// ═══════════════════════════════════════════════════════════
-const uz = document.getElementById('upload-zone');
-if (uz) {
-  ['dragenter','dragover'].forEach(e => uz.addEventListener(e, ev => { ev.preventDefault(); uz.classList.add('drag'); }));
-  ['dragleave','drop'].forEach(e => uz.addEventListener(e, ev => { ev.preventDefault(); uz.classList.remove('drag'); }));
-  uz.addEventListener('drop', ev => {
-    const file = ev.dataTransfer.files[0];
-    if (file) { document.getElementById('file-input').files = ev.dataTransfer.files; handleFileUpload(document.getElementById('file-input')); }
-  });
 }
 
 // ═══════════════════════════════════════════════════════════
