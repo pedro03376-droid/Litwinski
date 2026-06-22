@@ -1134,11 +1134,6 @@
       </button>
     </div>
 
-    <div id="auth-config-warn" style="display:none;">
-      <div class="auth-err" style="display:block;margin-top:8px;margin-bottom:0;">
-        Configure o Firebase nas configurações para habilitar o login com Google.
-      </div>
-    </div>
 
     <!-- Face ID -->
     <div id="auth-bio-section" style="display:none;margin-top:8px;">
@@ -2090,29 +2085,11 @@
 
       <div class="card" style="max-width:680px;margin-bottom:16px;">
         <div class="card-header"><span class="card-title">Login com Google (Firebase Auth)</span></div>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Cole o objeto <code>firebaseConfig</code> do seu projeto para habilitar o login com conta Google.</p>
-        <details style="margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
-          <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--primary);">📖 Como obter o firebaseConfig (passo a passo)</summary>
-          <ol style="margin:12px 0 0 18px;font-size:12px;color:var(--muted);line-height:1.9;">
-            <li>Acesse <strong>console.firebase.google.com</strong> → seu projeto</li>
-            <li><strong>Authentication → Sign-in method → Google → Ativar → Salvar</strong></li>
-            <li>Vá em <strong>Project Settings</strong> (engrenagem) → <strong>General</strong></li>
-            <li>Role até <strong>"Your apps"</strong> → clique em <strong>&lt;/&gt;</strong> (Web) → registre</li>
-            <li>Copie o objeto <code>firebaseConfig</code> e cole abaixo</li>
-            <li>Em <strong>Authentication → Settings → Authorized domains</strong> adicione <code>pedro03376-droid.github.io</code></li>
-          </ol>
-        </details>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label">firebaseConfig (JSON)</label>
-          <textarea class="form-input" id="fb-auth-config" rows="7"
-            placeholder='{"apiKey":"...","authDomain":"...","projectId":"...","storageBucket":"...","messagingSenderId":"...","appId":"..."}'
-            style="font-family:monospace;font-size:12px;resize:vertical;"></textarea>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+          <div style="width:10px;height:10px;border-radius:50%;background:var(--success);flex-shrink:0;"></div>
+          <span style="font-size:13px;color:var(--muted);">Google Auth conectado automaticamente ao projeto <strong style="color:var(--text);">gkhub-4717d</strong></span>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <button class="btn btn-primary" onclick="salvarFbAuthConfig()">Salvar e ativar</button>
-          <button class="btn btn-ghost" onclick="removerFbAuthConfig()">Remover</button>
-        </div>
-        <div id="fb-auth-status" style="margin-top:10px;font-size:13px;"></div>
+        <p style="font-size:12px;color:var(--muted);margin-top:4px;">O botão "Entrar com Google" já está disponível na tela de login sem configuração adicional.</p>
       </div>
       <div class="card" style="max-width:680px;">
         <div class="card-header"><span class="card-title">Sincronização na Nuvem (Firebase)</span></div>
@@ -6386,7 +6363,6 @@ function _gerarParecer(nota,taxaDef,taxaDist,def,gol,def1x1,intercep,posStreak,n
 // ═══════════════════════════════════════════════════════════
 // GOOGLE AUTH via Firebase Authentication
 // ═══════════════════════════════════════════════════════════
-const _FB_CONFIG_KEY = 'gkhub_fb_config';
 let   _firebaseApp   = null;
 let   _firebaseAuth  = null;
 
@@ -6402,13 +6378,7 @@ const _FB_DEFAULT_CONFIG = {
 
 function _initFirebaseAuth() {
   try {
-    // Usa config salva no localStorage ou a padrão embutida
-    let cfg = _FB_DEFAULT_CONFIG;
-    try {
-      const raw = localStorage.getItem(_FB_CONFIG_KEY);
-      if (raw) cfg = { ..._FB_DEFAULT_CONFIG, ...JSON.parse(raw) };
-    } catch(e) {}
-    if (!cfg.apiKey || !cfg.authDomain) return false;
+    const cfg = _FB_DEFAULT_CONFIG;
     if (!_firebaseAuth) {
       // Evita "app already exists" em re-inicializações
       _firebaseApp  = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
@@ -6532,10 +6502,8 @@ function initAuth() {
   } catch(e) {
     localStorage.removeItem(_AUTH_SESSION);
   }
-  // Inicializa Firebase Auth e mostra/esconde aviso de config
-  const fbReady = _initFirebaseAuth();
-  const warnEl  = document.getElementById('auth-config-warn');
-  if (warnEl) warnEl.style.display = fbReady ? 'none' : 'block';
+  // Inicializa Firebase Auth com config embutida
+  _initFirebaseAuth();
   // Mostra botão de biometria se cadastrado
   _initBioButton();
 
@@ -7126,34 +7094,6 @@ function initFirebaseFromStorage() {
   setCloudStatus(true, 'conectada');
 }
 
-function salvarFbAuthConfig() {
-  const raw = document.getElementById('fb-auth-config').value.trim();
-  const st  = document.getElementById('fb-auth-status');
-  try {
-    // Aceita tanto o objeto JS puro quanto JSON
-    const clean = raw.replace(/^[^{]*/, '').replace(/[^}]*$/, '');
-    const cfg = JSON.parse(clean);
-    if (!cfg.apiKey || !cfg.authDomain) throw new Error('apiKey e authDomain são obrigatórios.');
-    localStorage.setItem(_FB_CONFIG_KEY, JSON.stringify(cfg));
-    // Re-inicializa
-    _firebaseApp = null; _firebaseAuth = null;
-    const ok = _initFirebaseAuth();
-    const warnEl = document.getElementById('auth-config-warn');
-    if (warnEl) warnEl.style.display = ok ? 'none' : 'block';
-    st.innerHTML = '<span style="color:var(--success)">✓ Firebase Auth configurado! Login com Google ativado.</span>';
-  } catch(e) {
-    st.innerHTML = '<span style="color:var(--error)">✗ JSON inválido: ' + e.message + '</span>';
-  }
-}
-
-function removerFbAuthConfig() {
-  localStorage.removeItem(_FB_CONFIG_KEY);
-  _firebaseApp = null; _firebaseAuth = null;
-  const warnEl = document.getElementById('auth-config-warn');
-  if (warnEl) warnEl.style.display = 'block';
-  const st = document.getElementById('fb-auth-status');
-  if (st) st.innerHTML = '<span style="color:var(--muted)">Configuração removida.</span>';
-}
 
 
 async function sincronizarNuvem() {
@@ -7203,14 +7143,7 @@ function cloudDelete(col, id) {
   rtdbDelete('/' + col + '/' + id).catch(e => console.warn('cloudDelete', e));
 }
 
-function renderConfigStatus() {
-  // Populate firebase auth config textarea if saved
-  const fbCfg = localStorage.getItem(_FB_CONFIG_KEY);
-  const el = document.getElementById('fb-auth-config');
-  if (el && fbCfg) { el.value = fbCfg; }
-  const st = document.getElementById('fb-auth-status');
-  if (st && fbCfg) st.innerHTML = '<span style="color:var(--success)">✓ Firebase Auth configurado.</span>';
-}
+function renderConfigStatus() {}
 
 // INIT
 initAuth();
