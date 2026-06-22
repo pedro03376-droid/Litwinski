@@ -2089,25 +2089,6 @@
       </div>
 
       <div class="card" style="max-width:680px;margin-bottom:16px;">
-        <div class="card-header"><span class="card-title">Usuários do Sistema (local)</span></div>
-        <div id="cfg-users-list" style="margin-bottom:16px;"></div>
-        <div style="border-top:1px solid var(--border);padding-top:16px;">
-          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Adicionar / Alterar senha</div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="form-label">Usuário</label>
-              <input class="form-input" id="cfg-new-user" type="text" placeholder="ex: joao" autocomplete="off">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Senha</label>
-              <input class="form-input" id="cfg-new-pass" type="password" placeholder="mínimo 4 caracteres" autocomplete="new-password">
-            </div>
-          </div>
-          <button class="btn btn-primary" onclick="authChangeCreds()">Salvar</button>
-          <div id="cfg-creds-status" style="margin-top:10px;font-size:13px;"></div>
-        </div>
-      </div>
-      <div class="card" style="max-width:680px;margin-bottom:16px;">
         <div class="card-header"><span class="card-title">Login com Google (Firebase Auth)</span></div>
         <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Cole o objeto <code>firebaseConfig</code> do seu projeto para habilitar o login com conta Google.</p>
         <details style="margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
@@ -2135,29 +2116,14 @@
       </div>
       <div class="card" style="max-width:680px;">
         <div class="card-header"><span class="card-title">Sincronização na Nuvem (Firebase)</span></div>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">Cole a URL do seu banco de dados Firebase Realtime Database para salvar os dados na nuvem e acessá-los de qualquer dispositivo.</p>
-        <details style="margin-bottom:16px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px;">
-          <summary style="cursor:pointer;font-weight:600;font-size:13px;color:var(--primary);">📖 Como obter a URL do banco (passo a passo)</summary>
-          <ol style="margin:12px 0 0 18px;font-size:12px;color:var(--muted);line-height:1.9;">
-            <li>Acesse <strong>console.firebase.google.com</strong> e abra seu projeto</li>
-            <li>No menu lateral, vá em <strong>Build → Realtime Database</strong></li>
-            <li>Clique em <strong>"Criar banco de dados"</strong> (escolha <em>Modo de teste</em>)</li>
-            <li>Copie a URL que aparece no topo, no formato <code>https://seu-projeto-default-rtdb.firebaseio.com</code></li>
-            <li>Cole a URL abaixo e clique em <strong>Conectar</strong></li>
-          </ol>
-        </details>
-        <div class="form-group" style="margin-bottom:14px;">
-          <label class="form-label">URL do Realtime Database</label>
-          <input class="form-input" id="fb-config" type="url"
-            placeholder="https://seu-projeto-default-rtdb.firebaseio.com"
-            style="font-family:monospace;font-size:13px;" />
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;">
+          <div id="cloud-rtdb-dot" style="width:10px;height:10px;border-radius:50%;background:var(--success);flex-shrink:0;"></div>
+          <span style="font-size:13px;color:var(--muted);">Realtime Database conectado automaticamente ao projeto <strong style="color:var(--text);">gkhub-4717d</strong></span>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;">
-          <button class="btn btn-primary" onclick="conectarFirebase()">Conectar</button>
-          <button class="btn btn-ghost" onclick="desconectarFirebase()">Desconectar</button>
-          <button class="btn btn-success" id="btn-sync" onclick="sincronizarNuvem()" style="display:none;">↑↓ Sincronizar agora</button>
+        <div style="display:flex;gap:10px;margin-top:8px;">
+          <button class="btn btn-primary btn-sm" onclick="sincronizarNuvem()">↑↓ Sincronizar agora</button>
         </div>
-        <div id="fb-status" style="margin-top:16px;font-size:13px;"></div>
+        <div id="fb-status" style="margin-top:12px;font-size:13px;"></div>
       </div>
     </div>
 
@@ -2598,7 +2564,7 @@ function navigate(page) {
   if (page === 'performance') renderPerformance();
   if (page === 'heatmap') renderHeatmap();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
-  if (page === 'config') { renderConfigStatus(); authRenderUsers(); _renderBackendStatus(); loadClubMembers(); }
+  if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); loadClubMembers(); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -6533,25 +6499,12 @@ function _checkGoogleConfigured() {
 }
 
 // ═══════════════════════════════════════════════════════════
-// AUTH — Sessão local
+// AUTH — Sessão
 // ═══════════════════════════════════════════════════════════
 const _AUTH_SESSION = 'gkhub_session';
-const _AUTH_USERS   = 'gkhub_users';
-const _AUTH_FAIL    = 'gkhub_fails';
-const _MAX_FAILS    = 5;
-const _LOCKOUT_MS   = 30000; // 30 segundos
 
 let _loggedUser     = null;
 let _sessionToken   = null;
-let _bootstrapDone  = null; // Promise — resolves when users are ready
-
-// SHA-256 via Web Crypto + salt
-async function _hashPass(pass, salt) {
-  const enc = new TextEncoder();
-  const data = enc.encode(salt + ':' + pass);
-  const buf  = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
-}
 
 function _randToken() {
   return Array.from(crypto.getRandomValues(new Uint8Array(24))).map(b => b.toString(16).padStart(2,'0')).join('');
@@ -6561,68 +6514,6 @@ function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// Criar hash inicial para os usuários padrão (sem expor senha no código)
-async function _bootstrapDefaultUsers() {
-  let stored = null;
-  try { stored = JSON.parse(localStorage.getItem(_AUTH_USERS) || 'null'); } catch(e) { localStorage.removeItem(_AUTH_USERS); }
-  // Recria se não existir OU se estiver no formato antigo (sem campo salt)
-  // Se existem usuários no novo formato (com salt), preserva todos
-  if (stored && Array.isArray(stored) && stored.length > 0 && stored.every(u => u.salt)) return;
-  // Se existem usuários novos misturados com antigos, preserva só os novos
-  if (stored && Array.isArray(stored) && stored.some(u => u.salt)) {
-    localStorage.setItem(_AUTH_USERS, JSON.stringify(stored.filter(u => u.salt)));
-    return;
-  }
-  // Formato antigo ou ausente — limpa e recria
-  localStorage.removeItem(_AUTH_USERS);
-  const defaults = [
-    { user: 'admin',    pass: 'gkhub2026', nome: 'Admin' },
-    { user: 'vinicius', pass: 'prep2026',  nome: 'Vinicius' },
-  ];
-  const users = [];
-  for (const d of defaults) {
-    const salt = _randToken().slice(0, 16);
-    const hash = await _hashPass(d.pass, salt);
-    users.push({ user: d.user, nome: d.nome, salt, hash });
-  }
-  localStorage.setItem(_AUTH_USERS, JSON.stringify(users));
-}
-
-function _getUsers() {
-  try {
-    const stored = localStorage.getItem(_AUTH_USERS);
-    return stored ? JSON.parse(stored) : [];
-  } catch(e) { return []; }
-}
-
-function _saveUsers(users) {
-  localStorage.setItem(_AUTH_USERS, JSON.stringify(users));
-}
-
-// Brute-force protection
-function _checkLockout() {
-  const data = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0,"until":0}');
-  if (data.until > Date.now()) {
-    const secs = Math.ceil((data.until - Date.now()) / 1000);
-    return `Conta bloqueada. Tente em ${secs}s.`;
-  }
-  return null;
-}
-
-function _recordFail() {
-  const data = JSON.parse(localStorage.getItem(_AUTH_FAIL) || '{"count":0,"until":0}');
-  data.count++;
-  if (data.count >= _MAX_FAILS) {
-    data.until = Date.now() + _LOCKOUT_MS;
-    data.count = 0;
-  }
-  localStorage.setItem(_AUTH_FAIL, JSON.stringify(data));
-}
-
-function _clearFails() {
-  localStorage.removeItem(_AUTH_FAIL);
-}
-
 function initAuth() {
   // Verifica sessão IMEDIATAMENTE (síncrono) — não bloqueia a UI
   try {
@@ -6630,7 +6521,6 @@ function initAuth() {
     if (stored?.token && stored?.user) {
       if (stored.expiresAt && Date.now() > stored.expiresAt) {
         localStorage.removeItem(_AUTH_SESSION);
-        // don't set _loggedUser — session has expired
       } else {
         _loggedUser   = stored.user;
         _sessionToken = stored.token;
@@ -6648,28 +6538,6 @@ function initAuth() {
   if (warnEl) warnEl.style.display = fbReady ? 'none' : 'block';
   // Mostra botão de biometria se cadastrado
   _initBioButton();
-  // Bootstrap de usuários — guarda a Promise para authLogin aguardar
-  _bootstrapDone = _bootstrapDefaultUsers().catch(e => {
-    console.warn('Auth bootstrap error:', e);
-    // Tenta recriar a partir do zero se houver falha
-    localStorage.removeItem(_AUTH_USERS);
-    return _bootstrapDefaultUsers();
-  });
-
-  // Auto-login via ?autologin=1 (não persiste sessão no localStorage)
-  if (new URLSearchParams(window.location.search).get('autologin') === '1' && !_loggedUser) {
-    _bootstrapDone.then(() => {
-      const users = _getUsers();
-      const admin = users.find(u => u.user === 'admin') || users[0];
-      if (admin) {
-        _loggedUser = admin.nome || admin.user;
-        _sessionToken = _randToken();
-        document.getElementById('auth-overlay').classList.add('hidden');
-        _updateSidebarUser();
-        navigate('dashboard');
-      }
-    }).catch(() => {});
-  }
 
   // Hash routing para atalhos PWA (#matchcenter, #scout, etc.)
   const hash = window.location.hash.replace('#','');
@@ -6678,82 +6546,6 @@ function initAuth() {
   }
 }
 
-// ── PIN Login ──────────────────────────────────────────────
-const _PIN_KEY   = 'gkhub_pin';
-const _PIN_LEN   = 4;
-let   _pinBuffer = '';
-
-function _pinGetHash()  { try { return JSON.parse(localStorage.getItem(_PIN_KEY)||'null'); } catch(e) { return null; } }
-
-async function _pinHash(pin) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('gkhub_pin_salt:' + pin));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-
-function _pinDots(len, state) {
-  for (let i=0;i<_PIN_LEN;i++) {
-    const d = document.getElementById('pd'+i);
-    if (!d) continue;
-    d.className = 'pin-dot' + (i < len ? (state==='error'?' error':' filled') : '');
-  }
-}
-
-function pinKey(n) {
-  if (_pinBuffer.length >= _PIN_LEN) return;
-  _pinBuffer += String(n);
-  _pinDots(_pinBuffer.length, 'ok');
-  if (_pinBuffer.length === _PIN_LEN) setTimeout(_pinSubmit, 120);
-}
-
-function pinDel() {
-  if (!_pinBuffer.length) return;
-  _pinBuffer = _pinBuffer.slice(0,-1);
-  _pinDots(_pinBuffer.length, 'ok');
-}
-
-async function _pinSubmit() {
-  const stored = _pinGetHash();
-  const errEl  = document.getElementById('auth-err');
-  if (!stored) {
-    // Primeiro uso: salvar o PIN
-    const h = await _pinHash(_pinBuffer);
-    localStorage.setItem(_PIN_KEY, JSON.stringify({ hash: h, user: 'Admin' }));
-    _pinDots(_PIN_LEN, 'ok');
-    _pinLoginSuccess('Admin');
-    return;
-  }
-  const h = await _pinHash(_pinBuffer);
-  if (h === stored.hash) {
-    _pinDots(_PIN_LEN, 'ok');
-    _pinLoginSuccess(stored.user || 'Admin');
-    if (errEl) errEl.style.display = 'none';
-  } else {
-    _pinDots(_PIN_LEN, 'error');
-    if (errEl) { errEl.textContent = 'PIN incorreto. Tente novamente.'; errEl.style.display = 'block'; }
-    setTimeout(() => { _pinBuffer = ''; _pinDots(0,'ok'); }, 700);
-  }
-}
-
-function _pinLoginSuccess(userName) {
-  _loggedUser   = userName;
-  _sessionToken = _randToken();
-  localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
-  setTimeout(() => {
-    document.getElementById('auth-overlay').classList.add('hidden');
-    _updateSidebarUser();
-    _pinBuffer = '';
-    _pinDots(0,'ok');
-    setTimeout(() => _offerBiometric(_loggedUser), 400);
-  }, 200);
-}
-
-// Inicializa PIN na primeira visita: se não tem PIN salvo, instrução é criá-lo
-function _pinInitOverlay() {
-  const stored = _pinGetHash();
-  const sub = document.querySelector('.auth-logo-sub');
-  if (sub) sub.textContent = stored ? 'Digite o PIN para entrar' : 'Crie um PIN de 4 dígitos';
-}
-// ───────────────────────────────────────────────────────────
 
 function _updateSidebarUser() {
   const el = document.getElementById('auth-sidebar-user');
@@ -7181,56 +6973,6 @@ async function removeMember(userId) {
   }
 }
 
-async function authChangeCreds() {
-  const newUser = document.getElementById('cfg-new-user').value.trim().toLowerCase();
-  const newPass = document.getElementById('cfg-new-pass').value;
-  const status  = document.getElementById('cfg-creds-status');
-  if (!newUser || !/^[a-z0-9_]{2,20}$/.test(newUser)) {
-    status.innerHTML = '<span style="color:var(--error)">Usuário deve ter 2–20 caracteres (letras, números, _).</span>'; return;
-  }
-  if (newPass.length < 6) {
-    status.innerHTML = '<span style="color:var(--error)">Senha precisa ter ao menos 6 caracteres.</span>'; return;
-  }
-  const users = _getUsers();
-  const salt  = _randToken().slice(0, 16);
-  const hash  = await _hashPass(newPass, salt);
-  const idx   = users.findIndex(u => u.user === newUser);
-  if (idx >= 0) {
-    users[idx].salt = salt; users[idx].hash = hash;
-  } else {
-    users.push({ user: newUser, nome: newUser, salt, hash });
-  }
-  _saveUsers(users);
-  document.getElementById('cfg-new-user').value = '';
-  document.getElementById('cfg-new-pass').value = '';
-  status.innerHTML = `<span style="color:var(--success)">✓ Salvo! Usuário: <strong>${_esc(newUser)}</strong></span>`;
-  authRenderUsers();
-  toast('Credenciais salvas!', 'success');
-}
-
-function authRemoveUser(user) {
-  if (user === 'admin') { toast('Não é possível remover o admin', 'error'); return; }
-  const users = _getUsers().filter(u => u.user !== user);
-  _saveUsers(users);
-  authRenderUsers();
-  toast('Usuário removido', 'info');
-}
-
-function authRenderUsers() {
-  const el = document.getElementById('cfg-users-list');
-  if (!el) return;
-  const users = _getUsers();
-  el.innerHTML = users.map(u => {
-    const nome = _esc(u.nome || u.user);
-    const uname = _esc(u.user);
-    const removeBtn = u.user !== 'admin'
-      ? `<button class="btn btn-ghost btn-sm" style="color:var(--error);padding:2px 8px;font-size:11px;" onclick="authRemoveUser('${uname}')">Remover</button>`
-      : '<span style="font-size:11px;color:var(--muted);">admin</span>';
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--bg);border-radius:8px;margin-bottom:6px;">
-      <div><span style="font-weight:600;font-size:13px;">${nome}</span><span style="color:var(--muted);font-size:11px;margin-left:8px;">@${uname}</span></div>
-      ${removeBtn}</div>`;
-  }).join('');
-}
 
 // ═══════════════════════════════════════════════════════════
 // FIREBASE REALTIME DATABASE — REST API (sem SDK)
@@ -7379,12 +7121,9 @@ async function rtdbDelete(path) {
 }
 
 function initFirebaseFromStorage() {
-  const saved = localStorage.getItem('gkhub_rtdb_url');
-  if (!saved) return;
-  rtdbUrl = saved;
+  // Auto-connect using embedded Firebase databaseURL
+  rtdbUrl = _FB_DEFAULT_CONFIG.databaseURL;
   setCloudStatus(true, 'conectada');
-  const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
-  const inp = document.getElementById('fb-config'); if (inp) inp.value = saved;
 }
 
 function salvarFbAuthConfig() {
@@ -7416,36 +7155,6 @@ function removerFbAuthConfig() {
   if (st) st.innerHTML = '<span style="color:var(--muted)">Configuração removida.</span>';
 }
 
-async function conectarFirebase() {
-  const raw = document.getElementById('fb-config').value.trim().replace(/\/$/, '');
-  if (!raw || !raw.includes('firebaseio.com')) {
-    toast('Cole a URL do banco de dados (ex: https://seu-projeto-default-rtdb.firebaseio.com)', 'error');
-    return;
-  }
-  rtdbUrl = raw;
-  try {
-    await rtdbGet('/.json?shallow=true');
-    localStorage.setItem('gkhub_rtdb_url', raw);
-    setCloudStatus(true, 'conectada');
-    const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
-    document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Conectado! Sincronizando dados…</span>';
-    await sincronizarNuvem();
-    toast('Nuvem conectada!', 'success');
-  } catch(e) {
-    rtdbUrl = null;
-    toast('Não foi possível conectar. Verifique a URL e as regras do banco (modo de teste).', 'error');
-    document.getElementById('fb-status').innerHTML = '<span style="color:var(--error)">✗ Erro: ' + e.message + '</span>';
-  }
-}
-
-function desconectarFirebase() {
-  rtdbUrl = null;
-  localStorage.removeItem('gkhub_rtdb_url');
-  setCloudStatus(false, 'offline');
-  const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'none';
-  document.getElementById('fb-status').innerHTML = '<span style="color:var(--muted)">Desconectado.</span>';
-  toast('Nuvem desconectada', 'info');
-}
 
 async function sincronizarNuvem() {
   if (!rtdbUrl) { toast('Conecte à nuvem primeiro', 'error'); return; }
@@ -7477,7 +7186,8 @@ async function sincronizarNuvem() {
     if (active === 'scout') renderScouts();
     if (active === 'performance') renderPerformance();
     if (active === 'heatmap') renderHeatmap();
-    document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Dados sincronizados com a nuvem!</span>';
+    const fbSt = document.getElementById('fb-status');
+    if (fbSt) fbSt.innerHTML = '<span style="color:var(--success)">✓ Dados sincronizados com a nuvem!</span>';
     toast('Sincronizado!', 'success');
   } catch(e) { toast('Erro na sincronização: ' + e.message, 'error'); }
 }
@@ -7494,12 +7204,7 @@ function cloudDelete(col, id) {
 }
 
 function renderConfigStatus() {
-  const saved = localStorage.getItem('gkhub_rtdb_url');
-  if (saved && rtdbUrl) {
-    document.getElementById('fb-status').innerHTML = '<span style="color:var(--success)">✓ Conectado e sincronizando.</span>';
-    const btn = document.getElementById('btn-sync'); if (btn) btn.style.display = 'inline-flex';
-  }
-  // Popular campo de firebase auth config se já salvo
+  // Populate firebase auth config textarea if saved
   const fbCfg = localStorage.getItem(_FB_CONFIG_KEY);
   const el = document.getElementById('fb-auth-config');
   if (el && fbCfg) { el.value = fbCfg; }
@@ -7509,7 +7214,6 @@ function renderConfigStatus() {
 
 // INIT
 initAuth();
-authRenderUsers();
 updateGoleiraSelects();
 refreshDashboard();
 initFirebaseFromStorage();
