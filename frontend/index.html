@@ -1016,6 +1016,180 @@
     #register-err { color:#FCA5A5;font-size:12px;margin:12px 0;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.22);border-radius:8px;padding:9px 12px;display:none; }
     #register-success { color:#6EE7B7;font-size:13px;margin:12px 0;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.22);border-radius:8px;padding:12px;display:none; }
     .slug-preview { font-size:11px;color:var(--primary);margin-top:4px;font-family:monospace; }
+
+    /* ════════════════════════════════════════════════════════
+       TOPBAR ENHANCEMENTS
+    ════════════════════════════════════════════════════════ */
+    .topbar { height: 60px; padding: 0 24px; }
+    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-season {
+      font-size: 11px; font-weight: 600; color: var(--muted);
+      background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.2);
+      padding: 3px 10px; border-radius: 20px; letter-spacing: .3px;
+      white-space: nowrap;
+    }
+    .topbar-search {
+      display: flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      border-radius: 10px; padding: 7px 14px; flex: 1; max-width: 320px;
+      transition: border-color .2s, background .2s;
+    }
+    .topbar-search:focus-within {
+      border-color: rgba(59,130,246,.4); background: rgba(59,130,246,.04);
+    }
+    .topbar-search input {
+      background: none; border: none; outline: none; color: var(--text);
+      font-size: 13px; font-family: var(--font); width: 100%;
+    }
+    .topbar-search input::placeholder { color: var(--muted); }
+    .topbar-search svg { flex-shrink: 0; color: var(--muted); }
+    .topbar-date {
+      font-size: 12px; color: var(--muted); white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    .topbar-icon-btn {
+      width: 34px; height: 34px; border-radius: 9px;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); cursor: pointer;
+      transition: color .2s, background .2s, border-color .2s, transform .15s;
+    }
+    .topbar-icon-btn:hover { color: var(--text); background: rgba(255,255,255,.09); border-color: var(--border-h); transform: translateY(-1px); }
+    .topbar-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--primary-g); border: 2px solid rgba(59,130,246,.4);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; cursor: pointer; font-size: 13px; font-weight: 700;
+      transition: transform .15s, box-shadow .2s;
+    }
+    .topbar-avatar:hover { transform: scale(1.08); box-shadow: 0 0 16px rgba(59,130,246,.4); }
+    .btn-install { display: none; }
+
+    /* ════════════════════════════════════════════════════════
+       ENHANCED CARDS
+    ════════════════════════════════════════════════════════ */
+    .card {
+      border-color: rgba(255,255,255,.05) !important;
+      box-shadow: 0 4px 24px rgba(0,0,0,.18);
+    }
+    .card:hover {
+      box-shadow: 0 10px 30px rgba(0,0,0,.28), 0 0 0 1px rgba(59,130,246,.08) !important;
+      transform: translateY(-3px) !important;
+    }
+    .stat-card {
+      border-color: rgba(255,255,255,.05) !important;
+      box-shadow: 0 4px 24px rgba(0,0,0,.18);
+    }
+    .stat-card:hover {
+      box-shadow: 0 10px 30px rgba(0,0,0,.28) !important;
+      transform: translateY(-3px) !important;
+    }
+
+    /* ── Stat card icon wrap ── */
+    .stat-icon-wrap {
+      width: 40px; height: 40px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 14px; flex-shrink: 0;
+    }
+    .stat-label { margin-bottom: 6px; }
+    .stat-value { font-size: 36px; letter-spacing: -2px; }
+    .stat-sub { margin-top: 6px; }
+
+    /* ════════════════════════════════════════════════════════
+       SECTION HEADER
+    ════════════════════════════════════════════════════════ */
+    .section-header {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: 12px; font-weight: 700; color: var(--primary);
+      letter-spacing: 1px; text-transform: uppercase; white-space: nowrap;
+    }
+    .section-line { flex: 1; height: 1px; background: var(--border); }
+
+    /* ════════════════════════════════════════════════════════
+       DESTAQUES PREMIUM CARDS
+    ════════════════════════════════════════════════════════ */
+    .destaques-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+    }
+    .destaque-card {
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.05);
+      border-radius: 20px;
+      padding: 20px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s, border-color .22s;
+      box-shadow: 0 4px 20px rgba(0,0,0,.18);
+      position: relative;
+      overflow: hidden;
+    }
+    .destaque-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: var(--accent, var(--primary-g));
+      opacity: 0;
+      transition: opacity .25s;
+    }
+    .destaque-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,.3); }
+    .destaque-card:hover::before { opacity: 1; }
+    .destaque-icon {
+      font-size: 26px; margin-bottom: 10px; display: block;
+      filter: drop-shadow(0 2px 8px rgba(0,0,0,.3));
+    }
+    .destaque-label {
+      font-size: 9px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: 1px; margin-bottom: 10px; font-weight: 700;
+    }
+    .destaque-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--card-2); margin: 0 auto 10px;
+      display: flex; align-items: center; justify-content: center; overflow: hidden;
+      border: 2px solid var(--accent-color, var(--primary));
+    }
+    .destaque-name {
+      font-weight: 700; font-size: 13px; margin-bottom: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .destaque-value {
+      font-size: 22px; font-weight: 800; letter-spacing: -1px;
+    }
+    .destaque-unit { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* ════════════════════════════════════════════════════════
+       PAGE TRANSITIONS
+    ════════════════════════════════════════════════════════ */
+    .page { display: none; }
+    .page.active {
+      display: block;
+      animation: pageIn .3s cubic-bezier(.4,0,.2,1);
+    }
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ════════════════════════════════════════════════════════
+       RESPONSIVE
+    ════════════════════════════════════════════════════════ */
+    @media (max-width: 1024px) {
+      .destaques-grid { grid-template-columns: repeat(3, 1fr); }
+      .topbar-search { max-width: 200px; }
+    }
+    @media (max-width: 768px) {
+      .destaques-grid { grid-template-columns: repeat(2, 1fr); }
+      .topbar-search { display: none; }
+      .topbar-date { display: none; }
+      .topbar-season { display: none; }
+      #page-dashboard [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+    }
+    @media (max-width: 480px) {
+      .destaques-grid { grid-template-columns: repeat(2, 1fr); }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -1209,17 +1383,28 @@
 <!-- Main -->
 <main class="main">
   <header class="topbar">
-    <div style="display:flex;align-items:center;gap:12px;">
+    <div class="topbar-left">
       <button class="btn btn-ghost btn-sm" id="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <span class="topbar-title" id="topbar-title">Dashboard</span>
+      <div class="topbar-season" id="topbar-season">Temporada 2026</div>
+    </div>
+    <div class="topbar-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Buscar goleira, partida…" id="topbar-search-input" oninput="topbarSearch(this.value)">
     </div>
     <div class="topbar-actions">
-      <button class="btn-install" id="btn-install" onclick="installPWA()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Instalar App
+      <span class="topbar-date" id="topbar-date"></span>
+      <button class="topbar-icon-btn" id="btn-install" onclick="installPWA()" title="Instalar App">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
+      <button class="topbar-icon-btn" onclick="navigate('config')" title="Configurações">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+      </button>
+      <div class="topbar-avatar" id="topbar-user-avatar" onclick="navigate('config')" title="Perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
     </div>
   </header>
 
@@ -1227,39 +1412,70 @@
 
     <!-- ══ DASHBOARD ══ -->
     <div id="page-dashboard" class="page active">
+
+      <!-- KPI Stats Row -->
       <div class="stats-grid">
         <div class="stat-card">
+          <div class="stat-icon-wrap" style="background:rgba(59,130,246,.12);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
           <div class="stat-label">Total de Goleiras</div>
           <div class="stat-value stat-cyan" id="stat-total-gk">0</div>
-          <div class="stat-sub">cadastradas</div>
+          <div class="stat-sub">cadastradas no sistema</div>
         </div>
         <div class="stat-card">
+          <div class="stat-icon-wrap" style="background:rgba(16,185,129,.12);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
           <div class="stat-label">Partidas Registradas</div>
           <div class="stat-value stat-green" id="stat-total-matches">0</div>
           <div class="stat-sub">no sistema</div>
         </div>
         <div class="stat-card">
+          <div class="stat-icon-wrap" style="background:rgba(245,158,11,.12);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" width="20" height="20"><path d="M2 20h.01M7 20v-4"/><path d="M12 20V10"/><path d="M17 20V4"/><path d="M22 20h.01"/></svg>
+          </div>
           <div class="stat-label">Scouts Realizados</div>
           <div class="stat-value stat-yellow" id="stat-total-scouts">0</div>
-          <div class="stat-sub">análises</div>
+          <div class="stat-sub">análises de jogo</div>
         </div>
         <div class="stat-card">
+          <div class="stat-icon-wrap" style="background:rgba(139,92,246,.12);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" width="20" height="20"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          </div>
           <div class="stat-label">Média de Performance</div>
-          <div class="stat-value stat-cyan" id="stat-avg-perf">—</div>
+          <div class="stat-value" style="color:#8B5CF6;text-shadow:0 0 24px rgba(139,92,246,.35);" id="stat-avg-perf">—</div>
           <div class="stat-sub">pontuação média</div>
         </div>
       </div><!-- /stats-grid -->
 
-      <!-- Destaques do Treinador -->
-      <div id="dash-destaques" style="display:none;margin-bottom:20px;">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
-          <span style="font-size:13px;font-weight:700;color:var(--primary);letter-spacing:.5px;text-transform:uppercase;">Destaques da Temporada</span>
-          <div style="flex:1;height:1px;background:var(--border);"></div>
+      <!-- Destaques da Temporada -->
+      <div id="dash-destaques" style="display:none;margin-bottom:24px;">
+        <div class="section-header">
+          <span class="section-title">Destaques da Temporada</span>
+          <div class="section-line"></div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;" id="dash-destaques-grid"></div>
+        <div class="destaques-grid" id="dash-destaques-grid"></div>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+      <!-- Performance Chart — full width -->
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header">
+          <span class="card-title">Performance por Goleira</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
+              <div style="width:10px;height:3px;background:#3B82F6;border-radius:2px;"></div> Performance
+              <div style="width:10px;height:2px;background:#F59E0B;border-radius:2px;margin-left:6px;border-top:2px dashed #F59E0B;"></div> Média
+            </div>
+          </div>
+        </div>
+        <div style="height:280px;position:relative;">
+          <canvas id="chart-perf"></canvas>
+        </div>
+      </div>
+
+      <!-- Bottom grid: GKs + Matches -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:4px;">
         <div class="card">
           <div class="card-header">
             <span class="card-title">Goleiras Recentes</span>
@@ -1274,23 +1490,14 @@
         </div>
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Performance por Goleira</span>
+            <span class="card-title">Partidas Recentes</span>
+            <button class="btn btn-ghost btn-sm" onclick="navigate('partidas')">Ver todas</button>
           </div>
-          <div class="chart-container">
-            <canvas id="chart-perf"></canvas>
-          </div>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="card-header">
-          <span class="card-title">Partidas Recentes</span>
-          <button class="btn btn-ghost btn-sm" onclick="navigate('partidas')">Ver todas</button>
-        </div>
-        <div id="dash-recent-matches">
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg>
-            <p>Nenhuma partida registrada</p>
+          <div id="dash-recent-matches">
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/></svg>
+              <p>Nenhuma partida registrada</p>
+            </div>
           </div>
         </div>
       </div>
@@ -3127,24 +3334,19 @@ function refreshDashboard() {
         unidade:'melhora', color:'#69F0AE' },
     ];
 
-    destaquesGrid.innerHTML = destaques.map(d => {
+    destaquesGrid.innerHTML = destaques.map((d,i) => {
       if (!d.gk) return '';
-      const foto = d.gk.foto
-        ? `<img src="${(d.gk.foto||'').startsWith('data:image/') ? d.gk.foto : ''}" style="width:100%;height:100%;object-fit:cover;">`
-        : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:28px;height:28px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
-      return `<div onclick="verPerfil('${d.gk.id}')"
-        style="cursor:pointer;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 12px;
-               text-align:center;transition:border-color .2s,transform .15s;"
-        onmouseover="this.style.borderColor='${d.color}';this.style.transform='translateY(-2px)'"
-        onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
-        <div style="font-size:22px;margin-bottom:8px;">${d.emoji}</div>
-        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">${d.titulo}</div>
-        <div style="width:52px;height:52px;border-radius:50%;border:2px solid ${d.color};background:var(--card-2);margin:0 auto 8px;display:flex;align-items:center;justify-content:center;overflow:hidden;">
-          ${foto}
-        </div>
-        <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.gk.nome.split(' ')[0]}</div>
-        <div style="font-size:20px;font-weight:800;color:${d.color};margin-top:4px;">${d.valor}</div>
-        <div style="font-size:10px;color:var(--muted);">${d.unidade}</div>
+      const foto = d.gk.foto && d.gk.foto.startsWith('data:image/')
+        ? `<img src="${d.gk.foto}" style="width:100%;height:100%;object-fit:cover;">`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:26px;height:26px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
+      return `<div class="destaque-card" onclick="verPerfil('${d.gk.id}')"
+        style="--accent:${d.color};--accent-color:${d.color};animation-delay:${i*50}ms;">
+        <span class="destaque-icon">${d.emoji}</span>
+        <div class="destaque-label">${d.titulo}</div>
+        <div class="destaque-avatar" style="border-color:${d.color};">${foto}</div>
+        <div class="destaque-name">${_esc(d.gk.nome.split(' ')[0])}</div>
+        <div class="destaque-value" style="color:${d.color};">${d.valor}</div>
+        <div class="destaque-unit">${d.unidade}</div>
       </div>`;
     }).join('');
     destaquesEl.style.display = 'block';
@@ -3189,15 +3391,62 @@ function refreshDashboard() {
   if (chartPerf) chartPerf.destroy();
   const perfData = goleiras.map(g => ({ nome: g.nome.split(' ')[0], score: avgPerformance(g.id) })).filter(d => d.score !== null);
   if (perfData.length) {
+    const avgScore = perfData.length ? perfData.reduce((a,d)=>a+d.score,0)/perfData.length : 0;
     chartPerf = new Chart(document.getElementById('chart-perf'), {
       type: 'bar',
       data: {
         labels: perfData.map(d => d.nome),
-        datasets: [{ label: 'Performance', data: perfData.map(d => d.score), backgroundColor: 'rgba(59,130,246,.65)', borderColor: '#3B82F6', borderWidth: 0, borderRadius: 6, borderSkipped: false }]
+        datasets: [
+          {
+            label: 'Performance',
+            data: perfData.map(d => d.score),
+            backgroundColor: perfData.map(d => d.score >= 8 ? 'rgba(16,185,129,.75)' : d.score >= 6 ? 'rgba(59,130,246,.75)' : 'rgba(245,158,11,.75)'),
+            borderColor: perfData.map(d => d.score >= 8 ? '#10B981' : d.score >= 6 ? '#3B82F6' : '#F59E0B'),
+            borderWidth: 2, borderRadius: 8, borderSkipped: false,
+            hoverBackgroundColor: perfData.map(d => d.score >= 8 ? 'rgba(16,185,129,.95)' : d.score >= 6 ? 'rgba(59,130,246,.95)' : 'rgba(245,158,11,.95)'),
+          },
+          {
+            label: 'Média',
+            data: perfData.map(() => avgScore),
+            type: 'line',
+            borderColor: '#F59E0B',
+            borderWidth: 2,
+            borderDash: [6, 4],
+            pointRadius: 0,
+            fill: false,
+            tension: 0,
+          }
+        ]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-        scales: { x: { grid: { display: false }, ticks: { color: '#5A5A7A' } },
-          y: { grid: { color: '#1E1E3A' }, ticks: { color: '#5A5A7A' }, min: 0, max: 10 } } }
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 800, easing: 'easeOutQuart' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(15,23,42,.95)',
+            borderColor: 'rgba(255,255,255,.1)',
+            borderWidth: 1,
+            padding: 12,
+            titleColor: '#F8FAFC',
+            bodyColor: '#94A3B8',
+            callbacks: {
+              label: ctx => ctx.dataset.label === 'Média'
+                ? ` Média: ${avgScore.toFixed(1)}`
+                : ` Performance: ${ctx.parsed.y}`
+            }
+          }
+        },
+        scales: {
+          x: { grid: { display: false }, ticks: { color: '#64748B', font: { size: 12 } } },
+          y: {
+            grid: { color: 'rgba(255,255,255,.04)', drawBorder: false },
+            ticks: { color: '#64748B', font: { size: 11 } },
+            min: 0, max: 10,
+            border: { display: false }
+          }
+        }
+      }
     });
   } else {
     const ctx = document.getElementById('chart-perf').getContext('2d');
@@ -6174,6 +6423,17 @@ function initAuth() {
 function _updateSidebarUser() {
   const el = document.getElementById('auth-sidebar-user');
   if (el && _loggedUser) el.textContent = _loggedUser;
+  // Topbar avatar initial
+  const avatar = document.getElementById('topbar-user-avatar');
+  if (avatar && _loggedUser) {
+    avatar.innerHTML = `<span style="font-size:13px;font-weight:700;">${(_loggedUser[0]||'?').toUpperCase()}</span>`;
+  }
+  // Topbar date
+  const dateEl = document.getElementById('topbar-date');
+  if (dateEl) {
+    const now = new Date();
+    dateEl.textContent = now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+  }
   // Restore active workspace in sidebar
   const saved = localStorage.getItem('gkhub_active_workspace');
   if (saved) {
@@ -6184,6 +6444,9 @@ function _updateSidebarUser() {
       const subEl  = document.getElementById('sidebar-club-sub');
       if (nameEl) nameEl.textContent = ws.teamName;
       if (subEl)  subEl.textContent  = 'GK Hub';
+      // Update topbar team name
+      const seasonBadge = document.getElementById('topbar-season');
+      if (seasonBadge) seasonBadge.textContent = ws.teamName;
     } catch(e) {}
   }
 }
@@ -6815,6 +7078,17 @@ function cloudDelete(col, id) {
 }
 
 function renderConfigStatus() {}
+
+function topbarSearch(val) {
+  if (!val.trim()) return;
+  const q = val.trim().toLowerCase();
+  const goleiras = DB.goleiras;
+  const match = goleiras.find(g => g.nome.toLowerCase().includes(q));
+  if (match) { navigate('goleiras'); setTimeout(() => {
+    const inp = document.getElementById('search-goleiras');
+    if (inp) { inp.value = val; inp.dispatchEvent(new Event('input')); }
+  }, 200); }
+}
 
 // INIT
 initAuth();
