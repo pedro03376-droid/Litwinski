@@ -19,6 +19,18 @@ import '../../features/dashboard/presentation/screens/executive_dashboard_screen
 import '../shell/main_shell.dart';
 import '../providers/auth_provider.dart';
 
+class _MatchNewPlaceholder extends StatelessWidget {
+  const _MatchNewPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Novo Jogo')),
+      body: const Center(child: Text('Formulário de novo jogo em breve.')),
+    );
+  }
+}
+
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
 
@@ -73,6 +85,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/matches',
             builder: (_, __) => const MatchesListScreen(),
             routes: [
+              GoRoute(
+                path: 'new',
+                builder: (_, __) => const _MatchNewPlaceholder(),
+              ),
               GoRoute(
                 path: ':id',
                 builder: (_, state) =>

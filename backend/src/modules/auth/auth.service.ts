@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from '../users/entities/user.entity';
+import { Team } from '../teams/entities/team.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -23,6 +24,8 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Team)
+    private readonly teamRepository: Repository<Team>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -60,10 +63,22 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
+    // Resolve the team's planStatus if the user belongs to a team
+    let planStatus: string | undefined;
+    if (user.teamId) {
+      const team = await this.teamRepository.findOne({ where: { id: user.teamId } });
+      if (team) {
+        planStatus = team.planStatus;
+        if (planStatus === 'suspended' || planStatus === 'cancelled') {
+          throw new UnauthorizedException('Account suspended');
+        }
+      }
+    }
+
     // Update lastLoginAt timestamp
     await this.userRepository.update(user.id, { lastLoginAt: new Date() });
 
-    const token = this._signToken(user);
+    const token = this._signToken(user, planStatus);
     return { access_token: token, user };
   }
 
@@ -122,8 +137,14 @@ export class AuthService {
 
   // ─── Private helpers ────────────────────────────────────────────────────────
 
-  private _signToken(user: Pick<User, 'id' | 'email' | 'role'>): string {
-    const payload = { sub: user.id, email: user.email, role: user.role };
+  private _signToken(user: Pick<User, 'id' | 'email' | 'role' | 'teamId'>, planStatus?: string): string {
+    const payload: Record<string, unknown> = {
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+      teamId: user.teamId ?? null,
+      planStatus: planStatus ?? null,
+    };
     return this.jwtService.sign(payload);
   }
 }

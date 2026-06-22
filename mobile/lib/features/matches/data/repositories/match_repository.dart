@@ -16,7 +16,7 @@ class MatchRepository {
     int page = 1,
     int limit = 20,
   }) async {
-    final data = await _api.get<Map<String, dynamic>>(
+    final data = await _api.get<List<dynamic>>(
       '/matches',
       queryParameters: {
         if (goalkeeperId != null) 'goalkeeperId': goalkeeperId,
@@ -25,7 +25,7 @@ class MatchRepository {
         'limit': limit,
       },
     );
-    return (data['data'] as List? ?? [])
+    return (data ?? [])
         .map((e) => GKMatch.fromJson(e))
         .toList();
   }
@@ -51,11 +51,11 @@ class MatchRepository {
       _api.get('/matches/stats/$goalkeeperId');
 
   Future<List<GKMatch>> getRecent(String goalkeeperId, {int limit = 5}) async {
-    final data = await _api.get<Map<String, dynamic>>(
+    final data = await _api.get<List<dynamic>>(
       '/matches/recent/$goalkeeperId',
       queryParameters: {'limit': limit},
     );
-    return (data as List? ?? []).map((e) => GKMatch.fromJson(e)).toList();
+    return (data ?? []).map((e) => GKMatch.fromJson(e)).toList();
   }
 
   Future<MatchScout?> getScout(String matchId) async {

@@ -9,8 +9,8 @@ import '../../../../shared/widgets/loading_widget.dart';
 final _reportsProvider = FutureProvider<List<dynamic>>((ref) async {
   final data = await ref
       .read(apiClientProvider)
-      .get<Map<String, dynamic>>('/reports');
-  return data as List? ?? [];
+      .get<List<dynamic>>('/reports');
+  return data ?? [];
 });
 
 class ReportsScreen extends ConsumerWidget {

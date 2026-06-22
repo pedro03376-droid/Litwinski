@@ -17,7 +17,12 @@ import {
   Min,
   Max,
 } from 'class-validator';
+import * as bcrypt from 'bcryptjs';
 import { Team } from './entities/team.entity';
+import { User, UserRole } from '../users/entities/user.entity';
+import { RegisterClubDto } from './dto/register-club.dto';
+
+export { RegisterClubDto };
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────
 
@@ -119,6 +124,8 @@ export class TeamsService {
   constructor(
     @InjectRepository(Team)
     private readonly teamRepository: Repository<Team>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
   /**
@@ -268,6 +275,77 @@ export class TeamsService {
     const team = await this.findOne(id);
     await this.teamRepository.update(id, { isActive: false });
     return { message: `Team "${team.name}" has been deactivated` };
+  }
+
+  /**
+   * Registers a new club (self-service) and creates the owner admin account.
+   * Starts a 30-day trial period.
+   */
+  async registerClub(dto: RegisterClubDto): Promise<{ team: Team; message: string }> {
+    // 1. Normalize slug: lowercase, spaces → hyphens, strip special chars
+    const slug = dto.slug
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9-]/g, '');
+
+    // 2. Check slug uniqueness
+    const slugExists = await this.teamRepository.findOne({ where: { slug } });
+    if (slugExists) {
+      throw new ConflictException(`A club with slug "${slug}" already exists`);
+    }
+
+    // 3. Check ownerEmail uniqueness
+    const emailExists = await this.userRepository.findOne({
+      where: { email: dto.ownerEmail.toLowerCase().trim() },
+    });
+    if (emailExists) {
+      throw new ConflictException(`An account with email "${dto.ownerEmail}" already exists`);
+    }
+
+    // 4. Create team with trial plan
+    const trialEndsAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const team = this.teamRepository.create({
+      name: dto.clubName.trim(),
+      slug,
+      category: dto.sport ?? 'General',
+      planStatus: 'trial',
+      trialEndsAt,
+      ownerEmail: dto.ownerEmail.toLowerCase().trim(),
+      isActive: true,
+    });
+    const savedTeam = await this.teamRepository.save(team);
+
+    // 5. Create owner admin user with hashed password
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+    const user = this.userRepository.create({
+      name: dto.clubName.trim(),
+      email: dto.ownerEmail.toLowerCase().trim(),
+      password: hashedPassword,
+      role: UserRole.ADMIN,
+      isActive: true,
+    });
+    // Bypass the @BeforeInsert hash hook by saving with a pre-hashed password.
+    // We set the password directly on the entity and use QueryBuilder to avoid double-hashing.
+    await this.userRepository
+      .createQueryBuilder()
+      .insert()
+      .into(User)
+      .values({
+        name: user.name,
+        email: user.email,
+        password: hashedPassword,
+        role: user.role,
+        isActive: user.isActive,
+        teamId: savedTeam.id,
+      })
+      .execute();
+
+    // 6. Return team and success message
+    return {
+      team: savedTeam,
+      message: 'Club registered successfully. Trial period: 30 days.',
+    };
   }
 
   /**
