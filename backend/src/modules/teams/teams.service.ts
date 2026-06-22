@@ -344,7 +344,23 @@ export class TeamsService {
       })
       .execute();
 
-    // 6. Return team and success message
+    // 6. Find the newly created user to get their ID
+    const savedUser = await this.userRepository.findOne({
+      where: { email: dto.ownerEmail.toLowerCase().trim() },
+    });
+
+    // 7. Create membership entry so workspace switcher works
+    if (savedUser) {
+      const membership = this.membershipRepo.create({
+        userId: savedUser.id,
+        teamId: savedTeam.id,
+        role: TeamMemberRole.ADMIN,
+        isActive: true,
+      });
+      await this.membershipRepo.save(membership);
+    }
+
+    // 8. Return team and success message
     return {
       team: savedTeam,
       message: 'Club registered successfully. Trial period: 30 days.',
