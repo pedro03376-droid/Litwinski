@@ -28,9 +28,10 @@ apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 android {
     namespace "com.gkhub.app"
     compileSdkVersion 35
-    ndkVersion "25.1.8937393"
+    ndkVersion "27.0.12077973"
 
     compileOptions {
+        coreLibraryDesugaringEnabled true
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
@@ -65,5 +66,6 @@ flutter {
 }
 
 dependencies {
+    coreLibraryDesugaring 'com.android.tools.build:desugaring:2.1.4'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
 }
