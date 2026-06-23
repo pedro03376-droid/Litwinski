@@ -161,7 +161,7 @@ class _EvolutionChartState extends State<EvolutionChart> {
                   );
                 },
                 touchTooltipData: LineTouchTooltipData(
-                  getTooltipColor: (_) => AppColors.darkElevated,
+                  tooltipBgColor: AppColors.darkElevated,
                   tooltipRoundedRadius: 10,
                   getTooltipItems: (spots) {
                     final labels = [
