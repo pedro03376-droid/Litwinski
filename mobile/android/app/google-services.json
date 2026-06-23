@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "338475414522",
+    "firebase_url": "https://gkhub-4717d-default-rtdb.firebaseio.com",
+    "project_id": "gkhub-4717d",
+    "storage_bucket": "gkhub-4717d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:338475414522:android:e3e178b58f1eca69392a43",
+        "android_client_info": {
+          "package_name": "com.gkhub.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "338475414522-jm59q2mr1l01su2up2jc5n9pi7b25kls.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3by93eg9fvHvBoQmLBbp0_xp13iqo9RY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "338475414522-jm59q2mr1l01su2up2jc5n9pi7b25kls.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

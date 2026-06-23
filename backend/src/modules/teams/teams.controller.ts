@@ -89,6 +89,17 @@ export class TeamsController {
     });
   }
 
+  // ─── GET /teams/my-workspaces ─────────────────────────────────────────────
+  // Must be before :id routes to avoid route shadowing
+
+  @Get('my-workspaces')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'List all workspaces (teams) for the current user' })
+  async myWorkspaces(@Request() req) {
+    return this.teamsService.getUserWorkspaces(req.user.id || req.user.sub);
+  }
+
   // ─── GET /teams/categories ─────────────────────────────────────────────────
 
   @Get('categories')
@@ -178,16 +189,6 @@ export class TeamsController {
   @ApiResponse({ status: 403, description: 'Forbidden – Admin only.' })
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.teamsService.remove(id);
-  }
-
-  // ─── GET /teams/my-workspaces ─────────────────────────────────────────────
-
-  @Get('my-workspaces')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'List all workspaces (teams) for the current user' })
-  async myWorkspaces(@Request() req) {
-    return this.teamsService.getUserWorkspaces(req.user.id || req.user.sub);
   }
 
   // ─── GET /teams/:teamId/members ───────────────────────────────────────────

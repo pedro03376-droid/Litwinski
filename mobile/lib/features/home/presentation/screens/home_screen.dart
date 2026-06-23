@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/network/api_client.dart';
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/empty_state.dart';
@@ -12,12 +13,12 @@ import '../../../../shared/widgets/gk_avatar.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/stat_card.dart';
+import '../../../matches/data/repositories/match_repository.dart';
 import '../widgets/evolution_chart.dart';
 import '../widgets/match_result_card.dart';
 
-// ─── Mock providers (replace with real providers once API layer exists) ───────
+// ─── Data models ─────────────────────────────────────────────────────────────
 
-/// Holds the home dashboard summary data.
 class HomeSummary {
   final int gamesPlayed;
   final int totalSaves;
@@ -32,7 +33,6 @@ class HomeSummary {
   });
 }
 
-/// Holds a recent match's data for the "Última Partida" card.
 class RecentMatch {
   final DateTime date;
   final String competition;
@@ -46,7 +46,7 @@ class RecentMatch {
   const RecentMatch({
     required this.date,
     required this.competition,
-    required this.teamName,
+    this.teamName = 'Meu Time',
     required this.opponentName,
     required this.teamScore,
     required this.opponentScore,
@@ -55,78 +55,131 @@ class RecentMatch {
   });
 }
 
-// Simulated async data fetch – swap out for real Riverpod providers.
+// ─── Helper: extract goalkeeper ID from auth user map ────────────────────────
+
+String _gkIdFromAuth(Map<String, dynamic>? user) =>
+    user?['goalkeeperId'] as String? ??
+    user?['goalkeeper']?['id'] as String? ??
+    user?['id'] as String? ??
+    '';
+
+// ─── Providers ────────────────────────────────────────────────────────────────
+
 final homeSummaryProvider = FutureProvider<HomeSummary>((ref) async {
-  await Future.delayed(const Duration(milliseconds: 800));
-  return const HomeSummary(
-    gamesPlayed: 14,
-    totalSaves: 87,
-    savePercentage: 78.4,
-    evolutionScore: 82.1,
-  );
+  final matchRepo = ref.read(matchRepositoryProvider);
+  final authState = ref.read(authStateProvider);
+  final gkId = _gkIdFromAuth(authState.user);
+
+  try {
+    // Try dedicated stats endpoint
+    final stats = await matchRepo.getStats(gkId);
+    return HomeSummary(
+      gamesPlayed: (stats['totalMatches'] ?? stats['gamesPlayed'] ?? 0) as int,
+      totalSaves: (stats['totalSaves'] ?? 0) as int,
+      savePercentage:
+          double.tryParse(stats['savePercentage']?.toString() ?? '0') ?? 0,
+      evolutionScore:
+          double.tryParse(stats['evolutionScore']?.toString() ??
+                  stats['overallScore']?.toString() ??
+                  '0') ??
+              0,
+    );
+  } catch (_) {
+    // Fallback: compute from match list
+    final matches = await matchRepo.getAll(goalkeeperId: gkId, limit: 100);
+    var totalSaves = 0;
+    var totalShots = 0;
+    for (final m in matches) {
+      if (m.scout != null) {
+        totalSaves += m.scout!.totalSaves;
+        totalShots += m.scout!.totalShots;
+      }
+    }
+    final savePct =
+        totalShots == 0 ? 0.0 : (totalSaves / totalShots) * 100;
+    return HomeSummary(
+      gamesPlayed: matches.length,
+      totalSaves: totalSaves,
+      savePercentage: savePct,
+      evolutionScore: 0,
+    );
+  }
 });
 
 final recentMatchProvider = FutureProvider<RecentMatch?>((ref) async {
-  await Future.delayed(const Duration(milliseconds: 900));
-  return RecentMatch(
-    date: DateTime.now().subtract(const Duration(days: 3)),
-    competition: 'Campeonato Estadual',
-    teamName: 'Meu Time',
-    opponentName: 'Adversário FC',
-    teamScore: 2,
-    opponentScore: 1,
-    saves: 6,
-    cleanSheet: false,
-  );
+  final matchRepo = ref.read(matchRepositoryProvider);
+  final authState = ref.read(authStateProvider);
+  final gkId = _gkIdFromAuth(authState.user);
+
+  try {
+    // Try /matches/recent/{gkId} first
+    final recent = await matchRepo.getRecent(gkId, limit: 1);
+    if (recent.isEmpty) return null;
+    final m = recent.first;
+    return RecentMatch(
+      date: m.date,
+      competition: m.competition,
+      opponentName: m.opponent,
+      teamScore: m.goalsScored,
+      opponentScore: m.goalsConceded,
+      saves: m.scout?.totalSaves ?? 0,
+      cleanSheet: m.isCleanSheet,
+    );
+  } catch (_) {
+    // Fallback: regular list endpoint
+    try {
+      final matches = await matchRepo.getAll(goalkeeperId: gkId, limit: 1);
+      if (matches.isEmpty) return null;
+      final m = matches.first;
+      return RecentMatch(
+        date: m.date,
+        competition: m.competition,
+        opponentName: m.opponent,
+        teamScore: m.goalsScored,
+        opponentScore: m.goalsConceded,
+        saves: m.scout?.totalSaves ?? 0,
+        cleanSheet: m.isCleanSheet,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
 });
 
 final weeklyChartDataProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  await Future.delayed(const Duration(milliseconds: 700));
-  return const [
-    {
-      'label': 'Seg',
-      'overallScore': 68.0,
-      'reflexScore': 72.0,
-      'highSaveScore': 60.0,
-    },
-    {
-      'label': 'Ter',
-      'overallScore': 74.0,
-      'reflexScore': 70.0,
-      'highSaveScore': 65.0,
-    },
-    {
-      'label': 'Qua',
-      'overallScore': 71.0,
-      'reflexScore': 75.0,
-      'highSaveScore': 68.0,
-    },
-    {
-      'label': 'Qui',
-      'overallScore': 80.0,
-      'reflexScore': 78.0,
-      'highSaveScore': 74.0,
-    },
-    {
-      'label': 'Sex',
-      'overallScore': 76.0,
-      'reflexScore': 80.0,
-      'highSaveScore': 70.0,
-    },
-    {
-      'label': 'Sáb',
-      'overallScore': 85.0,
-      'reflexScore': 82.0,
-      'highSaveScore': 80.0,
-    },
-    {
-      'label': 'Dom',
-      'overallScore': 82.0,
-      'reflexScore': 85.0,
-      'highSaveScore': 78.0,
-    },
-  ];
+  final api = ref.read(apiClientProvider);
+  final authState = ref.read(authStateProvider);
+  final gkId = _gkIdFromAuth(authState.user);
+  if (gkId.isEmpty) return [];
+
+  try {
+    final data = await api.get<Map<String, dynamic>>(
+      '/performance/evolution/$gkId',
+      queryParameters: {'period': 'month'},
+    );
+    final raw = (data['dataPoints'] ??
+            data['points'] ??
+            data['evolution'] ??
+            []) as List;
+    if (raw.isEmpty) return [];
+    final last7 = raw.length > 7 ? raw.sublist(raw.length - 7) : raw;
+    return last7.map<Map<String, dynamic>>((p) {
+      final m = p as Map<String, dynamic>;
+      return {
+        'label': m['label'] ?? m['date'] ?? '',
+        'overallScore':
+            double.tryParse(m['overallScore']?.toString() ?? '0') ?? 0,
+        'reflexScore':
+            double.tryParse(m['reflexScore']?.toString() ?? '0') ?? 0,
+        'highSaveScore':
+            double.tryParse(m['highSaveScore']?.toString() ?? '0') ?? 0,
+      };
+    }).toList();
+  } catch (_) {
+    return [];
+  }
 });
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
