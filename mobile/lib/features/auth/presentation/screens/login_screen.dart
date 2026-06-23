@@ -22,7 +22,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    scopes: ['email', 'profile'],
+    // Web client ID required to generate idToken on Android
+    serverClientId:
+        '338475414522-jm59q2mr1l01su2up2jc5n9pi7b25kls.apps.googleusercontent.com',
+  );
 
   Future<void> _handleGoogleSignIn() async {
     setState(() { _isLoading = true; _errorMessage = null; });

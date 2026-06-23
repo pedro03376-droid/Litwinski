@@ -28,13 +28,13 @@ class DefaultFirebaseOptions {
   // Android: register app in Firebase Console → Project Settings → Android
   // Download google-services.json and place in mobile/android/app/
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCtqk0eP9a3ZlLF__OaWS2jUJuN2KgH10o',
+    apiKey: 'AIzaSyA3by93eg9fvHvBoQmLBbp0_xp13iqo9RY',
     authDomain: 'gkhub-4717d.firebaseapp.com',
     databaseURL: 'https://gkhub-4717d-default-rtdb.firebaseio.com',
     projectId: 'gkhub-4717d',
     storageBucket: 'gkhub-4717d.firebasestorage.app',
     messagingSenderId: '338475414522',
-    appId: '1:338475414522:android:REPLACE_WITH_ANDROID_APP_ID',
+    appId: '1:338475414522:android:e3e178b58f1eca69392a43',
   );
 
   // iOS: register app in Firebase Console → Project Settings → iOS
