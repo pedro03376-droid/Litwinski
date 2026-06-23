@@ -107,6 +107,10 @@
       from { opacity: 0; }
       to   { opacity: 1; }
     }
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
     @keyframes slideIn {
       from { transform: translateX(48px); opacity: 0; }
       to   { transform: translateX(0); opacity: 1; }
@@ -8187,6 +8191,14 @@ window.addEventListener('beforeinstallprompt', e => {
   document.getElementById('btn-install').style.display = 'flex';
 });
 
+// Show install button on iOS Safari (no beforeinstallprompt support)
+if (_isIOS() && !_isInStandaloneMode()) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btn-install');
+    if (btn) btn.style.display = 'flex';
+  });
+}
+
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
   document.getElementById('btn-install').style.display = 'none';
@@ -8194,14 +8206,133 @@ window.addEventListener('appinstalled', () => {
 });
 
 function installPWA() {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  deferredInstallPrompt.userChoice.then(result => {
-    deferredInstallPrompt = null;
-    document.getElementById('btn-install').style.display = 'none';
-    if (result.outcome === 'accepted') toast('GK Hub instalado!', 'success');
-  });
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(result => {
+      deferredInstallPrompt = null;
+      document.getElementById('btn-install').style.display = 'none';
+      if (result.outcome === 'accepted') toast('GK Hub instalado!', 'success');
+    });
+  } else {
+    showInstallGuide();
+  }
 }
+
+function _isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function _isInStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+}
+
+function showInstallGuide() {
+  if (document.getElementById('modal-install-guide')) return;
+  const isIOS = _isIOS();
+  const overlay = document.createElement('div');
+  overlay.id = 'modal-install-guide';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);animation:fadeIn .2s ease;';
+  overlay.innerHTML = `
+    <div style="background:var(--card);border-radius:20px 20px 0 0;padding:28px 24px 36px;width:100%;max-width:480px;box-shadow:0 -20px 60px rgba(0,0,0,.4);border-top:1px solid rgba(255,255,255,.08);animation:slideUp .25s ease;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="./icons/icon-192.png" style="width:44px;height:44px;border-radius:10px;">
+          <div>
+            <div style="font-size:15px;font-weight:800;">Instalar GK Hub</div>
+            <div style="font-size:12px;color:var(--muted);">Acesso rápido na tela inicial</div>
+          </div>
+        </div>
+        <button onclick="document.getElementById('modal-install-guide').remove()" style="background:rgba(255,255,255,.08);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center;">&times;</button>
+      </div>
+      ${isIOS ? `
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Siga os passos no <strong style="color:var(--text);">Safari</strong>:</div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">1</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Toque em Compartilhar</div>
+            <div style="font-size:11px;color:var(--muted);">Ícone <svg style="vertical-align:middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> na barra inferior do Safari</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">2</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Selecione "Adicionar à Tela de Início"</div>
+            <div style="font-size:11px;color:var(--muted);">Role a lista de opções para baixo</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">3</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Toque em "Adicionar"</div>
+            <div style="font-size:11px;color:var(--muted);">O ícone do GK Hub aparecerá na tela inicial</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:10px 14px;background:rgba(59,130,246,.08);border-radius:10px;font-size:11px;color:var(--muted);">
+        ⚠️ Abra este link no <strong style="color:var(--primary);">Safari</strong> — Chrome e Firefox no iOS não suportam instalação de PWA.
+      </div>
+      ` : `
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Siga os passos no navegador:</div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">1</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Abra o menu do Chrome/Edge</div>
+            <div style="font-size:11px;color:var(--muted);">Ícone ⋮ no canto superior direito</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">2</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Selecione "Instalar app" ou "Adicionar à tela inicial"</div>
+            <div style="font-size:11px;color:var(--muted);">Ou clique no ícone ⊕ na barra de endereço</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">3</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Confirme a instalação</div>
+            <div style="font-size:11px;color:var(--muted);">O app abrirá em janela própria sem barra do navegador</div>
+          </div>
+        </div>
+      </div>
+      `}
+      <button onclick="document.getElementById('modal-install-guide').remove()" class="btn btn-primary" style="width:100%;margin-top:20px;justify-content:center;">
+        Entendi
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+// Auto-show iOS install tip once (after 30s, if not installed and is iOS Safari)
+window.addEventListener('load', () => {
+  if (_isIOS() && !_isInStandaloneMode() && !localStorage.getItem('gkhub_ios_tip_shown')) {
+    setTimeout(() => {
+      if (!_isInStandaloneMode()) {
+        localStorage.setItem('gkhub_ios_tip_shown', '1');
+        document.getElementById('btn-install').style.display = 'flex';
+        // Show a subtle nudge after 30s
+        const nudge = document.createElement('div');
+        nudge.id = 'ios-nudge';
+        nudge.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:8000;cursor:pointer;max-width:340px;animation:slideUp .3s ease;';
+        nudge.innerHTML = `
+          <img src="./icons/icon-192.png" style="width:36px;height:36px;border-radius:8px;flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;">Instalar GK Hub</div>
+            <div style="font-size:11px;color:var(--muted);">Adicione à tela inicial para acesso rápido</div>
+          </div>
+          <button onclick="event.stopPropagation();document.getElementById('ios-nudge').remove()" style="background:rgba(255,255,255,.08);border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;color:var(--text);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">&times;</button>
+        `;
+        nudge.addEventListener('click', () => { nudge.remove(); showInstallGuide(); });
+        document.body.appendChild(nudge);
+        setTimeout(() => nudge?.remove(), 10000);
+      }
+    }, 30000);
+  }
+});
 
 // Offline / Online status
 let offlineBanner = null;
