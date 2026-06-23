@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AiAnalysis, AnalysisSource } from './entities/ai-analysis.entity';
-import { ConfigService } from '@nestjs/config';
 
 interface ScoutMetrics {
   highSaveRight: number;
@@ -32,7 +31,6 @@ export class AiAnalysisService {
   constructor(
     @InjectRepository(AiAnalysis)
     private readonly analysisRepo: Repository<AiAnalysis>,
-    private readonly configService: ConfigService,
   ) {}
 
   async analyzeMatch(

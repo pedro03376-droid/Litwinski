@@ -6,11 +6,10 @@ import { ImportService } from './import.service';
 import { Goalkeeper } from '../goalkeepers/entities/goalkeeper.entity';
 import { Match } from '../matches/entities/match.entity';
 import { MatchScout } from '../scouts/entities/match-scout.entity';
-import { TrainingSession } from '../training/entities/training-session.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Goalkeeper, Match, MatchScout, TrainingSession]),
+    TypeOrmModule.forFeature([Goalkeeper, Match, MatchScout]),
     MulterModule.register({ dest: './uploads/temp' }),
   ],
   controllers: [ImportController],
