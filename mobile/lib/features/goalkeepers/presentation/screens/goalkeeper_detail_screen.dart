@@ -1,6 +1,7 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:fl_chart/fl_chart.dart' hide TextDirection;
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -725,7 +726,7 @@ class _SpiderChartPainter extends CustomPainter {
       final ly = center.dy + (radius + 18) * math.sin(angle);
       final tp = TextPainter(
         text: TextSpan(text: labels[i], style: textStyle),
-        textDirection: TextDirection.ltr,
+        textDirection: ui.TextDirection.ltr,
       )..layout();
       tp.paint(
         canvas,
