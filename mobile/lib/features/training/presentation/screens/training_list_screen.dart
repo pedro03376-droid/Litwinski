@@ -2,90 +2,37 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gkhub/core/theme/app_theme.dart';
+import 'package:gkhub/core/constants/app_constants.dart';
+import '../../data/repositories/training_repository.dart';
+import '../../domain/entities/training_session.dart';
 import '../widgets/training_card.dart';
 
-// ---------------------------------------------------------------------------
-// Mock data (using domain entity fields)
-// ---------------------------------------------------------------------------
-
-// Local view model that pairs the domain entity with a parsed date and intensity
-class _TrainingSessionView {
-  final String id;
-  final DateTime date;
-  final String category;
-  final TrainingIntensity intensity;
-  final int durationMinutes;
-  final String objective;
-
-  const _TrainingSessionView({
-    required this.id,
-    required this.date,
-    required this.category,
-    required this.intensity,
-    required this.durationMinutes,
-    required this.objective,
-  });
-}
-
-final _mockSessions = <_TrainingSessionView>[
-  _TrainingSessionView(
-    id: '1',
-    date: DateTime(2026, 6, 7),
-    category: 'Reflexo',
-    intensity: TrainingIntensity.alta,
-    durationMinutes: 90,
-    objective: 'Trabalhar tempo de reação em defesas de curta distância',
-  ),
-  _TrainingSessionView(
-    id: '2',
-    date: DateTime(2026, 6, 5),
-    category: 'Defesa Alta',
-    intensity: TrainingIntensity.media,
-    durationMinutes: 75,
-    objective: 'Aperfeiçoar posicionamento em cruzamentos e bolas altas',
-  ),
-  _TrainingSessionView(
-    id: '3',
-    date: DateTime(2026, 6, 3),
-    category: 'Posicionamento',
-    intensity: TrainingIntensity.baixa,
-    durationMinutes: 60,
-    objective: 'Ajustar angulação defensiva nas bolas nas costas da zaga',
-  ),
-  _TrainingSessionView(
-    id: '4',
-    date: DateTime(2026, 6, 1),
-    category: 'Defesa Baixa',
-    intensity: TrainingIntensity.maxima,
-    durationMinutes: 100,
-    objective: 'Treino de raspões, espaladas e rebotes',
-  ),
-  _TrainingSessionView(
-    id: '5',
-    date: DateTime(2026, 5, 29),
-    category: 'Saída',
-    intensity: TrainingIntensity.media,
-    durationMinutes: 80,
-    objective: 'Saídas de gol e comando da área em bolas aéreas',
-  ),
-  _TrainingSessionView(
-    id: '6',
-    date: DateTime(2026, 5, 26),
-    category: 'Jogo com os Pés',
-    intensity: TrainingIntensity.baixa,
-    durationMinutes: 60,
-    objective: 'Construção pelo goleiro — passe curto e longo',
-  ),
-];
-
-final trainingSessionsProvider =
-    Provider<List<_TrainingSessionView>>((_) => _mockSessions);
+// ─── Providers ───────────────────────────────────────────────────────────────
 
 final _selectedCategoryProvider = StateProvider<String?>((ref) => null);
 
-// ---------------------------------------------------------------------------
-// Screen
-// ---------------------------------------------------------------------------
+final _trainingsProvider = FutureProvider<List<TrainingSession>>((ref) async {
+  final repo = ref.read(trainingRepositoryProvider);
+  return repo.getAll(perPage: 100);
+});
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+DateTime _parseDate(String raw) {
+  try {
+    return DateTime.parse(raw);
+  } catch (_) {
+    return DateTime.now();
+  }
+}
+
+String _categoryLabel(String apiCategory) =>
+    AppConstants.trainingCategoryLabels[apiCategory] ?? apiCategory;
+
+TrainingIntensity _intensityFromApi(String intensity) =>
+    TrainingIntensityExt.fromString(intensity);
+
+// ─── Screen ──────────────────────────────────────────────────────────────────
 
 class TrainingListScreen extends ConsumerWidget {
   const TrainingListScreen({super.key});
@@ -95,27 +42,20 @@ class TrainingListScreen extends ConsumerWidget {
     'Defesa Alta',
     'Defesa Baixa',
     'Posicionamento',
-    'Saída',
-    'Interceptação',
-    'Jogo com os Pés',
+    'Saída do Gol',
+    '1x1',
     'Distribuição',
-    'Decisão',
+    'Jogo com os Pés',
+    'Coordenação',
+    'Agilidade',
+    'Tempo de Reação',
+    'Misto',
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sessions = ref.watch(trainingSessionsProvider);
+    final trainingsAsync = ref.watch(_trainingsProvider);
     final selectedCategory = ref.watch(_selectedCategoryProvider);
-
-    final filtered = selectedCategory == null
-        ? sessions
-        : sessions.where((s) => s.category == selectedCategory).toList();
-
-    // Stats
-    final totalSessions = sessions.length;
-    final totalHours = sessions.isEmpty
-        ? 0.0
-        : sessions.map((s) => s.durationMinutes).reduce((a, b) => a + b) / 60.0;
 
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
@@ -123,8 +63,8 @@ class TrainingListScreen extends ConsumerWidget {
         title: const Text('Treinos'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: AppColors.textSecondary),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh, color: AppColors.textSecondary),
+            onPressed: () => ref.invalidate(_trainingsProvider),
           ),
         ],
       ),
@@ -135,51 +75,121 @@ class TrainingListScreen extends ConsumerWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add),
       ),
-      body: Column(
-        children: [
-          // Stats summary bar
-          _StatsSummaryBar(
-            totalSessions: totalSessions,
-            totalHours: totalHours,
+      body: trainingsAsync.when(
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.cyan),
+        ),
+        error: (err, _) => Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: AppColors.error, size: 48),
+              const SizedBox(height: 12),
+              Text(
+                'Erro ao carregar treinos',
+                style: const TextStyle(
+                    color: AppColors.textPrimary, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => ref.invalidate(_trainingsProvider),
+                child: const Text('Tentar novamente',
+                    style: TextStyle(color: AppColors.cyan)),
+              ),
+            ],
           ),
-          // Category filter chips
-          _CategoryFilterRow(
-            categories: _categories,
-            selected: selectedCategory,
-            onSelect: (c) =>
-                ref.read(_selectedCategoryProvider.notifier).state = c,
-          ),
-          // Sessions list
-          Expanded(
-            child: filtered.isEmpty
-                ? _EmptyState(hasFilter: selectedCategory != null)
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) {
-                      final s = filtered[i];
-                      return TrainingCard(
-                        id: s.id,
-                        date: s.date,
-                        category: s.category,
-                        intensity: s.intensity,
-                        durationMinutes: s.durationMinutes,
-                        objective: s.objective,
-                        onTap: () => context.go('/training/${s.id}'),
-                      );
-                    },
-                  ),
-          ),
-        ],
+        ),
+        data: (sessions) {
+          // Map each TrainingSession to what the UI needs
+          final views = sessions.map((s) {
+            final label = _categoryLabel(s.category);
+            return _SessionView(
+              id: s.id,
+              date: _parseDate(s.date),
+              categoryLabel: label,
+              intensity: _intensityFromApi(s.intensity),
+              durationMinutes: s.durationMinutes ?? 0,
+              objective: s.objective,
+            );
+          }).toList();
+
+          final filtered = selectedCategory == null
+              ? views
+              : views
+                  .where((v) => v.categoryLabel == selectedCategory)
+                  .toList();
+
+          final totalSessions = views.length;
+          final totalHours = views.isEmpty
+              ? 0.0
+              : views
+                      .map((s) => s.durationMinutes)
+                      .reduce((a, b) => a + b) /
+                  60.0;
+
+          return Column(
+            children: [
+              _StatsSummaryBar(
+                totalSessions: totalSessions,
+                totalHours: totalHours,
+              ),
+              _CategoryFilterRow(
+                categories: _categories,
+                selected: selectedCategory,
+                onSelect: (c) =>
+                    ref.read(_selectedCategoryProvider.notifier).state = c,
+              ),
+              Expanded(
+                child: filtered.isEmpty
+                    ? _EmptyState(hasFilter: selectedCategory != null)
+                    : ListView.separated(
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) =>
+                            const SizedBox(height: 10),
+                        itemBuilder: (_, i) {
+                          final s = filtered[i];
+                          return TrainingCard(
+                            id: s.id,
+                            date: s.date,
+                            category: s.categoryLabel,
+                            intensity: s.intensity,
+                            durationMinutes: s.durationMinutes,
+                            objective: s.objective,
+                            onTap: () => context.go('/training/${s.id}'),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// Stats summary bar
-// ---------------------------------------------------------------------------
+// Internal view model
+class _SessionView {
+  final String id;
+  final DateTime date;
+  final String categoryLabel;
+  final TrainingIntensity intensity;
+  final int durationMinutes;
+  final String objective;
+
+  const _SessionView({
+    required this.id,
+    required this.date,
+    required this.categoryLabel,
+    required this.intensity,
+    required this.durationMinutes,
+    required this.objective,
+  });
+}
+
+// ─── Stats summary bar ────────────────────────────────────────────────────────
 
 class _StatsSummaryBar extends StatelessWidget {
   final int totalSessions;
@@ -210,7 +220,7 @@ class _StatsSummaryBar extends StatelessWidget {
             value: '$totalSessions',
             color: AppColors.cyan,
           ),
-          _Divider(),
+          _DividerLine(),
           _SummaryItem(
             label: 'Total Horas',
             value: '${totalHours.toStringAsFixed(1)}h',
@@ -261,7 +271,7 @@ class _SummaryItem extends StatelessWidget {
   }
 }
 
-class _Divider extends StatelessWidget {
+class _DividerLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -272,9 +282,7 @@ class _Divider extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Filter chips row
-// ---------------------------------------------------------------------------
+// ─── Filter chips row ─────────────────────────────────────────────────────────
 
 class _CategoryFilterRow extends StatelessWidget {
   final List<String> categories;
@@ -295,7 +303,6 @@ class _CategoryFilterRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         scrollDirection: Axis.horizontal,
         children: [
-          // "Todos" chip
           _FilterChip(
             label: 'Todos',
             isSelected: selected == null,
@@ -343,9 +350,13 @@ class _FilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          color: isSelected ? color.withOpacity(0.2) : AppColors.darkElevated,
+          color: isSelected
+              ? color.withOpacity(0.2)
+              : AppColors.darkElevated,
           border: Border.all(
-            color: isSelected ? color : AppColors.textMuted.withOpacity(0.2),
+            color: isSelected
+                ? color
+                : AppColors.textMuted.withOpacity(0.2),
             width: 1,
           ),
         ),
@@ -354,7 +365,8 @@ class _FilterChip extends StatelessWidget {
           style: TextStyle(
             color: isSelected ? color : AppColors.textSecondary,
             fontSize: 12,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            fontWeight:
+                isSelected ? FontWeight.w700 : FontWeight.w500,
           ),
         ),
       ),
@@ -362,9 +374,7 @@ class _FilterChip extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Empty state
-// ---------------------------------------------------------------------------
+// ─── Empty state ──────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
   final bool hasFilter;
