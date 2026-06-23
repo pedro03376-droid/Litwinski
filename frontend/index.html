@@ -1327,6 +1327,14 @@
     .sr-item:hover { background: rgba(255,255,255,.06); }
     .sr-item svg { color: var(--muted); flex-shrink: 0; margin-top: 2px; }
 
+    .dash-period-btn {
+      padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: 12px; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .dash-period-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .dash-period-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
   </style>
 </head>
 <body>
@@ -1591,6 +1599,26 @@
 
     <!-- ══ DASHBOARD ══ -->
     <div id="page-dashboard" class="page active">
+
+      <!-- Filtro de Período -->
+      <div class="card" style="margin-bottom:20px;padding:14px 18px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;">Período:</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="dash-period-btn active" id="dpb-all" onclick="setDashPeriod('all')">Tudo</button>
+            <button class="dash-period-btn" id="dpb-30" onclick="setDashPeriod('30')">30 dias</button>
+            <button class="dash-period-btn" id="dpb-90" onclick="setDashPeriod('90')">3 meses</button>
+            <button class="dash-period-btn" id="dpb-180" onclick="setDashPeriod('180')">6 meses</button>
+            <button class="dash-period-btn" id="dpb-365" onclick="setDashPeriod('365')">1 ano</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
+            <input type="date" id="dash-from" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
+            <span style="font-size:12px;color:var(--muted);">até</span>
+            <input type="date" id="dash-to" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
+          </div>
+        </div>
+      </div>
 
       <!-- KPI Stats Row -->
       <div class="stats-grid">
@@ -2524,6 +2552,11 @@
             </div>
             <div class="form-group" style="margin-top:12px;">
               <label class="form-label">Notificações ativas</label>
+              <button class="btn btn-ghost btn-sm" id="btn-req-notif" onclick="requestNotifPermission()" style="margin-bottom:10px;width:100%;justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Ativar Notificações do Navegador
+              </button>
+              <div id="notif-perm-status" style="font-size:11px;margin-bottom:8px;color:var(--muted);"></div>
               <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">
                 <label class="pref-toggle"><input type="checkbox" id="notif-scouts" onchange="savePreferences()"><span class="toggle-track"></span><span style="font-size:13px;">Scouts registrados</span></label>
                 <label class="pref-toggle"><input type="checkbox" id="notif-partidas" onchange="savePreferences()"><span class="toggle-track"></span><span style="font-size:13px;">Partidas registradas</span></label>
@@ -3018,6 +3051,8 @@ const DB = {
 };
 
 let editingId = { goleira: null, partida: null, scout: null };
+let dashFilterFrom = '';
+let dashFilterTo   = '';
 let chartPerf = null, chartEvolucao = null;
 
 // ═══════════════════════════════════════════════════════════
@@ -3337,6 +3372,10 @@ function salvarPartida() {
   closeModal('modal-partida');
   renderPartidas();
   toast(editingId.partida ? 'Partida atualizada!' : 'Partida cadastrada!', 'success');
+  if (loadPreferences().notifPartidas) {
+    const adv = document.getElementById('pt-adversario')?.value || obj.adversario || 'adversário';
+    _sendNotif('Partida registrada', `Partida contra ${adv} salva com sucesso`, 'partida');
+  }
 }
 
 function editarPartida(id) {
@@ -3558,6 +3597,10 @@ function salvarScout() {
   closeModal('modal-scout');
   renderScouts();
   toast('Scout salvo!', 'success');
+  if (loadPreferences().notifScouts) {
+    const gkN = DB.goleiras.find(g=>g.id===document.getElementById('scout-goleira').value)?.nome || 'Goleira';
+    _sendNotif('Scout registrado', `Scout de ${gkN} salvo com sucesso`, 'scout');
+  }
 }
 
 function editarScout(id) {
@@ -3733,8 +3776,14 @@ function renderEvolucaoChart(labels, data) {
 // ═══════════════════════════════════════════════════════════
 function refreshDashboard() {
   const goleiras = DB.goleiras;
-  const partidas = DB.partidas;
-  const scouts = DB.scouts;
+  const partidas = DB.partidas.filter(p => {
+    if (!p.data) return true;
+    if (dashFilterFrom && p.data < dashFilterFrom) return false;
+    if (dashFilterTo   && p.data > dashFilterTo)   return false;
+    return true;
+  });
+  const filteredPtIds = new Set(partidas.map(p => p.id));
+  const scouts = DB.scouts.filter(s => !s.partidaId || filteredPtIds.has(s.partidaId));
   const elGk = document.getElementById('stat-total-gk');
   const elPt = document.getElementById('stat-total-matches');
   const elSc = document.getElementById('stat-total-scouts');
@@ -4959,6 +5008,7 @@ function pdfGeral() {
     styles: { fontSize: 9 } });
   doc.save('gkhub_relatorio_geral.pdf');
   toast('PDF gerado!','success');
+  if (loadPreferences().notifPdf) _sendNotif('PDF gerado', 'Relatório Geral exportado', 'pdf');
 }
 function pdfIndividual() {
   const gkId = document.getElementById('pdf-gk-select').value;
@@ -4986,6 +5036,7 @@ function pdfIndividual() {
   }
   doc.save('gkhub_'+gk.nome.replace(/\s/g,'_')+'.pdf');
   toast('PDF gerado!','success');
+  if (loadPreferences().notifPdf) _sendNotif('PDF gerado', `Relatório de ${gk.nome} exportado`, 'pdf');
 }
 function pdfPartidas() {
   const partidas = DB.partidas;
@@ -5004,6 +5055,7 @@ function pdfPartidas() {
     headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
   doc.save('gkhub_partidas.pdf');
   toast('PDF gerado!','success');
+  if (loadPreferences().notifPdf) _sendNotif('PDF gerado', 'Relatório de Partidas exportado', 'pdf');
 }
 
 function updateCompSelect() {
@@ -5106,6 +5158,7 @@ function pdfCompeticao() {
 
   doc.save('gkhub_' + comp.replace(/\s+/g,'_') + '.pdf');
   toast('PDF gerado!','success');
+  if (loadPreferences().notifPdf) _sendNotif('PDF gerado', `Relatório de ${comp} exportado`, 'pdf');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -7809,6 +7862,7 @@ function loadUserPage() {
   renderActivityLog();
   renderFavorites();
   loadPreferences();
+  _updateNotifPermUI();
 }
 
 // ── Activity Log ──────────────────────────────────────────
@@ -7847,6 +7901,41 @@ function clearActivityLog() {
   localStorage.removeItem(_ACTIVITY_KEY);
   renderActivityLog();
   toast('Histórico limpo', 'info');
+}
+
+// ── Notifications ─────────────────────────────────────────
+function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    toast('Este navegador não suporta notificações', 'error'); return;
+  }
+  Notification.requestPermission().then(p => {
+    _updateNotifPermUI();
+    if (p === 'granted') toast('Notificações ativadas!', 'success');
+    else if (p === 'denied') toast('Permissão de notificações negada', 'error');
+  });
+}
+function _updateNotifPermUI() {
+  const btn = document.getElementById('btn-req-notif');
+  const status = document.getElementById('notif-perm-status');
+  if (!('Notification' in window)) {
+    if (btn) btn.style.display = 'none';
+    if (status) status.textContent = 'Notificações não suportadas neste navegador.';
+    return;
+  }
+  const p = Notification.permission;
+  if (btn) btn.style.display = p === 'granted' ? 'none' : '';
+  if (status) {
+    status.textContent = p === 'granted' ? '✅ Notificações ativadas' :
+                         p === 'denied'  ? '🚫 Notificações bloqueadas (desbloqueie nas configurações do navegador)' : '';
+    status.style.color = p === 'granted' ? 'var(--success)' : 'var(--error)';
+  }
+}
+function _sendNotif(title, body, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const prefs = loadPreferences();
+    new Notification(title, { body, tag: tag || 'gkhub', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png' });
+  } catch(e) {}
 }
 
 // ── Favorites ─────────────────────────────────────────────
@@ -7996,6 +8085,32 @@ function switchUserTab(tab) {
     c.classList.toggle('active', match);
   });
   if (tab === 'preferencias') applyPreferences();
+}
+
+function setDashPeriod(key) {
+  document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.remove('active'));
+  const today = new Date();
+  if (key === 'all') {
+    dashFilterFrom = ''; dashFilterTo = '';
+    document.getElementById('dash-from').value = '';
+    document.getElementById('dash-to').value = '';
+    document.getElementById('dpb-all')?.classList.add('active');
+  } else {
+    const days = parseInt(key);
+    const from = new Date(today); from.setDate(from.getDate() - days);
+    dashFilterFrom = from.toISOString().slice(0,10);
+    dashFilterTo   = today.toISOString().slice(0,10);
+    document.getElementById('dash-from').value = dashFilterFrom;
+    document.getElementById('dash-to').value   = dashFilterTo;
+    document.getElementById('dpb-'+key)?.classList.add('active');
+  }
+  refreshDashboard();
+}
+function setDashCustomPeriod() {
+  dashFilterFrom = document.getElementById('dash-from')?.value || '';
+  dashFilterTo   = document.getElementById('dash-to')?.value   || '';
+  document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.remove('active'));
+  refreshDashboard();
 }
 
 // INIT
