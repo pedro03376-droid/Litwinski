@@ -12,6 +12,7 @@ import '../../features/matches/presentation/screens/match_detail_screen.dart';
 import '../../features/matches/presentation/screens/match_scout_screen.dart';
 import '../../features/training/presentation/screens/training_list_screen.dart';
 import '../../features/training/presentation/screens/training_detail_screen.dart';
+import '../../features/training/presentation/screens/training_form_screen.dart';
 import '../../features/performance/presentation/screens/performance_screen.dart';
 import '../../features/videos/presentation/screens/videos_screen.dart';
 import '../../features/reports/presentation/screens/reports_screen.dart';
@@ -105,6 +106,10 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/training',
             builder: (_, __) => const TrainingListScreen(),
             routes: [
+              GoRoute(
+                path: 'new',
+                builder: (_, __) => const TrainingFormScreen(),
+              ),
               GoRoute(
                 path: ':id',
                 builder: (_, state) =>

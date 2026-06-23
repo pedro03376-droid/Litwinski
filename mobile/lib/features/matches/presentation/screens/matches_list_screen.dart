@@ -33,7 +33,61 @@ class MatchesListScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.filter_list),
-            onPressed: () {},
+            onPressed: () {
+              final filter = ref.read(_filterProvider);
+              showModalBottomSheet<void>(
+                context: context,
+                backgroundColor: AppColors.darkCard,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                builder: (_) => Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Filtrar por resultado',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      for (final (val, label) in [
+                        (null, 'Todos'),
+                        ('win', 'Vitórias'),
+                        ('draw', 'Empates'),
+                        ('loss', 'Derrotas'),
+                      ])
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            label,
+                            style: TextStyle(
+                              color: filter == val
+                                  ? AppColors.cyan
+                                  : AppColors.textPrimary,
+                              fontWeight: filter == val
+                                  ? FontWeight.w700
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                          trailing: filter == val
+                              ? const Icon(Icons.check, color: AppColors.cyan)
+                              : null,
+                          onTap: () {
+                            ref.read(_filterProvider.notifier).state = val;
+                            Navigator.pop(context);
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),

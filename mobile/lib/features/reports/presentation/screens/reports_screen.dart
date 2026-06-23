@@ -138,7 +138,19 @@ class _ReportCard extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.share, color: AppColors.textMuted),
-            onPressed: () {},
+            onPressed: () {
+              final url = report['pdfUrl'] ?? '';
+              final title = report['title'] ?? 'Relatório';
+              if (url.isNotEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Link: $url')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('"$title" ainda não tem PDF disponível')),
+                );
+              }
+            },
           ),
         ]),
       ]),

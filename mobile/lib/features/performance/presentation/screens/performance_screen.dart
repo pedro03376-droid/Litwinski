@@ -47,7 +47,14 @@ class PerformanceScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.leaderboard_outlined),
             tooltip: 'Ranking',
-            onPressed: () {},
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Role para baixo para ver o ranking completo'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            },
           ),
         ],
       ),
