@@ -1,0 +1,34 @@
+{
+  "project_info": {
+    "project_number": "338475414522",
+    "project_id": "gkhub-4717d",
+    "storage_bucket": "gkhub-4717d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:338475414522:android:REPLACE_WITH_ANDROID_APP_ID",
+        "android_client_info": {
+          "package_name": "com.gkhub.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "338475414522-REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCtqk0eP9a3ZlLF__OaWS2jUJuN2KgH10o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

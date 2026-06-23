@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/auth_provider.dart';
 
@@ -19,6 +21,47 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _obscurePassword = true;
   bool _isLoading = false;
   String? _errorMessage;
+
+  final GoogleSignIn _googleSignIn = GoogleSignIn(scopes: ['email', 'profile']);
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() { _isLoading = true; _errorMessage = null; });
+    try {
+      final googleUser = await _googleSignIn.signIn();
+      if (googleUser == null) {
+        setState(() { _isLoading = false; });
+        return;
+      }
+      final googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final firebaseUser = await FirebaseAuth.instance.signInWithCredential(credential);
+      if (!mounted) return;
+      final userInfo = {
+        'email': firebaseUser.user?.email ?? '',
+        'name': firebaseUser.user?.displayName ?? '',
+        'photoUrl': firebaseUser.user?.photoURL ?? '',
+      };
+      final authNotifier = ref.read(authStateProvider.notifier);
+      final success = await authNotifier.googleSignIn(
+        googleAuth.idToken ?? '',
+        googleAuth.accessToken,
+        userInfo,
+      );
+      if (!mounted) return;
+      if (success) {
+        context.go('/home');
+      } else {
+        final error = ref.read(authStateProvider).error;
+        setState(() { _isLoading = false; _errorMessage = error ?? 'Erro ao entrar com Google.'; });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() { _isLoading = false; _errorMessage = 'Erro ao entrar com Google. Tente novamente.'; });
+    }
+  }
 
   @override
   void dispose() {
@@ -311,6 +354,34 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       duration: 400.ms,
                       curve: Curves.easeOut,
                     ),
+
+                const SizedBox(height: 12),
+                // ── Divider ────────────────────────────────────────────────
+                Row(children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text('ou', style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+                  ),
+                  const Expanded(child: Divider()),
+                ]),
+                const SizedBox(height: 12),
+                // ── Google Sign-In ─────────────────────────────────────────
+                OutlinedButton.icon(
+                  onPressed: _isLoading ? null : _handleGoogleSignIn,
+                  icon: Image.network(
+                    'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                    width: 20, height: 20,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.login, size: 20),
+                  ),
+                  label: const Text('Entrar com Google'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    side: BorderSide(color: Colors.grey[400]!),
+                    foregroundColor: Colors.white,
+                  ),
+                ),
 
                 const SizedBox(height: 40),
 
