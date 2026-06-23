@@ -83,6 +83,35 @@ self.addEventListener('fetch', event => {
   );
 });
 
+// ── Push event (Web Push API) ─────────────────────────────
+self.addEventListener('push', event => {
+  let data = { title: 'GK Hub', body: 'Nova notificação', tag: 'gkhub' };
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch(e) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      tag: data.tag || 'gkhub',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      vibrate: [200, 100, 200],
+      data: { url: data.url || './' }
+    })
+  );
+});
+
+// ── Notification click ────────────────────────────────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || './';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.url.includes(self.location.origin));
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
+    })
+  );
+});
+
 // ── Background sync message handler ───────────────────────
 self.addEventListener('message', event => {
   if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();

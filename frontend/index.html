@@ -22,9 +22,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <!-- Firebase Auth SDK para Google Sign-In -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 
   <style>
     /* ════════════════════════════════════════════════════════
@@ -6846,6 +6847,8 @@ function _initFirebaseAuth() {
       _firebaseAuth.onAuthStateChanged(user => {
         if (user && !_loggedUser && !_googleLoginInProgress) _googleLoginSuccess(user);
       });
+      // Init FCM após auth estar pronto
+      setTimeout(_initFCM, 500);
     }
     return true;
   } catch(e) { console.error('Firebase init error:', e); return false; }
@@ -7596,7 +7599,8 @@ async function rtdbPut(path, data) {
 }
 
 async function rtdbDelete(path) {
-  await fetch(rtdbPath(path), { method: 'DELETE' });
+  const res = await fetch(rtdbPath(path), { method: 'DELETE' });
+  if (!res.ok) throw new Error('rtdbDelete HTTP ' + res.status);
 }
 
 function initFirebaseFromStorage() {
@@ -7963,17 +7967,76 @@ function clearActivityLog() {
   toast('Histórico limpo', 'info');
 }
 
-// ── Notifications ─────────────────────────────────────────
-function requestNotifPermission() {
+// ── Push Notifications (Web Push + FCM) ───────────────────
+const _VAPID_PUBLIC_KEY = 'BA1ON1Kuq002EkI8JPPugpET2cpTqNwTrswuPx5WhSlzHLmou4X1AlwgwmDwQK4WM4vdLsyi6sfJ7O0QwO9uDXE';
+let _fcmMessaging = null;
+let _pushSubscription = null;
+
+function _initFCM() {
+  try {
+    if (!firebase.apps.length || !window.firebase?.messaging) return;
+    _fcmMessaging = firebase.messaging();
+    // Mensagens recebidas em foreground
+    _fcmMessaging.onMessage(payload => {
+      const { title = 'GK Hub', body = '' } = payload.notification || {};
+      _sendNotifDirect(title, body, payload.data?.tag);
+    });
+  } catch(e) { console.warn('[GKHub] FCM init:', e.message); }
+}
+
+async function requestNotifPermission() {
   if (!('Notification' in window)) {
     toast('Este navegador não suporta notificações', 'error'); return;
   }
-  Notification.requestPermission().then(p => {
-    _updateNotifPermUI();
-    if (p === 'granted') toast('Notificações ativadas!', 'success');
-    else if (p === 'denied') toast('Permissão de notificações negada', 'error');
-  });
+  const permission = await Notification.requestPermission();
+  _updateNotifPermUI();
+  if (permission === 'granted') {
+    toast('Notificações ativadas!', 'success');
+    await _subscribePush();
+  } else if (permission === 'denied') {
+    toast('Permissão de notificações negada. Desbloqueie nas configurações do navegador.', 'error');
+  }
 }
+
+async function _subscribePush() {
+  try {
+    const sw = await navigator.serviceWorker.ready;
+
+    // 1. FCM token (se Firebase Messaging disponível)
+    if (_fcmMessaging) {
+      try {
+        const token = await _fcmMessaging.getToken({ vapidKey: _VAPID_PUBLIC_KEY, serviceWorkerRegistration: sw });
+        if (token) {
+          localStorage.setItem('gkhub_fcm_token', token);
+          // Envia token para o backend (best-effort)
+          const session = _getSession();
+          if (session?.token) {
+            apiRequest('POST', '/notifications/subscribe', { token, platform: 'web' }).catch(() => {});
+          }
+        }
+      } catch(e) { console.warn('[GKHub] FCM token:', e.message); }
+    }
+
+    // 2. Web Push subscription (fallback e redundância)
+    try {
+      const sub = await sw.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(_VAPID_PUBLIC_KEY)
+      });
+      _pushSubscription = sub;
+      localStorage.setItem('gkhub_push_sub', JSON.stringify(sub.toJSON()));
+    } catch(e) { /* Push API pode não estar disponível em todos os browsers */ }
+
+  } catch(e) { console.warn('[GKHub] Push subscribe:', e.message); }
+}
+
+function _urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
 function _updateNotifPermUI() {
   const btn = document.getElementById('btn-req-notif');
   const status = document.getElementById('notif-perm-status');
@@ -7985,17 +8048,41 @@ function _updateNotifPermUI() {
   const p = Notification.permission;
   if (btn) btn.style.display = p === 'granted' ? 'none' : '';
   if (status) {
-    status.textContent = p === 'granted' ? '✅ Notificações ativadas' :
-                         p === 'denied'  ? '🚫 Notificações bloqueadas (desbloqueie nas configurações do navegador)' : '';
+    status.textContent = p === 'granted' ? '✅ Notificações push ativadas' :
+                         p === 'denied'  ? '🚫 Notificações bloqueadas — desbloqueie nas configurações do navegador' : '';
     status.style.color = p === 'granted' ? 'var(--success)' : 'var(--error)';
   }
 }
-function _sendNotif(title, body, tag) {
+
+function _sendNotifDirect(title, body, tag) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
   try {
-    const prefs = loadPreferences();
-    new Notification(title, { body, tag: tag || 'gkhub', icon: '/icons/icon-192.png', badge: '/icons/icon-192.png' });
+    if (navigator.serviceWorker.controller) {
+      // Usa Service Worker para mostrar notificação (funciona em background)
+      navigator.serviceWorker.ready.then(sw => {
+        sw.showNotification(title, {
+          body,
+          tag: tag || 'gkhub',
+          icon: './icons/icon-192.png',
+          badge: './icons/icon-192.png',
+          vibrate: [200, 100, 200],
+          data: { url: './' }
+        });
+      });
+    } else {
+      new Notification(title, { body, tag: tag || 'gkhub', icon: './icons/icon-192.png', badge: './icons/icon-192.png' });
+    }
   } catch(e) {}
+}
+
+function _sendNotif(title, body, tag) {
+  const prefs = loadPreferences();
+  if (!prefs) { _sendNotifDirect(title, body, tag); return; }
+  // Respeita preferências do usuário por tipo de notificação
+  const tagMap = { scout: 'notifScout', pdf: 'notifPdf', sync: 'notifSync', match: 'notifMatch' };
+  const prefKey = tagMap[tag];
+  if (prefKey && !prefs[prefKey]) return;
+  _sendNotifDirect(title, body, tag);
 }
 
 // ── Favorites ─────────────────────────────────────────────
@@ -8198,6 +8285,7 @@ if ('serviceWorker' in navigator) {
       } catch(e) { window.location.reload(); }
     };
 
+    // Registra SW principal
     navigator.serviceWorker.register('./sw.js').then(reg => {
       if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       reg.addEventListener('updatefound', () => {
@@ -8206,7 +8294,10 @@ if ('serviceWorker' in navigator) {
           if (sw.state === 'installed') sw.postMessage({ type: 'SKIP_WAITING' });
         });
       });
-    }).catch(() => {});
+    }).catch(e => console.warn('[GKHub] SW registration failed:', e));
+    // Registra SW do Firebase Messaging (para push em background)
+    navigator.serviceWorker.register('./firebase-messaging-sw.js', { scope: './' })
+      .catch(e => console.warn('[GKHub] FCM SW registration failed:', e));
     // Reload quando novo SW assume controle — só se não houver sessão ativa
     navigator.serviceWorker.addEventListener('controllerchange', _swSafeReload);
   });
