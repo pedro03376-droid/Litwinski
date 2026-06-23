@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' show TextDirection;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
