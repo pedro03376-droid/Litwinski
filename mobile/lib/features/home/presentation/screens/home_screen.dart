@@ -14,9 +14,21 @@ import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/stat_card.dart';
 import '../../../goalkeepers/data/repositories/goalkeeper_repository.dart';
 import '../../../matches/data/repositories/match_repository.dart';
+import '../../../notifications/data/repositories/notifications_repository.dart';
 import '../../../performance/data/repositories/performance_repository.dart';
 import '../widgets/evolution_chart.dart';
 import '../widgets/match_result_card.dart';
+
+// ─── Notification providers ───────────────────────────────────────────────────
+
+final _notificationsProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  return ref.read(notificationsRepositoryProvider).getAll();
+});
+
+final _unreadCountProvider = FutureProvider<int>((ref) async {
+  return ref.read(notificationsRepositoryProvider).getUnreadCount();
+});
 
 // ─── Domain models ────────────────────────────────────────────────────────────
 
@@ -212,6 +224,197 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
+// ─── Notification bell ────────────────────────────────────────────────────────
+
+class _NotificationBell extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadAsync = ref.watch(_unreadCountProvider);
+    final unread = unreadAsync.valueOrNull ?? 0;
+
+    return IconButton(
+      onPressed: () async {
+        await showModalBottomSheet<void>(
+          context: context,
+          backgroundColor: AppColors.darkCard,
+          isScrollControlled: true,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          builder: (_) => _NotificationsSheet(
+            onAllRead: () {
+              ref.invalidate(_notificationsProvider);
+              ref.invalidate(_unreadCountProvider);
+            },
+          ),
+        );
+        ref.invalidate(_unreadCountProvider);
+      },
+      icon: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          const Icon(Icons.notifications_outlined,
+              color: AppColors.textSecondary, size: 26),
+          if (unread > 0)
+            Positioned(
+              top: -2,
+              right: -2,
+              child: Container(
+                width: unread > 9 ? 16 : 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: AppColors.error,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                alignment: Alignment.center,
+                child: unread > 9
+                    ? const Text('9+',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 7,
+                            fontWeight: FontWeight.w800))
+                    : null,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NotificationsSheet extends ConsumerWidget {
+  final VoidCallback onAllRead;
+  const _NotificationsSheet({required this.onAllRead});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final async = ref.watch(_notificationsProvider);
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.55,
+      minChildSize: 0.3,
+      maxChildSize: 0.88,
+      expand: false,
+      builder: (_, controller) => Column(children: [
+        Container(
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          width: 36,
+          height: 4,
+          decoration: BoxDecoration(
+              color: AppColors.textMuted,
+              borderRadius: BorderRadius.circular(2)),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 12, 12),
+          child: Row(children: [
+            const Expanded(
+              child: Text('Notificações',
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700)),
+            ),
+            TextButton(
+              onPressed: () async {
+                await ref.read(notificationsRepositoryProvider).markAllAsRead();
+                ref.invalidate(_notificationsProvider);
+                onAllRead();
+              },
+              child: const Text('Marcar todas como lidas',
+                  style: TextStyle(color: AppColors.cyan, fontSize: 12)),
+            ),
+          ]),
+        ),
+        Expanded(
+          child: async.when(
+            loading: () => const Center(
+                child: CircularProgressIndicator(color: AppColors.cyan)),
+            error: (_, __) => const Center(
+                child: Text('Erro ao carregar',
+                    style: TextStyle(color: AppColors.textMuted))),
+            data: (notifications) {
+              if (notifications.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.notifications_none_outlined,
+                          size: 48, color: AppColors.textMuted),
+                      SizedBox(height: 12),
+                      Text('Nenhuma notificação',
+                          style: TextStyle(
+                              color: AppColors.textSecondary, fontSize: 15)),
+                    ],
+                  ),
+                );
+              }
+              return ListView.separated(
+                controller: controller,
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                itemCount: notifications.length,
+                separatorBuilder: (_, __) =>
+                    const Divider(color: Color(0xFF2A2A45), height: 1),
+                itemBuilder: (_, i) {
+                  final n = notifications[i];
+                  final isRead = n['isRead'] == true;
+                  return ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                    leading: Container(
+                      width: 10,
+                      height: 10,
+                      margin: const EdgeInsets.only(top: 4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isRead
+                            ? Colors.transparent
+                            : AppColors.cyan,
+                        border: isRead
+                            ? Border.all(
+                                color: AppColors.textMuted.withOpacity(0.3))
+                            : null,
+                      ),
+                    ),
+                    title: Text(
+                      n['title'] ?? '',
+                      style: TextStyle(
+                        color: isRead
+                            ? AppColors.textSecondary
+                            : AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight:
+                            isRead ? FontWeight.w400 : FontWeight.w600,
+                      ),
+                    ),
+                    subtitle: Text(
+                      n['body'] ?? '',
+                      style: const TextStyle(
+                          color: AppColors.textMuted, fontSize: 12),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: isRead
+                        ? null
+                        : () async {
+                            final id = n['id'] as String?;
+                            if (id == null) return;
+                            await ref
+                                .read(notificationsRepositoryProvider)
+                                .markAsRead(id);
+                            ref.invalidate(_notificationsProvider);
+                            onAllRead();
+                          },
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
 // ─── AppBar ───────────────────────────────────────────────────────────────────
 
 class _HomeAppBar extends ConsumerWidget {
@@ -272,96 +475,7 @@ class _HomeAppBar extends ConsumerWidget {
           ),
 
           // Notification bell
-          IconButton(
-            onPressed: () {
-              showModalBottomSheet<void>(
-                context: context,
-                backgroundColor: AppColors.darkCard,
-                isScrollControlled: true,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                builder: (_) => DraggableScrollableSheet(
-                  initialChildSize: 0.5,
-                  minChildSize: 0.3,
-                  maxChildSize: 0.85,
-                  expand: false,
-                  builder: (_, controller) => Column(
-                    children: [
-                      Container(
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        width: 36,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: AppColors.textMuted,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Notificações',
-                            style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const Expanded(
-                        child: Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.notifications_none_outlined,
-                                size: 48,
-                                color: AppColors.textMuted,
-                              ),
-                              SizedBox(height: 12),
-                              Text(
-                                'Nenhuma notificação',
-                                style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 15,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(
-                  Icons.notifications_outlined,
-                  color: AppColors.textSecondary,
-                  size: 26,
-                ),
-                // Unread badge
-                Positioned(
-                  top: -2,
-                  right: -2,
-                  child: Container(
-                    width: 9,
-                    height: 9,
-                    decoration: const BoxDecoration(
-                      color: AppColors.error,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+          _NotificationBell(),
 
           // Avatar
           GKAvatar(
