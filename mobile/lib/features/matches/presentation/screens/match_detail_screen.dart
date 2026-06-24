@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../data/repositories/match_repository.dart';
 import '../../domain/entities/match.dart';
 import '../widgets/heatmap_widget.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../ai_analysis/data/repositories/ai_analysis_repository.dart';
 
 final _matchDetailProvider =
     FutureProvider.family<GKMatch, String>((ref, id) async {
@@ -70,7 +70,7 @@ class _MatchDetailView extends StatelessWidget {
               _SummaryTab(match: match),
               _ScoutTab(scout: match.scout),
               _HeatmapTab(scout: match.scout),
-              _AiTab(matchId: match.id),
+              _AiTab(match: match),
             ],
           ),
         ),
@@ -410,16 +410,261 @@ class _HeatmapTab extends StatelessWidget {
   }
 }
 
-class _AiTab extends StatelessWidget {
-  final String matchId;
-  const _AiTab({required this.matchId});
+// ── AI Analysis tab ─────────────────────────────────────────────────────────
+
+final _matchAiProvider =
+    FutureProvider.family<List<AiAnalysis>, String>((ref, matchId) {
+  return ref.read(aiAnalysisRepositoryProvider).getForMatch(matchId);
+});
+
+class _AiTab extends ConsumerStatefulWidget {
+  final GKMatch match;
+  const _AiTab({required this.match});
+
+  @override
+  ConsumerState<_AiTab> createState() => _AiTabState();
+}
+
+class _AiTabState extends ConsumerState<_AiTab> {
+  bool _generating = false;
+  String? _error;
+
+  Future<void> _generate() async {
+    final scout = widget.match.scout;
+    if (scout == null) {
+      setState(() => _error = 'Scout não encontrado para esta partida.');
+      return;
+    }
+
+    setState(() {
+      _generating = true;
+      _error = null;
+    });
+
+    try {
+      await ref.read(aiAnalysisRepositoryProvider).generateForMatch(
+        goalkeeperId: widget.match.goalkeeperId,
+        matchId: widget.match.id,
+        metrics: scout.toJson(),
+      );
+      ref.invalidate(_matchAiProvider(widget.match.id));
+    } catch (e) {
+      setState(() => _error = e.toString());
+    } finally {
+      setState(() => _generating = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Text('Análise de IA será exibida aqui após o processamento.',
-          style: TextStyle(color: AppColors.textMuted),
-          textAlign: TextAlign.center),
+    final async = ref.watch(_matchAiProvider(widget.match.id));
+
+    return async.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppColors.cyan),
+      ),
+      error: (e, _) => Center(
+        child: Text('Erro: $e', style: const TextStyle(color: AppColors.error)),
+      ),
+      data: (analyses) => ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (analyses.isEmpty) ...[
+            const SizedBox(height: 32),
+            const Icon(Icons.psychology_outlined,
+                size: 64, color: AppColors.textMuted),
+            const SizedBox(height: 16),
+            const Text(
+              'Nenhuma análise de IA ainda.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                  color: AppColors.textSecondary, fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Gere uma análise com base nos dados do scout para receber insights personalizados.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+          ] else ...[
+            ...analyses.map((a) => _AnalysisCard(analysis: a)),
+          ],
+          const SizedBox(height: 16),
+          if (_error != null) ...[
+            Text(_error!,
+                style: const TextStyle(color: AppColors.error, fontSize: 12),
+                textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+          ],
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _generating ? null : _generate,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.cyan,
+                foregroundColor: AppColors.darkBackground,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: _generating
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: AppColors.darkBackground),
+                    )
+                  : const Icon(Icons.auto_awesome, size: 18),
+              label: Text(
+                  analyses.isEmpty ? 'Gerar Análise IA' : 'Gerar Nova Análise',
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
     );
+  }
+}
+
+class _AnalysisCard extends StatelessWidget {
+  final AiAnalysis analysis;
+  const _AnalysisCard({required this.analysis});
+
+  @override
+  Widget build(BuildContext context) {
+    final score = analysis.overallScore;
+    final scoreColor = score == null
+        ? AppColors.textMuted
+        : score >= 8
+            ? AppColors.success
+            : score >= 6
+                ? AppColors.warning
+                : AppColors.error;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.darkCard,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cyan.withOpacity(0.15)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          const Icon(Icons.psychology, color: AppColors.cyan, size: 18),
+          const SizedBox(width: 8),
+          Text('Análise IA',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.cyan,
+                    fontWeight: FontWeight.w700,
+                  )),
+          const Spacer(),
+          if (score != null)
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: scoreColor.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                score.toStringAsFixed(1),
+                style: TextStyle(
+                    color: scoreColor,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15),
+              ),
+            ),
+        ]),
+        Text(
+          DateFormat('dd/MM/yyyy HH:mm').format(analysis.createdAt.toLocal()),
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 11),
+        ),
+        if (analysis.strengths.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          _AiSection(
+              title: 'Pontos Fortes',
+              items: analysis.strengths,
+              icon: Icons.thumb_up_outlined,
+              color: AppColors.success),
+        ],
+        if (analysis.attentionPoints.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _AiSection(
+              title: 'Pontos de Atenção',
+              items: analysis.attentionPoints,
+              icon: Icons.warning_amber_outlined,
+              color: AppColors.warning),
+        ],
+        if (analysis.evolutionNotes.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _AiSection(
+              title: 'Evolução',
+              items: analysis.evolutionNotes,
+              icon: Icons.trending_up,
+              color: AppColors.cyan),
+        ],
+        if (analysis.trainingSuggestions.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _AiSection(
+              title: 'Sugestões de Treino',
+              items: analysis.trainingSuggestions,
+              icon: Icons.fitness_center,
+              color: const Color(0xFFBB86FC)),
+        ],
+      ]),
+    );
+  }
+}
+
+class _AiSection extends StatelessWidget {
+  final String title;
+  final List<String> items;
+  final IconData icon;
+  final Color color;
+  const _AiSection(
+      {required this.title,
+      required this.items,
+      required this.icon,
+      required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Row(children: [
+        Icon(icon, size: 14, color: color),
+        const SizedBox(width: 6),
+        Text(title.toUpperCase(),
+            style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.1)),
+      ]),
+      const SizedBox(height: 8),
+      ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 5,
+                  height: 5,
+                  margin: const EdgeInsets.only(top: 6, right: 8),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                Expanded(
+                  child: Text(item,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary, fontSize: 13,
+                          height: 1.4)),
+                ),
+              ],
+            ),
+          )),
+    ]);
   }
 }
