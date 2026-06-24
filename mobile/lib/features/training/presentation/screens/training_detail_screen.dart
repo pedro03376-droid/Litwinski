@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../core/network/api_client.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/constants/app_constants.dart';
+import '../../data/repositories/training_repository.dart';
 import '../../domain/entities/training_session.dart';
 
 final _trainingDetailProvider =
     FutureProvider.family<TrainingSession, String>((ref, id) async {
-  final api = ref.read(apiClientProvider);
-  final data = await api.get<Map<String, dynamic>>('/training/$id');
-  return TrainingSession.fromJson(data);
+  return ref.read(trainingRepositoryProvider).getById(id);
 });
 
 class TrainingDetailScreen extends ConsumerWidget {

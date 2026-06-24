@@ -1,87 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gkhub/core/constants/app_constants.dart';
 import 'package:gkhub/core/theme/app_theme.dart';
+import 'package:gkhub/features/training/data/repositories/training_repository.dart';
+import 'package:gkhub/features/training/domain/entities/training_session.dart';
 import '../widgets/training_card.dart';
 
 // ---------------------------------------------------------------------------
-// Mock data (using domain entity fields)
+// Providers
 // ---------------------------------------------------------------------------
 
-// Local view model that pairs the domain entity with a parsed date and intensity
-class _TrainingSessionView {
-  final String id;
-  final DateTime date;
-  final String category;
-  final TrainingIntensity intensity;
-  final int durationMinutes;
-  final String objective;
+final _trainingListProvider =
+    FutureProvider.autoDispose<List<TrainingSession>>((ref) async {
+  return ref.read(trainingRepositoryProvider).getAll(limit: 100);
+});
 
-  const _TrainingSessionView({
-    required this.id,
-    required this.date,
-    required this.category,
-    required this.intensity,
-    required this.durationMinutes,
-    required this.objective,
-  });
+final _selectedCategoryProvider = StateProvider.autoDispose<String?>((ref) => null);
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+TrainingIntensity _intensityEnum(String api) {
+  switch (api) {
+    case 'low':
+      return TrainingIntensity.baixa;
+    case 'high':
+      return TrainingIntensity.alta;
+    case 'max':
+      return TrainingIntensity.maxima;
+    default:
+      return TrainingIntensity.media;
+  }
 }
-
-final _mockSessions = <_TrainingSessionView>[
-  _TrainingSessionView(
-    id: '1',
-    date: DateTime(2026, 6, 7),
-    category: 'Reflexo',
-    intensity: TrainingIntensity.alta,
-    durationMinutes: 90,
-    objective: 'Trabalhar tempo de reação em defesas de curta distância',
-  ),
-  _TrainingSessionView(
-    id: '2',
-    date: DateTime(2026, 6, 5),
-    category: 'Defesa Alta',
-    intensity: TrainingIntensity.media,
-    durationMinutes: 75,
-    objective: 'Aperfeiçoar posicionamento em cruzamentos e bolas altas',
-  ),
-  _TrainingSessionView(
-    id: '3',
-    date: DateTime(2026, 6, 3),
-    category: 'Posicionamento',
-    intensity: TrainingIntensity.baixa,
-    durationMinutes: 60,
-    objective: 'Ajustar angulação defensiva nas bolas nas costas da zaga',
-  ),
-  _TrainingSessionView(
-    id: '4',
-    date: DateTime(2026, 6, 1),
-    category: 'Defesa Baixa',
-    intensity: TrainingIntensity.maxima,
-    durationMinutes: 100,
-    objective: 'Treino de raspões, espaladas e rebotes',
-  ),
-  _TrainingSessionView(
-    id: '5',
-    date: DateTime(2026, 5, 29),
-    category: 'Saída',
-    intensity: TrainingIntensity.media,
-    durationMinutes: 80,
-    objective: 'Saídas de gol e comando da área em bolas aéreas',
-  ),
-  _TrainingSessionView(
-    id: '6',
-    date: DateTime(2026, 5, 26),
-    category: 'Jogo com os Pés',
-    intensity: TrainingIntensity.baixa,
-    durationMinutes: 60,
-    objective: 'Construção pelo goleiro — passe curto e longo',
-  ),
-];
-
-final trainingSessionsProvider =
-    Provider<List<_TrainingSessionView>>((_) => _mockSessions);
-
-final _selectedCategoryProvider = StateProvider<String?>((ref) => null);
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -95,27 +47,20 @@ class TrainingListScreen extends ConsumerWidget {
     'Defesa Alta',
     'Defesa Baixa',
     'Posicionamento',
-    'Saída',
-    'Interceptação',
-    'Jogo com os Pés',
+    'Saída do Gol',
+    '1x1',
     'Distribuição',
-    'Decisão',
+    'Jogo com os Pés',
+    'Coordenação',
+    'Agilidade',
+    'Tempo de Reação',
+    'Misto',
   ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sessions = ref.watch(trainingSessionsProvider);
+    final async = ref.watch(_trainingListProvider);
     final selectedCategory = ref.watch(_selectedCategoryProvider);
-
-    final filtered = selectedCategory == null
-        ? sessions
-        : sessions.where((s) => s.category == selectedCategory).toList();
-
-    // Stats
-    final totalSessions = sessions.length;
-    final totalHours = sessions.isEmpty
-        ? 0.0
-        : sessions.map((s) => s.durationMinutes).reduce((a, b) => a + b) / 60.0;
 
     return Scaffold(
       backgroundColor: AppColors.darkBackground,
@@ -123,55 +68,173 @@ class TrainingListScreen extends ConsumerWidget {
         title: const Text('Treinos'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.search, color: AppColors.textSecondary),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh, color: AppColors.textSecondary),
+            onPressed: () => ref.invalidate(_trainingListProvider),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.go('/training/new'),
+        onPressed: () async {
+          await context.push('/training/new');
+          ref.invalidate(_trainingListProvider);
+        },
         backgroundColor: AppColors.cyan,
         foregroundColor: Colors.black,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: const Icon(Icons.add),
       ),
-      body: Column(
-        children: [
-          // Stats summary bar
-          _StatsSummaryBar(
-            totalSessions: totalSessions,
-            totalHours: totalHours,
+      body: async.when(
+        loading: () => _LoadingState(),
+        error: (e, _) => _ErrorState(
+          message: e.toString(),
+          onRetry: () => ref.invalidate(_trainingListProvider),
+        ),
+        data: (sessions) {
+          final filtered = selectedCategory == null
+              ? sessions
+              : sessions.where((s) {
+                  final label = AppConstants.trainingCategoryLabels[s.category] ?? s.category;
+                  return label == selectedCategory;
+                }).toList();
+
+          final totalSessions = sessions.length;
+          final totalHours = sessions.isEmpty
+              ? 0.0
+              : sessions
+                      .map((s) => s.durationMinutes ?? 0)
+                      .fold(0, (a, b) => a + b) /
+                  60.0;
+
+          return Column(
+            children: [
+              _StatsSummaryBar(
+                totalSessions: totalSessions,
+                totalHours: totalHours,
+              ),
+              _CategoryFilterRow(
+                categories: _categories,
+                selected: selectedCategory,
+                onSelect: (c) =>
+                    ref.read(_selectedCategoryProvider.notifier).state = c,
+              ),
+              Expanded(
+                child: filtered.isEmpty
+                    ? _EmptyState(hasFilter: selectedCategory != null)
+                    : ListView.separated(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 10),
+                        itemBuilder: (_, i) {
+                          final s = filtered[i];
+                          final categoryLabel =
+                              AppConstants.trainingCategoryLabels[s.category] ??
+                                  s.category;
+                          return TrainingCard(
+                            id: s.id,
+                            date: DateTime.tryParse(s.date) ?? DateTime.now(),
+                            category: categoryLabel,
+                            intensity: _intensityEnum(s.intensity),
+                            durationMinutes: s.durationMinutes ?? 0,
+                            objective: s.objective,
+                            onTap: () => context.go('/training/${s.id}'),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Loading state (shimmer-like)
+// ---------------------------------------------------------------------------
+
+class _LoadingState extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          height: 72,
+          decoration: BoxDecoration(
+            color: AppColors.darkCard,
+            borderRadius: BorderRadius.circular(14),
           ),
-          // Category filter chips
-          _CategoryFilterRow(
-            categories: _categories,
-            selected: selectedCategory,
-            onSelect: (c) =>
-                ref.read(_selectedCategoryProvider.notifier).state = c,
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
+            itemCount: 5,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (_, __) => Container(
+              height: 110,
+              decoration: BoxDecoration(
+                color: AppColors.darkCard,
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
           ),
-          // Sessions list
-          Expanded(
-            child: filtered.isEmpty
-                ? _EmptyState(hasFilter: selectedCategory != null)
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 100),
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
-                    itemBuilder: (_, i) {
-                      final s = filtered[i];
-                      return TrainingCard(
-                        id: s.id,
-                        date: s.date,
-                        category: s.category,
-                        intensity: s.intensity,
-                        durationMinutes: s.durationMinutes,
-                        objective: s.objective,
-                        onTap: () => context.go('/training/${s.id}'),
-                      );
-                    },
-                  ),
-          ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Error state
+// ---------------------------------------------------------------------------
+
+class _ErrorState extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off, size: 56, color: AppColors.textMuted),
+            const SizedBox(height: 16),
+            const Text(
+              'Não foi possível carregar os treinos',
+              style: TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tentar novamente'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.cyan,
+                foregroundColor: Colors.black,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -295,7 +358,6 @@ class _CategoryFilterRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         scrollDirection: Axis.horizontal,
         children: [
-          // "Todos" chip
           _FilterChip(
             label: 'Todos',
             isSelected: selected == null,
@@ -378,9 +440,7 @@ class _EmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
-            hasFilter
-                ? Icons.filter_list_off
-                : Icons.fitness_center_outlined,
+            hasFilter ? Icons.filter_list_off : Icons.fitness_center_outlined,
             size: 56,
             color: AppColors.textMuted,
           ),

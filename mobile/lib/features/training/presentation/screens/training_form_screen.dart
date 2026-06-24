@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:gkhub/core/network/api_client.dart';
 import 'package:gkhub/core/theme/app_theme.dart';
 import 'package:gkhub/features/goalkeepers/data/repositories/goalkeeper_repository.dart';
 import 'package:gkhub/features/goalkeepers/domain/entities/goalkeeper.dart';
+import 'package:gkhub/features/training/data/repositories/training_repository.dart';
 import 'package:gkhub/features/training/presentation/widgets/training_card.dart';
 import 'package:intl/intl.dart';
 
@@ -14,7 +14,7 @@ import 'package:intl/intl.dart';
 
 final _trainingFormProvider =
     StateNotifierProvider.autoDispose<_TrainingFormNotifier, _TrainingFormState>(
-  (ref) => _TrainingFormNotifier(ref.read(apiClientProvider)),
+  (ref) => _TrainingFormNotifier(ref.read(trainingRepositoryProvider)),
 );
 
 final _activeGoalkeepersProvider =
@@ -43,14 +43,14 @@ class _TrainingFormState {
 }
 
 class _TrainingFormNotifier extends StateNotifier<_TrainingFormState> {
-  final ApiClient _api;
+  final TrainingRepository _repo;
 
-  _TrainingFormNotifier(this._api) : super(const _TrainingFormState());
+  _TrainingFormNotifier(this._repo) : super(const _TrainingFormState());
 
   Future<void> save(Map<String, dynamic> data) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      await _api.post<Map<String, dynamic>>('/training', data: data);
+      await _repo.create(data);
       state = state.copyWith(isLoading: false, success: true);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
