@@ -1,6 +1,4 @@
-import {
-  Controller, Get, Post, Delete, Param, Query, Body, UseGuards, Res,
-} from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Query, Body, UseGuards, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -29,9 +27,7 @@ export class ReportsController {
   async download(@Param('id') id: string, @Res() res: Response) {
     const report = await this.reportsService.findOne(id);
     const filePath = '.' + report.pdfUrl;
-    if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ message: 'PDF file not found' });
-    }
+    if (!fs.existsSync(filePath)) return res.status(404).json({ message: 'PDF não encontrado' });
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(report.title)}.pdf"`);
     fs.createReadStream(filePath).pipe(res);
@@ -45,10 +41,14 @@ export class ReportsController {
 
   @Post('period')
   @ApiOperation({ summary: 'Generate period/date-range report' })
-  generatePeriodReport(
-    @Body() body: { goalkeeperId: string; dateFrom: Date; dateTo: Date },
-  ) {
+  generatePeriodReport(@Body() body: { goalkeeperId: string; dateFrom: Date; dateTo: Date }) {
     return this.reportsService.generatePeriodReport(body.goalkeeperId, body.dateFrom, body.dateTo);
+  }
+
+  @Post('training')
+  @ApiOperation({ summary: 'Generate training session report' })
+  generateTrainingReport(@Body() body: { goalkeeperId: string; trainingSessionId: string }) {
+    return this.reportsService.generateTrainingReport(body.goalkeeperId, body.trainingSessionId);
   }
 
   @Delete(':id')

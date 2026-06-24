@@ -1,9 +1,10 @@
 import {
-  Controller, Get, Post, Patch, Delete, Param, Query, Body, UseGuards, Request, HttpCode, HttpStatus,
+  Controller, Get, Post, Patch, Delete, Param, Query, Body,
+  UseGuards, Request, HttpCode, HttpStatus,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { NotificationsService } from './notifications.service';
+import { NotificationsService, SubscribeDto } from './notifications.service';
 
 @ApiTags('notifications')
 @ApiBearerAuth()
@@ -14,13 +15,28 @@ export class NotificationsController {
 
   @Post('subscribe')
   @HttpCode(HttpStatus.OK)
-  subscribe(
-    @Request() req: any,
-    @Body() body: { endpoint?: string; keys?: Record<string, string>; fcmToken?: string },
-  ) {
-    // Store subscription for future push delivery (FCM token or Web Push endpoint).
-    // Returns 200 so the frontend doesn't get a 404.
-    return { ok: true, userId: req.user.id };
+  @ApiOperation({ summary: 'Register FCM token or Web Push subscription' })
+  subscribe(@Request() req: any, @Body() body: SubscribeDto) {
+    return this.notificationsService.subscribe(req.user.id, body);
+  }
+
+  @Post('unsubscribe')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Deactivate a push subscription by token/endpoint' })
+  unsubscribe(@Request() req: any, @Body() body: { token: string }) {
+    return this.notificationsService.unsubscribe(req.user.id, body.token);
+  }
+
+  @Get('subscriptions')
+  @ApiOperation({ summary: 'List active push subscriptions for current user' })
+  getSubscriptions(@Request() req: any) {
+    return this.notificationsService.getSubscriptions(req.user.id);
+  }
+
+  @Get('unread-count')
+  @ApiOperation({ summary: 'Count unread notifications' })
+  countUnread(@Request() req: any) {
+    return this.notificationsService.countUnread(req.user.id).then((count) => ({ count }));
   }
 
   @Get()

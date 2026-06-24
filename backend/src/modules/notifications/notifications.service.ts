@@ -2,22 +2,70 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
+import { PushSubscription, PushProvider } from './entities/push-subscription.entity';
+
+export interface SubscribeDto {
+  fcmToken?: string;
+  endpoint?: string;
+  keys?: Record<string, string>;
+  deviceInfo?: string;
+}
 
 @Injectable()
 export class NotificationsService {
   constructor(
     @InjectRepository(Notification)
     private readonly notificationRepo: Repository<Notification>,
+    @InjectRepository(PushSubscription)
+    private readonly subscriptionRepo: Repository<PushSubscription>,
   ) {}
+
+  // ─── Subscriptions ────────────────────────────────────────────────────────
+
+  async subscribe(userId: string, dto: SubscribeDto): Promise<PushSubscription> {
+    const provider = dto.fcmToken ? PushProvider.FCM : PushProvider.WEB_PUSH;
+
+    const existing = dto.fcmToken
+      ? await this.subscriptionRepo.findOne({ where: { userId, fcmToken: dto.fcmToken } })
+      : await this.subscriptionRepo.findOne({ where: { userId, endpoint: dto.endpoint } });
+
+    if (existing) {
+      existing.isActive = true;
+      existing.deviceInfo = dto.deviceInfo ?? existing.deviceInfo;
+      return this.subscriptionRepo.save(existing);
+    }
+
+    const sub = this.subscriptionRepo.create({
+      userId,
+      provider,
+      fcmToken: dto.fcmToken,
+      endpoint: dto.endpoint,
+      keys: dto.keys,
+      deviceInfo: dto.deviceInfo,
+    });
+    return this.subscriptionRepo.save(sub);
+  }
+
+  async unsubscribe(userId: string, token: string): Promise<void> {
+    await this.subscriptionRepo.update(
+      [
+        { userId, fcmToken: token },
+        { userId, endpoint: token },
+      ].find(Boolean) as any,
+      { isActive: false },
+    );
+  }
+
+  async getSubscriptions(userId: string): Promise<PushSubscription[]> {
+    return this.subscriptionRepo.find({ where: { userId, isActive: true } });
+  }
+
+  // ─── Notifications ────────────────────────────────────────────────────────
 
   async findForUser(userId: string, unreadOnly = false) {
     const where: any = { userId };
     if (unreadOnly) where.isRead = false;
-    return this.notificationRepo.find({
-      where,
-      order: { createdAt: 'DESC' },
-      take: 50,
-    });
+    return this.notificationRepo.find({ where, order: { createdAt: 'DESC' }, take: 50 });
   }
 
   async create(dto: {
@@ -49,6 +97,12 @@ export class NotificationsService {
     await this.notificationRepo.delete(id);
   }
 
+  async countUnread(userId: string): Promise<number> {
+    return this.notificationRepo.count({ where: { userId, isRead: false } });
+  }
+
+  // ─── Alert helpers ────────────────────────────────────────────────────────
+
   async sendPerformanceDropAlert(userId: string, goalkeeperName: string, score: number) {
     return this.create({
       userId,
@@ -75,6 +129,15 @@ export class NotificationsService {
       body: `O relatório "${reportTitle}" está disponível.`,
       type: NotificationType.REPORT_READY,
       data: { reportId },
+    });
+  }
+
+  async sendTrainingReminder(userId: string, goalkeeperName: string) {
+    return this.create({
+      userId,
+      title: 'Lembrete de Treino',
+      body: `${goalkeeperName} não tem treinos registrados esta semana.`,
+      type: NotificationType.TRAINING_REMINDER,
     });
   }
 }
