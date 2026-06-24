@@ -12,12 +12,14 @@ import '../../../../shared/widgets/gk_avatar.dart';
 import '../../../../shared/widgets/loading_widget.dart';
 import '../../../../shared/widgets/section_header.dart';
 import '../../../../shared/widgets/stat_card.dart';
+import '../../../goalkeepers/data/repositories/goalkeeper_repository.dart';
+import '../../../matches/data/repositories/match_repository.dart';
+import '../../../performance/data/repositories/performance_repository.dart';
 import '../widgets/evolution_chart.dart';
 import '../widgets/match_result_card.dart';
 
-// ─── Mock providers (replace with real providers once API layer exists) ───────
+// ─── Domain models ────────────────────────────────────────────────────────────
 
-/// Holds the home dashboard summary data.
 class HomeSummary {
   final int gamesPlayed;
   final int totalSaves;
@@ -32,7 +34,6 @@ class HomeSummary {
   });
 }
 
-/// Holds a recent match's data for the "Última Partida" card.
 class RecentMatch {
   final DateTime date;
   final String competition;
@@ -55,78 +56,101 @@ class RecentMatch {
   });
 }
 
-// Simulated async data fetch – swap out for real Riverpod providers.
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const _dayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+
+String _dayLabel(String isoDate) {
+  try {
+    final d = DateTime.parse(isoDate);
+    return _dayLabels[d.weekday % 7];
+  } catch (_) {
+    return '—';
+  }
+}
+
+double _toPercent(dynamic v) =>
+    ((double.tryParse(v?.toString() ?? '0') ?? 0) * 10).clamp(0, 100);
+
+// ─── Providers ────────────────────────────────────────────────────────────────
+
+/// First goalkeeper ID available in the team (used as context for all dashboard data).
+final _firstGoalkeeperIdProvider = FutureProvider<String?>((ref) async {
+  final list = await ref.read(goalkeeperRepositoryProvider).getAll(perPage: 1);
+  return list.isEmpty ? null : list.first.id;
+});
+
 final homeSummaryProvider = FutureProvider<HomeSummary>((ref) async {
-  await Future.delayed(const Duration(milliseconds: 800));
-  return const HomeSummary(
-    gamesPlayed: 14,
-    totalSaves: 87,
-    savePercentage: 78.4,
-    evolutionScore: 82.1,
+  final gkId = await ref.watch(_firstGoalkeeperIdProvider.future);
+  if (gkId == null) {
+    return const HomeSummary(
+        gamesPlayed: 0, totalSaves: 0, savePercentage: 0, evolutionScore: 0);
+  }
+
+  final stats =
+      await ref.read(goalkeeperRepositoryProvider).getStats(gkId);
+
+  final gamesPlayed = (stats['totalMatches'] as num?)?.toInt() ?? 0;
+  final totalSaves = (stats['totalSaves'] as num?)?.toInt() ??
+      (stats['savesTotal'] as num?)?.toInt() ??
+      0;
+  final savePercentage =
+      (stats['savePercentage'] as num?)?.toDouble() ??
+          (stats['avgSavePercentage'] as num?)?.toDouble() ??
+          0.0;
+  final evolutionScore =
+      (stats['avgOverallScore'] as num?)?.toDouble() ??
+          (stats['overallScore'] as num?)?.toDouble() ??
+          0.0;
+
+  return HomeSummary(
+    gamesPlayed: gamesPlayed,
+    totalSaves: totalSaves,
+    savePercentage: savePercentage,
+    evolutionScore: evolutionScore,
   );
 });
 
 final recentMatchProvider = FutureProvider<RecentMatch?>((ref) async {
-  await Future.delayed(const Duration(milliseconds: 900));
+  final matches =
+      await ref.read(matchRepositoryProvider).getAll(limit: 1, page: 1);
+  if (matches.isEmpty) return null;
+  final m = matches.first;
+
+  final scout = await ref.read(matchRepositoryProvider).getScout(m.id);
+  final saves = scout?.totalSaves ?? 0;
+
   return RecentMatch(
-    date: DateTime.now().subtract(const Duration(days: 3)),
-    competition: 'Campeonato Estadual',
+    date: m.date,
+    competition: m.competition,
     teamName: 'Meu Time',
-    opponentName: 'Adversário FC',
-    teamScore: 2,
-    opponentScore: 1,
-    saves: 6,
-    cleanSheet: false,
+    opponentName: m.opponent,
+    teamScore: m.goalsScored,
+    opponentScore: m.goalsConceded,
+    saves: saves,
+    cleanSheet: m.isCleanSheet,
   );
 });
 
 final weeklyChartDataProvider =
     FutureProvider<List<Map<String, dynamic>>>((ref) async {
-  await Future.delayed(const Duration(milliseconds: 700));
-  return const [
-    {
-      'label': 'Seg',
-      'overallScore': 68.0,
-      'reflexScore': 72.0,
-      'highSaveScore': 60.0,
-    },
-    {
-      'label': 'Ter',
-      'overallScore': 74.0,
-      'reflexScore': 70.0,
-      'highSaveScore': 65.0,
-    },
-    {
-      'label': 'Qua',
-      'overallScore': 71.0,
-      'reflexScore': 75.0,
-      'highSaveScore': 68.0,
-    },
-    {
-      'label': 'Qui',
-      'overallScore': 80.0,
-      'reflexScore': 78.0,
-      'highSaveScore': 74.0,
-    },
-    {
-      'label': 'Sex',
-      'overallScore': 76.0,
-      'reflexScore': 80.0,
-      'highSaveScore': 70.0,
-    },
-    {
-      'label': 'Sáb',
-      'overallScore': 85.0,
-      'reflexScore': 82.0,
-      'highSaveScore': 80.0,
-    },
-    {
-      'label': 'Dom',
-      'overallScore': 82.0,
-      'reflexScore': 85.0,
-      'highSaveScore': 78.0,
-    },
-  ];
+  final gkId = await ref.watch(_firstGoalkeeperIdProvider.future);
+  if (gkId == null) return [];
+
+  final points =
+      await ref.read(performanceRepositoryProvider).getEvolution(gkId, period: 'weekly');
+
+  if (points.isEmpty) return [];
+
+  return points.map((p) {
+    final date = p['date']?.toString() ?? '';
+    return <String, dynamic>{
+      'label': _dayLabel(date),
+      'overallScore': _toPercent(p['overallScore']),
+      'reflexScore': _toPercent(p['reflexScore']),
+      'highSaveScore': _toPercent(p['highSaveScore']),
+    };
+  }).toList();
 });
 
 // ─── HomeScreen ───────────────────────────────────────────────────────────────
@@ -146,6 +170,7 @@ class HomeScreen extends ConsumerWidget {
           color: AppColors.cyan,
           backgroundColor: AppColors.darkCard,
           onRefresh: () async {
+            ref.invalidate(_firstGoalkeeperIdProvider);
             ref.invalidate(homeSummaryProvider);
             ref.invalidate(recentMatchProvider);
             ref.invalidate(weeklyChartDataProvider);
