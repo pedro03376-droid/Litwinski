@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { PushSubscription, PushProvider } from './entities/push-subscription.entity';
+import { FirebaseService } from './firebase.service';
 
 export interface SubscribeDto {
   fcmToken?: string;
@@ -18,6 +19,7 @@ export class NotificationsService {
     private readonly notificationRepo: Repository<Notification>,
     @InjectRepository(PushSubscription)
     private readonly subscriptionRepo: Repository<PushSubscription>,
+    private readonly firebase: FirebaseService,
   ) {}
 
   // ─── Subscriptions ────────────────────────────────────────────────────────
@@ -82,7 +84,19 @@ export class NotificationsService {
       type: dto.type || NotificationType.GENERAL,
       data: dto.data,
     });
-    return this.notificationRepo.save(notification);
+    const saved = await this.notificationRepo.save(notification);
+    this._dispatchPush(dto.userId, dto.title, dto.body, dto.data as Record<string, string> | undefined);
+    return saved;
+  }
+
+  private _dispatchPush(userId: string, title: string, body: string, data?: Record<string, string>): void {
+    this.subscriptionRepo
+      .find({ where: { userId, isActive: true } })
+      .then((subs) => {
+        const tokens = subs.map((s) => s.fcmToken).filter(Boolean) as string[];
+        return this.firebase.sendToTokens(tokens, title, body, data);
+      })
+      .catch(() => {/* fire-and-forget – ignore errors */});
   }
 
   async markAsRead(id: string, userId: string): Promise<void> {

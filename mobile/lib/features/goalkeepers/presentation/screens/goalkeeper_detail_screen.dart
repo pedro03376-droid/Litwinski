@@ -11,8 +11,26 @@ import 'package:gkhub/core/theme/app_theme.dart';
 import 'package:gkhub/core/providers/auth_provider.dart';
 import '../../domain/entities/goalkeeper.dart';
 import '../../data/repositories/goalkeeper_repository.dart';
+import '../../../matches/data/repositories/match_repository.dart';
+import '../../../training/data/repositories/training_repository.dart';
+import '../../../ai_analysis/data/repositories/ai_analysis_repository.dart';
 
 // ─── Providers ───────────────────────────────────────────────────────────────
+
+final _matchesProvider =
+    FutureProvider.family<List<GKMatch>, String>((ref, goalkeeperId) async {
+  return ref.read(matchRepositoryProvider).getAll(goalkeeperId: goalkeeperId);
+});
+
+final _trainingsProvider =
+    FutureProvider.family<List<TrainingSession>, String>((ref, goalkeeperId) async {
+  return ref.read(trainingRepositoryProvider).getAll(goalkeeperId: goalkeeperId);
+});
+
+final _aiAnalysesProvider =
+    FutureProvider.family<List<AiAnalysis>, String>((ref, goalkeeperId) async {
+  return ref.read(aiAnalysisRepositoryProvider).getForGoalkeeper(goalkeeperId, limit: 10);
+});
 
 final _goalkeeperDetailProvider =
     FutureProvider.family<Goalkeeper, String>((ref, id) async {
@@ -94,10 +112,10 @@ class _GoalkeeperDetailScreenState
           controller: _tabController,
           children: [
             _ProfileTab(goalkeeper: goalkeeper),
-            _MatchesTab(goalkeeperName: goalkeeper.name),
-            _TrainingTab(goalkeeperName: goalkeeper.name),
+            _MatchesTab(goalkeeperId: widget.id),
+            _TrainingTab(goalkeeperId: widget.id),
             _PerformanceTab(goalkeeperName: goalkeeper.name, goalkeeperStatsAsync: ref.watch(_goalkeeperStatsProvider(widget.id)), goalkeeperEvolutionAsync: ref.watch(_goalkeeperEvolutionProvider(widget.id))),
-            _AITab(goalkeeper: goalkeeper),
+            _AITab(goalkeeperId: widget.id),
           ],
         ),
       ),
@@ -483,38 +501,320 @@ class _DataRow extends StatelessWidget {
   }
 }
 
-// ─── Tab 2: Jogos (stub) ──────────────────────────────────────────────────────
+// ─── Tab 2: Jogos ────────────────────────────────────────────────────────────
 
-class _MatchesTab extends StatelessWidget {
-  final String goalkeeperName;
+class _MatchesTab extends ConsumerWidget {
+  final String goalkeeperId;
 
-  const _MatchesTab({required this.goalkeeperName});
+  const _MatchesTab({required this.goalkeeperId});
+
+  Color _resultColor(String? result) {
+    switch (result) {
+      case 'win':
+        return const Color(0xFF22C55E);
+      case 'draw':
+        return const Color(0xFFF59E0B);
+      case 'loss':
+        return const Color(0xFFEF4444);
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  String _resultLabel(String? result) {
+    switch (result) {
+      case 'win':
+        return 'Vitória';
+      case 'draw':
+        return 'Empate';
+      case 'loss':
+        return 'Derrota';
+      default:
+        return '—';
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Histórico de jogos',
-        style: TextStyle(color: AppColors.textMuted),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matchesAsync = ref.watch(_matchesProvider(goalkeeperId));
+    final fmt = DateFormat('dd/MM/yyyy');
+
+    return matchesAsync.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppColors.cyan),
       ),
+      error: (e, _) => Center(
+        child: Text(
+          'Erro ao carregar jogos: $e',
+          style: const TextStyle(color: AppColors.error),
+        ),
+      ),
+      data: (matches) {
+        if (matches.isEmpty) {
+          return const Center(
+            child: Text(
+              'Nenhum jogo registrado',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: matches.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final match = matches[index];
+            final color = _resultColor(match.result);
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.darkCard,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: color.withOpacity(0.2), width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          match.competition,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _resultLabel(match.result),
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'vs ${match.opponent}',
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.sports_soccer, color: AppColors.textMuted, size: 13),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${match.goalsScored} × ${match.goalsConceded}',
+                        style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      const Icon(Icons.calendar_today_outlined, color: AppColors.textMuted, size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        fmt.format(match.date),
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (match.category != null) ...[
+                        const SizedBox(width: 14),
+                        const Icon(Icons.category_outlined, color: AppColors.textMuted, size: 12),
+                        const SizedBox(width: 4),
+                        Text(
+                          match.category!,
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
 
-// ─── Tab 3: Treinos (stub) ────────────────────────────────────────────────────
+// ─── Tab 3: Treinos ───────────────────────────────────────────────────────────
 
-class _TrainingTab extends StatelessWidget {
-  final String goalkeeperName;
+class _TrainingTab extends ConsumerWidget {
+  final String goalkeeperId;
 
-  const _TrainingTab({required this.goalkeeperName});
+  const _TrainingTab({required this.goalkeeperId});
+
+  Color _intensityColor(String intensity) {
+    switch (intensity.toLowerCase()) {
+      case 'high':
+        return const Color(0xFFEF4444);
+      case 'medium':
+        return const Color(0xFFF59E0B);
+      case 'low':
+        return const Color(0xFF22C55E);
+      default:
+        return AppColors.textMuted;
+    }
+  }
+
+  String _intensityLabel(String intensity) {
+    switch (intensity.toLowerCase()) {
+      case 'high':
+        return 'Alta';
+      case 'medium':
+        return 'Média';
+      case 'low':
+        return 'Baixa';
+      default:
+        return intensity;
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Text(
-        'Histórico de treinos',
-        style: TextStyle(color: AppColors.textMuted),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final trainingsAsync = ref.watch(_trainingsProvider(goalkeeperId));
+
+    return trainingsAsync.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppColors.cyan),
       ),
+      error: (e, _) => Center(
+        child: Text(
+          'Erro ao carregar treinos: $e',
+          style: const TextStyle(color: AppColors.error),
+        ),
+      ),
+      data: (sessions) {
+        if (sessions.isEmpty) {
+          return const Center(
+            child: Text(
+              'Nenhum treino registrado',
+              style: TextStyle(color: AppColors.textMuted),
+            ),
+          );
+        }
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: sessions.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final session = sessions[index];
+            final color = _intensityColor(session.intensity);
+            return Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.darkCard,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.cyan.withOpacity(0.1), width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          session.category,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _intensityLabel(session.intensity),
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    session.objective,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      const Icon(Icons.calendar_today_outlined, color: AppColors.textMuted, size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        session.date,
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 12,
+                        ),
+                      ),
+                      if (session.durationMinutes != null) ...[
+                        const SizedBox(width: 14),
+                        const Icon(Icons.timer_outlined, color: AppColors.textMuted, size: 12),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${session.durationMinutes} min',
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                      if (session.exercises.isNotEmpty) ...[
+                        const SizedBox(width: 14),
+                        const Icon(Icons.fitness_center_outlined, color: AppColors.textMuted, size: 12),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${session.exercises.length} exercício${session.exercises.length == 1 ? '' : 's'}',
+                          style: const TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
@@ -832,85 +1132,210 @@ class _EvolutionLineChart extends StatelessWidget {
 
 // ─── Tab 5: IA ───────────────────────────────────────────────────────────────
 
-class _AITab extends StatelessWidget {
-  final Goalkeeper goalkeeper;
+class _AITab extends ConsumerStatefulWidget {
+  final String goalkeeperId;
 
-  const _AITab({required this.goalkeeper});
+  const _AITab({required this.goalkeeperId});
 
   @override
+  ConsumerState<_AITab> createState() => _AITabState();
+}
+
+class _AITabState extends ConsumerState<_AITab> {
+  @override
   Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _AICard(
-          title: 'Pontos Fortes',
-          icon: Icons.trending_up_rounded,
-          color: AppColors.success,
-          items: const [
-            'Excelente posicionamento em cobranças de falta',
-            'Bom jogo aéreo e domínio da área',
-            'Distribuição eficiente com o pé dominante',
-          ],
-        ),
-        const SizedBox(height: 12),
-        _AICard(
-          title: 'Pontos de Atenção',
-          icon: Icons.warning_amber_rounded,
-          color: AppColors.warning,
-          items: const [
-            'Defesas pelo lado esquerdo (não dominante)',
-            'Saídas em 1x1 necessitam de mais treino',
-          ],
-        ),
-        const SizedBox(height: 12),
-        _AICard(
-          title: 'Sugestões de Desenvolvimento',
-          icon: Icons.lightbulb_outline_rounded,
-          color: AppColors.cyan,
-          items: const [
-            'Incrementar treinos de reflexo bilateral',
-            'Trabalhar distribuição com mão não dominante',
-            'Exercícios de antecipação em situações de 1x1',
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.darkCard,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: AppColors.purple.withOpacity(0.3),
-              width: 1,
-            ),
-          ),
-          child: Row(
+    final analysesAsync = ref.watch(_aiAnalysesProvider(widget.goalkeeperId));
+    final fmt = DateFormat('dd/MM/yyyy HH:mm');
+
+    return analysesAsync.when(
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppColors.cyan),
+      ),
+      error: (e, _) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.purple.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.auto_awesome,
-                    color: AppColors.purpleLight, size: 18),
+              const Icon(Icons.error_outline, color: AppColors.error, size: 40),
+              const SizedBox(height: 12),
+              Text(
+                'Erro ao carregar análises: $e',
+                style: const TextStyle(color: AppColors.error),
+                textAlign: TextAlign.center,
               ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Análise gerada por IA baseada nos dados dos últimos 3 meses de treinos e jogos.',
-                  style: TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 11,
-                    height: 1.4,
-                  ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: () => ref.invalidate(_aiAnalysesProvider(widget.goalkeeperId)),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Tentar novamente'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.cyan,
+                  foregroundColor: AppColors.darkBackground,
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 80),
-      ],
+      ),
+      data: (analyses) {
+        if (analyses.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.darkCard,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.auto_awesome,
+                        color: AppColors.purple, size: 40),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Nenhuma análise disponível',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Use a tab de Partidas ou Treinos para gerar uma análise',
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 13,
+                      height: 1.5,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 20),
+                  OutlinedButton.icon(
+                    onPressed: () => ref.invalidate(_aiAnalysesProvider(widget.goalkeeperId)),
+                    icon: const Icon(Icons.refresh, color: AppColors.cyan),
+                    label: const Text('Atualizar',
+                        style: TextStyle(color: AppColors.cyan)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: AppColors.cyan),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+          itemCount: analyses.length + 1,
+          itemBuilder: (context, index) {
+            if (index == analyses.length) {
+              return Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: OutlinedButton.icon(
+                  onPressed: () => ref.invalidate(_aiAnalysesProvider(widget.goalkeeperId)),
+                  icon: const Icon(Icons.refresh, color: AppColors.cyan),
+                  label: const Text('Atualizar Análises',
+                      style: TextStyle(color: AppColors.cyan)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.cyan),
+                    minimumSize: const Size(double.infinity, 48),
+                  ),
+                ),
+              );
+            }
+
+            final analysis = analyses[index];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header row: date + score
+                  Row(
+                    children: [
+                      const Icon(Icons.auto_awesome,
+                          color: AppColors.purple, size: 14),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Análise • ${fmt.format(analysis.createdAt)}',
+                        style: const TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 11,
+                        ),
+                      ),
+                      const Spacer(),
+                      if (analysis.overallScore != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.purple.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            '${analysis.overallScore!.toStringAsFixed(1)} / 10',
+                            style: const TextStyle(
+                              color: AppColors.purple,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (analysis.strengths.isNotEmpty) ...[
+                    _AICard(
+                      title: 'Pontos Fortes',
+                      icon: Icons.trending_up_rounded,
+                      color: AppColors.success,
+                      items: analysis.strengths,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (analysis.attentionPoints.isNotEmpty) ...[
+                    _AICard(
+                      title: 'Pontos de Atenção',
+                      icon: Icons.warning_amber_rounded,
+                      color: AppColors.warning,
+                      items: analysis.attentionPoints,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (analysis.evolutionNotes.isNotEmpty) ...[
+                    _AICard(
+                      title: 'Notas de Evolução',
+                      icon: Icons.show_chart_rounded,
+                      color: AppColors.cyan,
+                      items: analysis.evolutionNotes,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  if (analysis.trainingSuggestions.isNotEmpty) ...[
+                    _AICard(
+                      title: 'Sugestões de Treino',
+                      icon: Icons.lightbulb_outline_rounded,
+                      color: AppColors.purple,
+                      items: analysis.trainingSuggestions,
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  Divider(
+                    color: AppColors.textMuted.withOpacity(0.1),
+                    height: 1,
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }
