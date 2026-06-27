@@ -39,11 +39,12 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       throw new UnauthorizedException('Token is invalid or user account is deactivated');
     }
 
-    // Attach teamId and planStatus from the JWT payload so guards can use them
-    return {
-      ...user,
+    // Attach teamId and planStatus from the JWT payload so guards can use them.
+    // Use Object.assign (not spread) to preserve the User entity prototype
+    // and its methods (hashPassword/validatePassword).
+    return Object.assign(user, {
       teamId: payload.teamId ?? user.teamId ?? null,
       planStatus: payload.planStatus ?? null,
-    };
+    });
   }
 }
