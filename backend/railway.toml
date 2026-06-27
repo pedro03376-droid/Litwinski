@@ -1,6 +1,8 @@
 [build]
 builder = "NIXPACKS"
-buildCommand = "npm install && npm run build"
+# --include=dev forces devDependencies (nest cli, typescript) to install even
+# when NODE_ENV=production, otherwise `nest build` fails with "nest: not found".
+buildCommand = "npm install --include=dev && npm run build"
 
 [deploy]
 startCommand = "node dist/main"
