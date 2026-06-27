@@ -12,7 +12,9 @@ import 'package:gkhub/core/providers/auth_provider.dart';
 import '../../domain/entities/goalkeeper.dart';
 import '../../data/repositories/goalkeeper_repository.dart';
 import '../../../matches/data/repositories/match_repository.dart';
+import '../../../matches/domain/entities/match.dart';
 import '../../../training/data/repositories/training_repository.dart';
+import '../../../training/domain/entities/training_session.dart';
 import '../../../ai_analysis/data/repositories/ai_analysis_repository.dart';
 
 // ─── Providers ───────────────────────────────────────────────────────────────
