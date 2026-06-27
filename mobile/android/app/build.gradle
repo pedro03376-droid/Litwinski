@@ -25,6 +25,12 @@ apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
 apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
 
+// Apply the Google Services plugin only when google-services.json is present,
+// so builds without Firebase configured (e.g. CI) keep working.
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+}
+
 android {
     namespace "com.gkhub.app"
     compileSdkVersion 35

@@ -8,6 +8,7 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:label="GKHUB"
@@ -33,5 +34,9 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Default channel used by FCM for background notifications -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="gkhub_default" />
     </application>
 </manifest>

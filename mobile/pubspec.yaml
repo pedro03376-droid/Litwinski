@@ -64,8 +64,10 @@ dependencies:
   video_player: ^2.8.2
   chewie: ^1.7.4
 
-  # Notifications
+  # Notifications & Push
   flutter_local_notifications: ^17.0.0
+  firebase_core: ^2.31.0
+  firebase_messaging: ^14.9.4
 
   # Animations
   flutter_animate: ^4.5.0

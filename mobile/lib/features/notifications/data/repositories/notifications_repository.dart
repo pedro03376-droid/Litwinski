@@ -29,4 +29,15 @@ class NotificationsRepository {
       _api.patch('/notifications/read-all');
 
   Future<void> delete(String id) => _api.delete('/notifications/$id');
+
+  /// Registers an FCM token with the backend so the user can receive push.
+  Future<void> subscribe(String fcmToken, {String? deviceInfo}) =>
+      _api.post('/notifications/subscribe', data: {
+        'fcmToken': fcmToken,
+        if (deviceInfo != null) 'deviceInfo': deviceInfo,
+      });
+
+  /// Deactivates an FCM token (e.g. on logout).
+  Future<void> unsubscribe(String fcmToken) =>
+      _api.post('/notifications/unsubscribe', data: {'token': fcmToken});
 }

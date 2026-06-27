@@ -3,6 +3,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 import '../constants/app_constants.dart';
 import '../network/api_client.dart';
+import '../notifications/push_notification_service.dart';
 
 final authStateProvider =
     StateNotifierProvider<AuthNotifier, AuthState>((ref) {
@@ -41,6 +42,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
   final _storage = const FlutterSecureStorage();
 
   AuthNotifier(this._api) : super(const AuthState()) {
+    // Re-register the token with the backend whenever FCM rotates it.
+    PushNotificationService.instance.onTokenRefresh = (token) async {
+      if (state.isAuthenticated) await _sendToken(token);
+    };
     _checkAuth();
   }
 
@@ -53,6 +58,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _api.get<Map<String, dynamic>>('/auth/profile');
       state = state.copyWith(isLoading: false, isAuthenticated: true, user: user);
+      _registerPush();
     } catch (_) {
       await _storage.deleteAll();
       state = state.copyWith(isLoading: false, isAuthenticated: false);
@@ -79,6 +85,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
         isAuthenticated: true,
         user: data['user'],
       );
+      _registerPush();
       return true;
     } catch (e) {
       state = state.copyWith(
@@ -91,8 +98,45 @@ class AuthNotifier extends StateNotifier<AuthState> {
   }
 
   Future<void> logout() async {
+    await _unregisterPush();
     await _storage.deleteAll();
     state = const AuthState(isLoading: false, isAuthenticated: false);
+  }
+
+  // ─── Push registration ──────────────────────────────────────────────────────
+
+  /// Asks for permission, fetches the FCM token and registers it. Fire-and-forget.
+  Future<void> _registerPush() async {
+    final push = PushNotificationService.instance;
+    if (!push.isAvailable) return;
+    try {
+      await push.requestPermission();
+      final token = await push.getToken();
+      if (token != null) await _sendToken(token);
+    } catch (_) {
+      // Push failures never block authentication.
+    }
+  }
+
+  Future<void> _sendToken(String token) async {
+    try {
+      await _api.post('/notifications/subscribe', data: {
+        'fcmToken': token,
+        'deviceInfo': PushNotificationService.instance.deviceLabel(),
+      });
+    } catch (_) {}
+  }
+
+  Future<void> _unregisterPush() async {
+    final push = PushNotificationService.instance;
+    if (!push.isAvailable) return;
+    try {
+      final token = await push.getToken();
+      if (token != null) {
+        await _api.post('/notifications/unsubscribe', data: {'token': token});
+      }
+      await push.deleteToken();
+    } catch (_) {}
   }
 
   bool get isAdmin => state.user?['role'] == 'admin';
