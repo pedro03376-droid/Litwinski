@@ -37,10 +37,14 @@ jobs:
 
       - name: Build debug APK
         working-directory: mobile
+        env:
+          FLUTTER_ROOT: ${{ env.FLUTTER_ROOT }}
         run: flutter build apk --debug --no-tree-shake-icons
 
       - name: Build release APK
         working-directory: mobile
+        env:
+          FLUTTER_ROOT: ${{ env.FLUTTER_ROOT }}
         run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload debug APK

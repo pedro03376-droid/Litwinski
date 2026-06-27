@@ -1,12 +1,13 @@
-const CACHE = 'gkhub-v11';
+const CACHE = 'gkhub-v12';
 
 const PRECACHE = [
   './',
   './index.html',
   './icon.svg',
   './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
   'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap',
-  'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
   'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
   'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
@@ -78,6 +79,35 @@ self.addEventListener('fetch', event => {
         if (req.destination === 'document') return caches.match('./index.html');
         return new Response('', { status: 503 });
       });
+    })
+  );
+});
+
+// ── Push event (Web Push API) ─────────────────────────────
+self.addEventListener('push', event => {
+  let data = { title: 'GK Hub', body: 'Nova notificação', tag: 'gkhub' };
+  try { if (event.data) data = { ...data, ...event.data.json() }; } catch(e) {}
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      tag: data.tag || 'gkhub',
+      icon: './icons/icon-192.png',
+      badge: './icons/icon-192.png',
+      vibrate: [200, 100, 200],
+      data: { url: data.url || './' }
+    })
+  );
+});
+
+// ── Notification click ────────────────────────────────────
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const url = event.notification.data?.url || './';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+      const existing = list.find(c => c.url.includes(self.location.origin));
+      if (existing) return existing.focus();
+      return clients.openWindow(url);
     })
   );
 });

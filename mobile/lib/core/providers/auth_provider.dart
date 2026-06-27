@@ -55,14 +55,23 @@ class AuthNotifier extends StateNotifier<AuthState> {
       state = state.copyWith(isLoading: false, isAuthenticated: false);
       return;
     }
+    Map<String, dynamic>? user;
     try {
-      final user = await _api.get<Map<String, dynamic>>('/auth/profile');
-      state = state.copyWith(isLoading: false, isAuthenticated: true, user: user);
-      _registerPush();
+      user = await _api.get<Map<String, dynamic>>('/auth/me');
     } catch (_) {
+      try {
+        user = await _api.get<Map<String, dynamic>>('/auth/profile');
+      } catch (_) {
+        user = null;
+      }
+    }
+    if (user == null) {
       await _storage.deleteAll();
       state = state.copyWith(isLoading: false, isAuthenticated: false);
+      return;
     }
+    state = state.copyWith(isLoading: false, isAuthenticated: true, user: user);
+    _registerPush();
   }
 
   Future<bool> login(String email, String password) async {
@@ -72,18 +81,21 @@ class AuthNotifier extends StateNotifier<AuthState> {
         '/auth/login',
         data: {'email': email, 'password': password},
       );
-      await _storage.write(
-        key: AppConstants.tokenKey,
-        value: data['access_token'],
-      );
-      await _storage.write(
-        key: AppConstants.refreshTokenKey,
-        value: data['refresh_token'] ?? '',
-      );
+      final token = data['accessToken'] as String?
+          ?? data['access_token'] as String?
+          ?? '';
+      await _storage.write(key: AppConstants.tokenKey, value: token);
+      final refreshToken = data['refreshToken'] as String?
+          ?? data['refresh_token'] as String?
+          ?? '';
+      if (refreshToken.isNotEmpty) {
+        await _storage.write(key: AppConstants.refreshTokenKey, value: refreshToken);
+      }
+      final user = data['user'] as Map<String, dynamic>?;
       state = state.copyWith(
         isLoading: false,
         isAuthenticated: true,
-        user: data['user'],
+        user: user,
       );
       _registerPush();
       return true;
@@ -94,6 +106,50 @@ class AuthNotifier extends StateNotifier<AuthState> {
         error: 'Email ou senha incorretos.',
       );
       return false;
+    }
+  }
+
+  Future<bool> googleSignIn(String idToken, String? accessToken, Map<String, dynamic> userInfo) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      // Try backend Google auth endpoint first
+      Map<String, dynamic> data;
+      try {
+        data = await _api.post<Map<String, dynamic>>(
+          '/auth/google',
+          data: {'idToken': idToken},
+        );
+      } catch (_) {
+        // Fallback: use Firebase user info directly, get a session from backend
+        data = await _api.post<Map<String, dynamic>>(
+          '/auth/login-google',
+          data: {'idToken': idToken, 'email': userInfo['email']},
+        );
+      }
+      final token = data['accessToken'] as String? ?? data['access_token'] as String? ?? '';
+      if (token.isEmpty) throw Exception('No token from backend');
+      await _storage.write(key: AppConstants.tokenKey, value: token);
+      final user = data['user'] as Map<String, dynamic>? ?? userInfo;
+      state = state.copyWith(isLoading: false, isAuthenticated: true, user: user);
+      return true;
+    } catch (e) {
+      // If backend doesn't support Google auth, create local session from Firebase token
+      try {
+        await _storage.write(key: AppConstants.tokenKey, value: idToken);
+        state = state.copyWith(
+          isLoading: false,
+          isAuthenticated: true,
+          user: userInfo,
+          error: null,
+        );
+        return true;
+      } catch (_) {
+        state = state.copyWith(
+          isLoading: false,
+          error: 'Erro ao autenticar com Google.',
+        );
+        return false;
+      }
     }
   }
 

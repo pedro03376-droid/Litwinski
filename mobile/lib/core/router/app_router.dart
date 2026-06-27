@@ -9,6 +9,7 @@ import '../../features/goalkeepers/presentation/screens/goalkeeper_detail_screen
 import '../../features/goalkeepers/presentation/screens/goalkeeper_form_screen.dart';
 import '../../features/matches/presentation/screens/matches_list_screen.dart';
 import '../../features/matches/presentation/screens/match_detail_screen.dart';
+import '../../features/matches/presentation/screens/match_form_screen.dart';
 import '../../features/matches/presentation/screens/match_scout_screen.dart';
 import '../../features/training/presentation/screens/training_list_screen.dart';
 import '../../features/training/presentation/screens/training_detail_screen.dart';
@@ -20,17 +21,6 @@ import '../../features/dashboard/presentation/screens/executive_dashboard_screen
 import '../shell/main_shell.dart';
 import '../providers/auth_provider.dart';
 
-class _MatchNewPlaceholder extends StatelessWidget {
-  const _MatchNewPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Novo Jogo')),
-      body: const Center(child: Text('Formulário de novo jogo em breve.')),
-    );
-  }
-}
 
 final routerProvider = Provider<GoRouter>((ref) {
   final authState = ref.watch(authStateProvider);
@@ -88,7 +78,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'new',
-                builder: (_, __) => const _MatchNewPlaceholder(),
+                builder: (_, __) => const MatchFormScreen(),
               ),
               GoRoute(
                 path: ':id',

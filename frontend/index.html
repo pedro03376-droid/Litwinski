@@ -12,7 +12,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="GK Hub" />
-  <link rel="apple-touch-icon" href="./icon.svg" />
+  <link rel="apple-touch-icon" sizes="192x192" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="512x512" href="./icons/icon-512.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
   <!-- Fonts & CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,9 +22,10 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <!-- Firebase Auth SDK para Google Sign-In -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
 
   <style>
     /* ════════════════════════════════════════════════════════
@@ -104,6 +107,10 @@
     @keyframes fadeIn {
       from { opacity: 0; }
       to   { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { transform: translateY(40px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
     }
     @keyframes slideIn {
       from { transform: translateX(48px); opacity: 0; }
@@ -1190,6 +1197,151 @@
       .destaques-grid { grid-template-columns: repeat(2, 1fr); }
       .stats-grid { grid-template-columns: 1fr 1fr; }
     }
+
+    /* ════════════════════════════════════════════════════════
+       USER DROPDOWN MENU
+    ════════════════════════════════════════════════════════ */
+    .user-dropdown {
+      position: absolute; top: calc(100% + 10px); right: 0;
+      min-width: 220px;
+      background: rgba(17,24,39,.97);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
+      z-index: 1000;
+      overflow: hidden;
+      animation: dropdownIn .2s cubic-bezier(.34,1.56,.64,1);
+    }
+    @keyframes dropdownIn {
+      from { opacity:0; transform:translateY(-8px) scale(.96); }
+      to   { opacity:1; transform:translateY(0) scale(1); }
+    }
+    .user-dropdown-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 16px 12px;
+    }
+    .user-dropdown-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: var(--primary-g);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 15px; color: #fff; flex-shrink: 0;
+    }
+    .user-dropdown-divider { height: 1px; background: var(--border); margin: 4px 0; }
+    .user-dropdown-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; font-size: 13px; color: var(--text);
+      cursor: pointer; transition: background .15s, color .15s;
+    }
+    .user-dropdown-item:hover { background: rgba(255,255,255,.06); }
+    .user-dropdown-item.danger { color: var(--error); }
+    .user-dropdown-item.danger:hover { background: rgba(239,68,68,.08); }
+    .user-dropdown-item svg { color: var(--muted); flex-shrink: 0; }
+    .user-dropdown-item.danger svg { color: var(--error); }
+
+    /* ════════════════════════════════════════════════════════
+       USER PAGE TABS
+    ════════════════════════════════════════════════════════ */
+    .user-tabs {
+      display: flex; gap: 4px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid var(--border);
+      border-radius: 14px; padding: 4px;
+      width: fit-content;
+    }
+    .user-tab {
+      display: flex; align-items: center; gap: 7px;
+      padding: 8px 16px; border-radius: 10px;
+      font-size: 13px; font-weight: 600; color: var(--muted);
+      background: none; border: none; cursor: pointer;
+      transition: all .2s; white-space: nowrap;
+    }
+    .user-tab:hover { color: var(--text); background: rgba(255,255,255,.05); }
+    .user-tab.active { background: var(--card); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    .user-tab svg { flex-shrink: 0; }
+    .user-tab-content { display: none; animation: pageIn .25s ease; }
+    .user-tab-content.active { display: block; }
+
+    /* ════════════════════════════════════════════════════════
+       PREFERENCES
+    ════════════════════════════════════════════════════════ */
+    .theme-btn {
+      padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border);
+      color: var(--muted); cursor: pointer; transition: all .18s;
+    }
+    .theme-btn:hover { background: rgba(255,255,255,.08); color: var(--text); }
+    .theme-btn.active { background: rgba(59,130,246,.15); border-color: rgba(59,130,246,.4); color: var(--primary); }
+    .color-swatch {
+      width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+      border: 3px solid transparent; transition: transform .15s, border-color .15s;
+    }
+    .color-swatch:hover { transform: scale(1.15); }
+    .color-swatch.active { border-color: #fff; box-shadow: 0 0 0 2px rgba(255,255,255,.3); }
+    .pref-toggle {
+      display: flex; align-items: center; gap: 10px; cursor: pointer;
+    }
+    .pref-toggle input[type=checkbox] { display: none; }
+    .toggle-track {
+      width: 40px; height: 22px; border-radius: 11px;
+      background: rgba(255,255,255,.1); border: 1px solid var(--border);
+      flex-shrink: 0; position: relative; transition: background .2s;
+    }
+    .toggle-track::after {
+      content: ''; position: absolute;
+      top: 2px; left: 2px; width: 16px; height: 16px;
+      border-radius: 50%; background: var(--muted);
+      transition: transform .2s, background .2s;
+    }
+    .pref-toggle input:checked + .toggle-track { background: rgba(59,130,246,.25); border-color: rgba(59,130,246,.5); }
+    .pref-toggle input:checked + .toggle-track::after { transform: translateX(18px); background: var(--primary); }
+
+    /* ════════════════════════════════════════════════════════
+       ACTIVITY LOG
+    ════════════════════════════════════════════════════════ */
+    .activity-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+    }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+    }
+    .activity-time { font-size: 11px; color: var(--muted); white-space: nowrap; margin-top: 2px; }
+
+    /* ════════════════════════════════════════════════════════
+       LIGHT THEME
+    ════════════════════════════════════════════════════════ */
+    body.theme-light {
+      --bg:      #F1F5F9;
+      --surface: #E2E8F0;
+      --card:    #FFFFFF;
+      --card-2:  #F8FAFC;
+      --border:  rgba(0,0,0,0.08);
+      --border-h:rgba(0,0,0,0.16);
+      --text:    #0F172A;
+      --muted:   #64748B;
+    }
+    body.theme-light .sidebar { background: rgba(248,250,252,.96); }
+    body.theme-light .topbar  { background: rgba(248,250,252,.90); }
+    body.theme-light table thead th { background: rgba(0,0,0,.02); }
+
+    .sr-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 9px 14px; cursor: pointer; transition: background .15s;
+    }
+    .sr-item:hover { background: rgba(255,255,255,.06); }
+    .sr-item svg { color: var(--muted); flex-shrink: 0; margin-top: 2px; }
+
+    .dash-period-btn {
+      padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border);
+      background: transparent; color: var(--muted); font-size: 12px; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .dash-period-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .dash-period-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
   </style>
 </head>
 <body>
@@ -1258,7 +1410,6 @@
     <div class="auth-divider"><span>ou</span></div>
     <div id="auth-google-section">
       <button type="button" class="btn-google"
-        ontouchstart="event.preventDefault();authGoogle();"
         onclick="authGoogle();">
         <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
         Entrar com Google
@@ -1352,6 +1503,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span class="nav-item-label">Relatórios PDF</span>
     </div>
+    <div class="nav-item" data-page="usuario" data-tooltip="Meu Perfil" onclick="navigate('usuario')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="nav-item-label">Meu Perfil</span>
+    </div>
     <div class="nav-item" data-page="config" data-tooltip="Nuvem (Firebase)" onclick="navigate('config')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><circle cx="12" cy="12" r="3"/><path d="M19 5l-7 7"/></svg>
       <span class="nav-item-label">Nuvem (Firebase)</span>
@@ -1390,9 +1545,10 @@
       <span class="topbar-title" id="topbar-title">Dashboard</span>
       <div class="topbar-season" id="topbar-season">Temporada 2026</div>
     </div>
-    <div class="topbar-search">
+    <div class="topbar-search" style="position:relative;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Buscar goleira, partida…" id="topbar-search-input" oninput="topbarSearch(this.value)">
+      <input type="text" placeholder="Buscar goleira, partida…" id="topbar-search-input" oninput="topbarSearch(this.value)" onkeydown="if(event.key==='Escape')clearTopbarSearch()">
+      <div id="topbar-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;min-width:320px;background:rgba(17,24,39,.98);border:1px solid rgba(255,255,255,.1);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5);z-index:2000;overflow:hidden;max-height:420px;overflow-y:auto;"></div>
     </div>
     <div class="topbar-actions">
       <span class="topbar-date" id="topbar-date"></span>
@@ -1402,8 +1558,45 @@
       <button class="topbar-icon-btn" onclick="navigate('config')" title="Configurações">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
       </button>
-      <div class="topbar-avatar" id="topbar-user-avatar" onclick="navigate('config')" title="Perfil">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <div style="position:relative;">
+        <div class="topbar-avatar" id="topbar-user-avatar" onclick="toggleUserMenu()" title="Meu Perfil" style="cursor:pointer;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div id="user-dropdown" class="user-dropdown" style="display:none;">
+          <div class="user-dropdown-header">
+            <div class="user-dropdown-avatar" id="ud-avatar">?</div>
+            <div>
+              <div id="ud-name" style="font-weight:700;font-size:13px;"></div>
+              <div id="ud-role" style="font-size:11px;color:var(--muted);"></div>
+            </div>
+          </div>
+          <div class="user-dropdown-divider"></div>
+          <div class="user-dropdown-item" onclick="closeUserMenu();navigate('usuario');">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Meu Perfil
+          </div>
+          <div class="user-dropdown-item" onclick="closeUserMenu();navigate('usuario');setTimeout(()=>switchUserTab('preferencias'),150);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+            Preferências
+          </div>
+          <div class="user-dropdown-item" onclick="closeUserMenu();navigate('usuario');setTimeout(()=>switchUserTab('atividade'),150);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            Minha Atividade
+          </div>
+          <div class="user-dropdown-item" onclick="closeUserMenu();navigate('usuario');setTimeout(()=>switchUserTab('seguranca'),150);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            Segurança
+          </div>
+          <div class="user-dropdown-divider"></div>
+          <div class="user-dropdown-item" onclick="closeUserMenu();showClubSelector();">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            Trocar Clube
+          </div>
+          <div class="user-dropdown-item danger" onclick="closeUserMenu();authLogout();">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sair
+          </div>
+        </div>
       </div>
     </div>
   </header>
@@ -1412,6 +1605,26 @@
 
     <!-- ══ DASHBOARD ══ -->
     <div id="page-dashboard" class="page active">
+
+      <!-- Filtro de Período -->
+      <div class="card" style="margin-bottom:20px;padding:14px 18px;">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" width="16" height="16"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span style="font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;">Período:</span>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="dash-period-btn active" id="dpb-all" onclick="setDashPeriod('all')">Tudo</button>
+            <button class="dash-period-btn" id="dpb-30" onclick="setDashPeriod('30')">30 dias</button>
+            <button class="dash-period-btn" id="dpb-90" onclick="setDashPeriod('90')">3 meses</button>
+            <button class="dash-period-btn" id="dpb-180" onclick="setDashPeriod('180')">6 meses</button>
+            <button class="dash-period-btn" id="dpb-365" onclick="setDashPeriod('365')">1 ano</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
+            <input type="date" id="dash-from" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
+            <span style="font-size:12px;color:var(--muted);">até</span>
+            <input type="date" id="dash-to" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
+          </div>
+        </div>
+      </div>
 
       <!-- KPI Stats Row -->
       <div class="stats-grid">
@@ -2123,6 +2336,299 @@
       </div>
     </div>
 
+    <!-- ══ USUÁRIO / PERFIL ══ -->
+    <div id="page-usuario" class="page">
+      <!-- Profile Header -->
+      <div class="card" style="margin-bottom:20px;padding:28px;">
+        <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+          <div style="position:relative;flex-shrink:0;">
+            <div id="up-foto-preview" style="width:80px;height:80px;border-radius:50%;background:var(--primary-g);border:3px solid rgba(59,130,246,.4);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800;color:#fff;overflow:hidden;cursor:pointer;" onclick="document.getElementById('up-foto-input').click()">
+              <span id="up-foto-initial">?</span>
+            </div>
+            <div style="position:absolute;bottom:0;right:0;width:24px;height:24px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid var(--bg);" onclick="document.getElementById('up-foto-input').click()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" width="11" height="11"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <input type="file" id="up-foto-input" accept="image/*" style="display:none;" onchange="handleProfilePhoto(this)">
+          </div>
+          <div style="flex:1;min-width:180px;">
+            <div id="up-display-name" style="font-size:22px;font-weight:800;letter-spacing:-.5px;margin-bottom:4px;">—</div>
+            <div id="up-display-role" style="font-size:13px;color:var(--muted);margin-bottom:10px;"></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <span id="up-display-club" class="badge badge-elite" style="font-size:11px;"></span>
+              <span id="up-display-join" style="font-size:11px;color:var(--muted);padding:3px 0;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="user-tabs" style="margin-bottom:20px;">
+        <button class="user-tab active" data-tab="perfil" onclick="switchUserTab('perfil')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Perfil
+        </button>
+        <button class="user-tab" data-tab="atividade" onclick="switchUserTab('atividade')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Atividade
+        </button>
+        <button class="user-tab" data-tab="favoritos" onclick="switchUserTab('favoritos')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          Favoritos
+        </button>
+        <button class="user-tab" data-tab="preferencias" onclick="switchUserTab('preferencias')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+          Preferências
+        </button>
+        <button class="user-tab" data-tab="seguranca" onclick="switchUserTab('seguranca')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Segurança
+        </button>
+      </div>
+
+      <!-- Tab: Perfil -->
+      <div id="user-tab-perfil" class="user-tab-content active">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Informações Pessoais</span></div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-label">Nome completo</label>
+                <input class="form-input" id="up-nome" type="text" placeholder="Seu nome">
+              </div>
+              <div class="form-group">
+                <label class="form-label">E-mail</label>
+                <input class="form-input" id="up-email" type="email" placeholder="email@exemplo.com">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Telefone</label>
+                <input class="form-input" id="up-telefone" type="tel" placeholder="(11) 99999-9999">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Cargo / Função</label>
+                <input class="form-input" id="up-cargo" type="text" placeholder="Ex: Preparador de Goleiras">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Clube</label>
+                <input class="form-input" id="up-clube" type="text" placeholder="Nome do clube">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Categoria</label>
+                <input class="form-input" id="up-categoria" type="text" placeholder="Ex: Sub-20, Profissional">
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:4px;">
+              <label class="form-label">Biografia profissional</label>
+              <textarea class="form-input form-textarea" id="up-bio" rows="3" placeholder='Ex: "Preparador de goleiras do Leoas da Serra Sub-20. 8 anos de experiência em futsal feminino."'></textarea>
+            </div>
+            <button class="btn btn-primary" style="margin-top:4px;" onclick="saveProfile()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2l11 0 5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Salvar Perfil
+            </button>
+            <div id="up-status" style="margin-top:10px;font-size:12px;"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Resumo da Conta</span></div>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;">
+                <span style="font-size:12px;color:var(--muted);">Membro desde</span>
+                <span id="up-info-join" style="font-size:12px;font-weight:600;">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;">
+                <span style="font-size:12px;color:var(--muted);">Último acesso</span>
+                <span id="up-info-last" style="font-size:12px;font-weight:600;">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;">
+                <span style="font-size:12px;color:var(--muted);">Clube atual</span>
+                <span id="up-info-club" style="font-size:12px;font-weight:600;">—</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;">
+                <span style="font-size:12px;color:var(--muted);">Scouts realizados</span>
+                <span id="up-info-scouts" style="font-size:12px;font-weight:600;color:var(--primary);">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;">
+                <span style="font-size:12px;color:var(--muted);">Partidas registradas</span>
+                <span id="up-info-matches" style="font-size:12px;font-weight:600;color:var(--success);">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;">
+                <span style="font-size:12px;color:var(--muted);">Goleiras avaliadas</span>
+                <span id="up-info-gks" style="font-size:12px;font-weight:600;color:var(--warning);">0</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Atividade -->
+      <div id="user-tab-atividade" class="user-tab-content">
+        <div class="stats-grid" style="margin-bottom:20px;">
+          <div class="stat-card">
+            <div class="stat-icon-wrap" style="background:rgba(59,130,246,.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" width="20" height="20"><path d="M2 20h.01M7 20v-4"/><path d="M12 20V10"/><path d="M17 20V4"/></svg>
+            </div>
+            <div class="stat-label">Scouts Realizados</div>
+            <div class="stat-value stat-cyan" id="act-scouts">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap" style="background:rgba(16,185,129,.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2" width="20" height="20"><circle cx="12" cy="12" r="10"/></svg>
+            </div>
+            <div class="stat-label">Partidas</div>
+            <div class="stat-value stat-green" id="act-partidas">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap" style="background:rgba(245,158,11,.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            </div>
+            <div class="stat-label">Goleiras</div>
+            <div class="stat-value stat-yellow" id="act-gks">0</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon-wrap" style="background:rgba(139,92,246,.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            </div>
+            <div class="stat-label">PDFs Gerados</div>
+            <div class="stat-value" style="color:#8B5CF6;" id="act-pdfs">0</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Histórico de Atividades</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="exportActivityCSV()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                CSV
+              </button>
+              <button class="btn btn-ghost btn-sm" onclick="clearActivityLog()">Limpar</button>
+            </div>
+          </div>
+          <div id="activity-log" style="display:flex;flex-direction:column;gap:0;"></div>
+        </div>
+      </div>
+
+      <!-- Tab: Favoritos -->
+      <div id="user-tab-favoritos" class="user-tab-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">⭐ Goleiras Favoritas</span>
+            </div>
+            <div id="fav-goleiras-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">⭐ Partidas Favoritas</span>
+            </div>
+            <div id="fav-partidas-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Preferências -->
+      <div id="user-tab-preferencias" class="user-tab-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Aparência</span></div>
+            <div class="form-group">
+              <label class="form-label">Tema</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="theme-btn" data-theme="dark" onclick="setAppTheme('dark')">🌙 Escuro</button>
+                <button class="theme-btn" data-theme="light" onclick="setAppTheme('light')">☀️ Claro</button>
+                <button class="theme-btn" data-theme="auto" onclick="setAppTheme('auto')">🔄 Auto</button>
+              </div>
+            </div>
+            <div class="form-group" style="margin-top:16px;">
+              <label class="form-label">Cor Principal</label>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <div class="color-swatch active" data-color="blue" style="background:#3B82F6;" onclick="setPrimaryColor('blue','#3B82F6','#2563EB')"></div>
+                <div class="color-swatch" data-color="green" style="background:#10B981;" onclick="setPrimaryColor('green','#10B981','#059669')"></div>
+                <div class="color-swatch" data-color="purple" style="background:#8B5CF6;" onclick="setPrimaryColor('purple','#8B5CF6','#7C3AED')"></div>
+                <div class="color-swatch" data-color="red" style="background:#EF4444;" onclick="setPrimaryColor('red','#EF4444','#DC2626')"></div>
+                <div class="color-swatch" data-color="orange" style="background:#F59E0B;" onclick="setPrimaryColor('orange','#F59E0B','#D97706')"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Sistema</span></div>
+            <div class="form-group">
+              <label class="form-label">Página inicial</label>
+              <select class="form-select" id="pref-home" onchange="savePreferences()">
+                <option value="dashboard">Dashboard</option>
+                <option value="goleiras">Goleiras</option>
+                <option value="matchcenter">Match Center</option>
+                <option value="partidas">Partidas</option>
+                <option value="performance">Performance</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label class="form-label">Categoria padrão</label>
+              <input class="form-input" id="pref-categoria" type="text" placeholder="Ex: Sub-20" onchange="savePreferences()">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label class="form-label">Notificações ativas</label>
+              <button class="btn btn-ghost btn-sm" id="btn-req-notif" onclick="requestNotifPermission()" style="margin-bottom:10px;width:100%;justify-content:center;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                Ativar Notificações do Navegador
+              </button>
+              <div id="notif-perm-status" style="font-size:11px;margin-bottom:8px;color:var(--muted);"></div>
+              <div style="display:flex;flex-direction:column;gap:10px;margin-top:6px;">
+                <label class="pref-toggle"><input type="checkbox" id="notif-scouts" onchange="savePreferences()"><span class="toggle-track"></span><span style="font-size:13px;">Scouts registrados</span></label>
+                <label class="pref-toggle"><input type="checkbox" id="notif-partidas" onchange="savePreferences()"><span class="toggle-track"></span><span style="font-size:13px;">Partidas registradas</span></label>
+                <label class="pref-toggle"><input type="checkbox" id="notif-pdf" onchange="savePreferences()"><span class="toggle-track"></span><span style="font-size:13px;">PDFs gerados</span></label>
+                <label class="pref-toggle"><input type="checkbox" id="notif-match" onchange="savePreferences()"><span class="toggle-track"></span><span style="font-size:13px;">Alertas do Match Center</span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Segurança -->
+      <div id="user-tab-seguranca" class="user-tab-content">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Alterar Senha</span></div>
+            <div class="form-group">
+              <label class="form-label">Senha atual</label>
+              <input class="form-input" id="sec-pass-old" type="password" placeholder="Senha atual" autocomplete="current-password">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label class="form-label">Nova senha</label>
+              <input class="form-input" id="sec-pass-new" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
+            </div>
+            <div class="form-group" style="margin-top:12px;">
+              <label class="form-label">Confirmar nova senha</label>
+              <input class="form-input" id="sec-pass-confirm" type="password" placeholder="Repita a nova senha" autocomplete="new-password">
+            </div>
+            <button class="btn btn-primary" style="margin-top:8px;" onclick="changePassword()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Alterar Senha
+            </button>
+            <div id="sec-pass-status" style="margin-top:10px;font-size:12px;"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Sessão Atual</span></div>
+            <div style="display:flex;flex-direction:column;gap:10px;">
+              <div style="padding:14px;background:var(--bg);border-radius:10px;border:1px solid rgba(16,185,129,.2);">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <div style="width:8px;height:8px;border-radius:50%;background:var(--success);"></div>
+                  <span style="font-size:12px;font-weight:700;color:var(--success);">Sessão ativa</span>
+                </div>
+                <div style="font-size:12px;color:var(--muted);line-height:1.8;">
+                  <div>Dispositivo: <strong style="color:var(--text);" id="sec-device">—</strong></div>
+                  <div>Navegador: <strong style="color:var(--text);" id="sec-browser">—</strong></div>
+                  <div>Início: <strong style="color:var(--text);" id="sec-session-start">—</strong></div>
+                </div>
+              </div>
+              <div style="padding:14px;background:var(--bg);border-radius:10px;">
+                <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Autenticação em dois fatores</div>
+                <span style="font-size:11px;background:rgba(245,158,11,.12);color:var(--warning);padding:4px 10px;border-radius:20px;font-weight:700;">Em breve</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <!-- /page-usuario -->
+
     <!-- ══ CONFIG FIREBASE ══ -->
     <div id="page-config" class="page">
 
@@ -2557,6 +3063,8 @@ const DB = {
 };
 
 let editingId = { goleira: null, partida: null, scout: null };
+let dashFilterFrom = '';
+let dashFilterTo   = '';
 let chartPerf = null, chartEvolucao = null;
 
 // ═══════════════════════════════════════════════════════════
@@ -2598,6 +3106,7 @@ const pageTitles = {
   matchcenter: 'Match Center — Ao Vivo',
   partidas: 'Partidas', scout: 'Scout de Jogo',
   performance: 'Performance',
+  usuario: 'Meu Perfil',
   heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)'
 };
 
@@ -2619,6 +3128,7 @@ function navigate(page) {
   if (page === 'heatmap') renderHeatmap();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
   if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); loadClubMembers(); }
+  if (page === 'usuario') { loadUserPage(); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2700,7 +3210,7 @@ function classifyPerf(score) {
 }
 
 function avgPerformance(goalkeeperId) {
-  const scouts = DB.scouts.filter(s => s.goalkeeperId == goalkeeperId);
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId == goalkeeperId));
   if (!scouts.length) return null;
   const scores = scouts.map(calcPerformance).filter(s => s !== null);
   if (!scores.length) return null;
@@ -2874,6 +3384,10 @@ function salvarPartida() {
   closeModal('modal-partida');
   renderPartidas();
   toast(editingId.partida ? 'Partida atualizada!' : 'Partida cadastrada!', 'success');
+  if (loadPreferences().notifPartidas) {
+    const adv = document.getElementById('pt-adversario')?.value || obj.adversario || 'adversário';
+    _sendNotif('Partida registrada', `Partida contra ${adv} salva com sucesso`, 'partida');
+  }
 }
 
 function editarPartida(id) {
@@ -3095,6 +3609,10 @@ function salvarScout() {
   closeModal('modal-scout');
   renderScouts();
   toast('Scout salvo!', 'success');
+  if (loadPreferences().notifScouts) {
+    const gkN = DB.goleiras.find(g=>g.id===document.getElementById('scout-goleira').value)?.nome || 'Goleira';
+    _sendNotif('Scout registrado', `Scout de ${gkN} salvo com sucesso`, 'scout');
+  }
 }
 
 function editarScout(id) {
@@ -3118,10 +3636,29 @@ function excluirScout(id) {
   toast('Scout excluído.', 'info');
 }
 
+// Merge scout records with the same goalkeeper + game into one combined entry.
+// Numeric stat fields are summed; manual nota is averaged when present.
+function _mergeScouts(scouts) {
+  const _STAT_FIELDS = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','int','sai','dpc','dpe','dmc','dme','pose','posd'];
+  const map = new Map();
+  for (const s of scouts) {
+    const key = `${s.goalkeeperId}__${s.partidaId}`;
+    if (!map.has(key)) {
+      map.set(key, { ...s });
+    } else {
+      const m = map.get(key);
+      for (const f of _STAT_FIELDS) m[f] = (+m[f]||0) + (+s[f]||0);
+      // average manual notas when both have one
+      if (m.nota && s.nota) m.nota = ((parseFloat(m.nota)||0) + (parseFloat(s.nota)||0)) / 2;
+    }
+  }
+  return [...map.values()];
+}
+
 function renderScouts() {
   const goleiras = DB.goleiras;
   const partidas = DB.partidas;
-  const scouts = DB.scouts;
+  const scouts = _mergeScouts(DB.scouts);
   const tbody = document.getElementById('tbody-scouts');
   if (!scouts.length) {
     tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><p>Nenhum scout registrado.</p></div></td></tr>`;
@@ -3184,7 +3721,7 @@ function renderPerformance() {
 function showPerfDetail(gkId) {
   const gk = DB.goleiras.find(g => g.id === gkId);
   if (!gk) return;
-  const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
   const el = document.getElementById('perf-detail');
   if (!scouts.length) {
     el.innerHTML = `<div class="card-title" style="margin-bottom:12px;">${_esc(gk.nome)}</div><div class="empty-state"><p>Nenhum scout registrado para esta goleira.</p></div>`;
@@ -3251,8 +3788,14 @@ function renderEvolucaoChart(labels, data) {
 // ═══════════════════════════════════════════════════════════
 function refreshDashboard() {
   const goleiras = DB.goleiras;
-  const partidas = DB.partidas;
-  const scouts = DB.scouts;
+  const partidas = DB.partidas.filter(p => {
+    if (!p.data) return true;
+    if (dashFilterFrom && p.data < dashFilterFrom) return false;
+    if (dashFilterTo   && p.data > dashFilterTo)   return false;
+    return true;
+  });
+  const filteredPtIds = new Set(partidas.map(p => p.id));
+  const scouts = DB.scouts.filter(s => !s.partidaId || filteredPtIds.has(s.partidaId));
   const elGk = document.getElementById('stat-total-gk');
   const elPt = document.getElementById('stat-total-matches');
   const elSc = document.getElementById('stat-total-scouts');
@@ -3782,8 +4325,8 @@ function renderPerfil() {
         </div>`).join('')}
     </div>`;
 
-  // Stats acumulados
-  const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  // Stats acumulados (scouts merged por jogo)
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
   const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
   const totalDef = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1');
   const totalGols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
@@ -3859,7 +4402,7 @@ function abrirAnalise() {
 function gerarAnalise(gkId) {
   analiseGkId = gkId;
   const gk      = DB.goleiras.find(g => g.id === gkId);
-  const scouts   = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  const scouts   = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
   const partidas = DB.partidas;
   if (!gk) return;
   if (scouts.length < 1) { toast('Sem scouts registrados para análise', 'error'); return; }
@@ -4477,6 +5020,7 @@ function pdfGeral() {
     styles: { fontSize: 9 } });
   doc.save('gkhub_relatorio_geral.pdf');
   toast('PDF gerado!','success');
+  if (loadPreferences().notifPdf) _sendNotif('PDF gerado', 'Relatório Geral exportado', 'pdf');
 }
 function pdfIndividual() {
   const gkId = document.getElementById('pdf-gk-select').value;
@@ -4485,7 +5029,7 @@ function pdfIndividual() {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   pdfHeader(doc, 'Relatório Individual — ' + gk.nome);
-  const scouts = DB.scouts.filter(s=>s.goalkeeperId===gkId);
+  const scouts = _mergeScouts(DB.scouts.filter(s=>s.goalkeeperId===gkId));
   const avg = avgPerformance(gkId); const { label } = classifyPerf(avg);
   doc.autoTable({ startY: 52, head: [['Dado','Valor']], body: [
     ['Nome', gk.nome],['Equipe', gk.equipe||'-'],['Categoria', gk.categoria||'-'],
@@ -4504,6 +5048,7 @@ function pdfIndividual() {
   }
   doc.save('gkhub_'+gk.nome.replace(/\s/g,'_')+'.pdf');
   toast('PDF gerado!','success');
+  if (loadPreferences().notifPdf) _sendNotif('PDF gerado', `Relatório de ${gk.nome} exportado`, 'pdf');
 }
 function pdfPartidas() {
   const partidas = DB.partidas;
@@ -4513,13 +5058,16 @@ function pdfPartidas() {
   pdfHeader(doc, 'Relatório de Partidas');
   const gkMap = Object.fromEntries(DB.goleiras.map(g=>[g.id,g.nome]));
   const rows = [...partidas].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(p => {
-    const r = p.gf>p.gc?'V':p.gf<p.gc?'D':'E';
-    return [p.data?formatDate(p.data):'-', p.adversario, p.competicao||'-', gkMap[p.goalkeeperId]||'-', `${r} ${p.gf}x${p.gc}`];
+    const hasScore = p.gf !== undefined && p.gc !== undefined;
+    const r = hasScore ? (p.gf>p.gc?'V':p.gf<p.gc?'D':'E') : '—';
+    const score = hasScore ? `${r} ${p.gf}×${p.gc}` : '—';
+    return [p.data?formatDate(p.data):'-', p.adversario, p.competicao||'-', gkMap[p.goalkeeperId]||'-', score];
   });
   doc.autoTable({ startY: 52, head: [['Data','Adversário','Competição','Goleira','Resultado']], body: rows,
     headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
   doc.save('gkhub_partidas.pdf');
   toast('PDF gerado!','success');
+  if (loadPreferences().notifPdf) _sendNotif('PDF gerado', 'Relatório de Partidas exportado', 'pdf');
 }
 
 function updateCompSelect() {
@@ -4579,7 +5127,7 @@ function pdfCompeticao() {
     const gk = goleiras.find(g => g.id === gkId);
     if (!gk) return null;
     const ptIds = partidas.filter(p => p.goalkeeperId === gkId || p.gk2Id === gkId).map(p => p.id);
-    const sc = scouts.filter(s => s.goalkeeperId === gkId && ptIds.includes(s.partidaId));
+    const sc = _mergeScouts(scouts.filter(s => s.goalkeeperId === gkId && ptIds.includes(s.partidaId)));
     const notas = sc.map(calcPerformance).filter(n => n !== null);
     const avg = notas.length ? Math.round((notas.reduce((a,b)=>a+b,0)/notas.length)*10)/10 : null;
     const { label } = classifyPerf(avg);
@@ -4622,6 +5170,7 @@ function pdfCompeticao() {
 
   doc.save('gkhub_' + comp.replace(/\s+/g,'_') + '.pdf');
   toast('PDF gerado!','success');
+  if (loadPreferences().notifPdf) _sendNotif('PDF gerado', `Relatório de ${comp} exportado`, 'pdf');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -6294,27 +6843,47 @@ function _initFirebaseAuth() {
         localStorage.removeItem('gkhub_google_redirect');
         if (result?.user) _googleLoginSuccess(result.user);
       }).catch(() => { localStorage.removeItem('gkhub_google_redirect'); });
-      // Observer: usuário já logado
+      // Observer: usuário já logado (restaura sessão Firebase ao reabrir o app)
       _firebaseAuth.onAuthStateChanged(user => {
-        if (user && !_loggedUser) _googleLoginSuccess(user);
+        if (user && !_loggedUser && !_googleLoginInProgress) _googleLoginSuccess(user);
       });
+      // Init FCM após auth estar pronto
+      setTimeout(_initFCM, 500);
     }
     return true;
   } catch(e) { console.error('Firebase init error:', e); return false; }
 }
 
+let _googleLoginInProgress = false;
 async function _googleLoginSuccess(user) {
-  _loggedUser   = user.displayName || user.email;
-  _sessionToken = _randToken();
-  localStorage.setItem(_AUTH_SESSION, JSON.stringify({ user: _loggedUser, token: _sessionToken, expiresAt: Date.now() + 86400000 }));
-  document.getElementById('auth-overlay').classList.add('hidden');
-  _updateSidebarUser();
-  // Try to load workspaces if backend token exists (from previous session)
-  const token = _apiToken();
-  if (token) {
-    await _afterLoginLoadClubs();
-  } else {
+  // Guard: prevent double-call from popup result + onAuthStateChanged racing
+  if (_googleLoginInProgress) return;
+  _googleLoginInProgress = true;
+  try {
+    _loggedUser   = user.displayName || user.email;
+    _sessionToken = _randToken();
+    localStorage.setItem(_AUTH_SESSION, JSON.stringify({
+      user: _loggedUser, token: _sessionToken,
+      expiresAt: Date.now() + 86400000,
+    }));
+    const overlay = document.getElementById('auth-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    _updateSidebarUser();
+    const token = _apiToken();
+    if (token) {
+      await _afterLoginLoadClubs();
+    } else {
+      navigate('dashboard');
+    }
+  } catch(e) {
+    console.error('[GKHub] _googleLoginSuccess error:', e);
+    // Force navigation even if something fails
+    const overlay = document.getElementById('auth-overlay');
+    if (overlay) overlay.classList.add('hidden');
     navigate('dashboard');
+  } finally {
+    // Allow future logins (e.g. after logout + re-login)
+    setTimeout(() => { _googleLoginInProgress = false; }, 2000);
   }
 }
 
@@ -6339,33 +6908,44 @@ async function authGoogle() {
     return;
   }
 
+  const _googleBtnHtml = `<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Entrar com Google`;
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
     provider.addScope('email');
+    provider.setCustomParameters({ prompt: 'select_account' });
     _setBtnText('Abrindo Google…');
     try {
-      // Tenta popup (funciona em iOS 16+ e desktop)
       const result = await _firebaseAuth.signInWithPopup(provider);
-      if (result?.user) _googleLoginSuccess(result.user);
+      if (result?.user) await _googleLoginSuccess(result.user);
     } catch(popupErr) {
-      if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/cancelled-popup-request') {
-        // Fallback: redirect (para browsers que bloqueiam popup)
-        _setBtnText('Redirecionando…');
-        localStorage.setItem('gkhub_google_redirect', '1');
-        await _firebaseAuth.signInWithRedirect(provider);
+      console.warn('[GKHub] popup error:', popupErr.code, popupErr.message);
+      if (popupErr.code === 'auth/popup-blocked' ||
+          popupErr.code === 'auth/cancelled-popup-request' ||
+          popupErr.code === 'auth/popup-closed-by-user') {
+        if (popupErr.code !== 'auth/popup-closed-by-user') {
+          // Fallback para redirect quando popup é bloqueado
+          _setBtnText('Redirecionando…');
+          localStorage.setItem('gkhub_google_redirect', '1');
+          await _firebaseAuth.signInWithRedirect(provider);
+        } else {
+          if (errEl) { errEl.textContent = 'Login cancelado. Tente novamente.'; errEl.style.display = 'block'; }
+        }
       } else {
         throw popupErr;
       }
     }
   } catch(e) {
-    const msg = e.code === 'auth/popup-closed-by-user' ? 'Login cancelado.'
-              : e.code === 'auth/popup-blocked'        ? 'Popup bloqueado — abra o site no Safari e permita popups.'
-              : e.code === 'auth/unauthorized-domain'  ? 'Domínio não autorizado. Adicione pedro03376-droid.github.io no Firebase → Authentication → Authorized domains.'
-              : e.code === 'auth/internal-error'       ? 'Erro interno do Firebase. Verifique se o domínio está autorizado no Firebase Console → Authentication → Authorized domains.'
-              : 'Erro: ' + (e.message || e.code);
+    console.error('[GKHub] authGoogle error:', e.code, e.message);
+    const msg = e.code === 'auth/unauthorized-domain'
+              ? `Domínio não autorizado no Firebase. Acesse o Firebase Console → Authentication → Authorized domains e adicione: pedro03376-droid.github.io`
+              : e.code === 'auth/internal-error'
+              ? 'Erro interno do Firebase. Verifique se o domínio está autorizado no Firebase Console.'
+              : e.code === 'auth/network-request-failed'
+              ? 'Sem conexão com a internet. Verifique sua rede e tente novamente.'
+              : `Erro: ${e.message || e.code}`;
     if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
   } finally {
-    _setBtnText('<svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg> Entrar com Google');
+    _setBtnText(_googleBtnHtml);
   }
 }
 
@@ -7019,7 +7599,8 @@ async function rtdbPut(path, data) {
 }
 
 async function rtdbDelete(path) {
-  await fetch(rtdbPath(path), { method: 'DELETE' });
+  const res = await fetch(rtdbPath(path), { method: 'DELETE' });
+  if (!res.ok) throw new Error('rtdbDelete HTTP ' + res.status);
 }
 
 function initFirebaseFromStorage() {
@@ -7080,14 +7661,93 @@ function cloudDelete(col, id) {
 function renderConfigStatus() {}
 
 function topbarSearch(val) {
-  if (!val.trim()) return;
+  const box = document.getElementById('topbar-search-results');
+  if (!box) return;
   const q = val.trim().toLowerCase();
-  const goleiras = DB.goleiras;
-  const match = goleiras.find(g => g.nome.toLowerCase().includes(q));
-  if (match) { navigate('goleiras'); setTimeout(() => {
-    const inp = document.getElementById('search-goleiras');
-    if (inp) { inp.value = val; inp.dispatchEvent(new Event('input')); }
-  }, 200); }
+  if (!q) { box.style.display = 'none'; return; }
+
+  const gks = DB.goleiras.filter(g =>
+    (g.nome||'').toLowerCase().includes(q) ||
+    (g.equipe||'').toLowerCase().includes(q) ||
+    (g.categoria||'').toLowerCase().includes(q));
+
+  const pts = DB.partidas.filter(p =>
+    (p.adversario||'').toLowerCase().includes(q) ||
+    (p.competicao||'').toLowerCase().includes(q) ||
+    (p.local||'').toLowerCase().includes(q));
+
+  const scRaw = DB.scouts.filter(s => {
+    const gk = DB.goleiras.find(g => g.id === s.goalkeeperId);
+    const pt = DB.partidas.find(p => p.id === s.partidaId);
+    return (gk?.nome||'').toLowerCase().includes(q) ||
+           (pt?.adversario||'').toLowerCase().includes(q);
+  });
+  const scUniq = [...new Map(scRaw.map(s => [`${s.goalkeeperId}__${s.partidaId}`, s])).values()];
+
+  if (!gks.length && !pts.length && !scUniq.length) {
+    box.innerHTML = `<div style="padding:14px 16px;font-size:12px;color:var(--muted);">Nenhum resultado para "<strong style="color:var(--text);">${_esc(val)}</strong>"</div>`;
+    box.style.display = 'block';
+    return;
+  }
+
+  let html = '';
+  if (gks.length) {
+    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Goleiras</div>`;
+    html += gks.slice(0,5).map(g => `
+      <div class="sr-item" onclick="clearTopbarSearch();navigate('goleiras');setTimeout(()=>{const i=document.getElementById('search-goleiras');if(i){i.value='${_esc(g.nome.replace(/'/g,"\\'"))}';i.dispatchEvent(new Event('input'));}},200)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <div>
+          <div style="font-size:13px;font-weight:600;">${_esc(g.nome)}</div>
+          ${g.equipe||g.categoria ? `<div style="font-size:11px;color:var(--muted);">${_esc([g.equipe,g.categoria].filter(Boolean).join(' · '))}</div>` : ''}
+        </div>
+      </div>`).join('');
+  }
+  if (pts.length) {
+    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Partidas</div>`;
+    html += pts.slice(0,5).map(p => {
+      const gk = DB.goleiras.find(g => g.id === p.goalkeeperId);
+      return `
+      <div class="sr-item" onclick="clearTopbarSearch();navigate('partidas');setTimeout(()=>{const i=document.getElementById('search-partidas');if(i){i.value='${_esc((p.adversario||'').replace(/'/g,"\\'"))}';i.dispatchEvent(new Event('input'));}},200)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/></svg>
+        <div>
+          <div style="font-size:13px;font-weight:600;">${_esc(p.adversario||'—')}</div>
+          <div style="font-size:11px;color:var(--muted);">${p.competicao ? _esc(p.competicao)+' · ' : ''}${gk ? _esc(gk.nome) : ''}${p.data ? ' · '+formatDate(p.data) : ''}</div>
+        </div>
+      </div>`}).join('');
+  }
+  if (scUniq.length) {
+    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Scouts</div>`;
+    html += scUniq.slice(0,4).map(s => {
+      const gk = DB.goleiras.find(g => g.id === s.goalkeeperId);
+      const pt = DB.partidas.find(p => p.id === s.partidaId);
+      return `
+      <div class="sr-item" onclick="clearTopbarSearch();navigate('scout');setTimeout(()=>{const i=document.getElementById('search-goleiras');},200)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <div>
+          <div style="font-size:13px;font-weight:600;">${_esc(gk?.nome||'—')}</div>
+          <div style="font-size:11px;color:var(--muted);">${_esc(pt?.adversario||'—')}${pt?.data?' · '+formatDate(pt.data):''}</div>
+        </div>
+      </div>`}).join('');
+  }
+  html += `<div style="padding:8px 12px;border-top:1px solid rgba(255,255,255,.05);text-align:right;">
+    <span style="font-size:11px;color:var(--muted);">${gks.length+pts.length+scUniq.length} resultado(s)</span>
+  </div>`;
+
+  box.innerHTML = html;
+  box.style.display = 'block';
+  // close on outside click
+  setTimeout(() => document.addEventListener('click', _closeSearch, true), 0);
+}
+function _closeSearch(e) {
+  const wrap = document.getElementById('topbar-search-input')?.closest('.topbar-search');
+  if (wrap && !wrap.contains(e.target)) { clearTopbarSearch(); document.removeEventListener('click', _closeSearch, true); }
+}
+function clearTopbarSearch() {
+  const inp = document.getElementById('topbar-search-input');
+  const box = document.getElementById('topbar-search-results');
+  if (inp) inp.value = '';
+  if (box) box.style.display = 'none';
+  document.removeEventListener('click', _closeSearch, true);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -7246,6 +7906,7 @@ function loadUserPage() {
   renderActivityLog();
   renderFavorites();
   loadPreferences();
+  _updateNotifPermUI();
 }
 
 // ── Activity Log ──────────────────────────────────────────
@@ -7280,10 +7941,148 @@ function renderActivityLog() {
     </div>`;
   }).join('');
 }
+function exportActivityCSV() {
+  const log = loadActivityLog();
+  if (!log.length) { toast('Nenhuma atividade para exportar', 'info'); return; }
+  const header = 'Data,Hora,Tipo,Atividade';
+  const rows = log.map(l => {
+    const d = new Date(l.time);
+    const date = d.toLocaleDateString('pt-BR');
+    const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const text = (l.text || '').replace(/"/g, '""');
+    return `"${date}","${time}","${l.color || 'primary'}","${text}"`;
+  });
+  const csv = [header, ...rows].join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = `gkhub_atividade_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV exportado!', 'success');
+  if (loadPreferences().notifPdf) _sendNotif('Exportação concluída', 'Histórico de atividade exportado como CSV', 'csv');
+}
 function clearActivityLog() {
   localStorage.removeItem(_ACTIVITY_KEY);
   renderActivityLog();
   toast('Histórico limpo', 'info');
+}
+
+// ── Push Notifications (Web Push + FCM) ───────────────────
+const _VAPID_PUBLIC_KEY = 'BA1ON1Kuq002EkI8JPPugpET2cpTqNwTrswuPx5WhSlzHLmou4X1AlwgwmDwQK4WM4vdLsyi6sfJ7O0QwO9uDXE';
+let _fcmMessaging = null;
+let _pushSubscription = null;
+
+function _initFCM() {
+  try {
+    if (!firebase.apps.length || !window.firebase?.messaging) return;
+    _fcmMessaging = firebase.messaging();
+    // Mensagens recebidas em foreground
+    _fcmMessaging.onMessage(payload => {
+      const { title = 'GK Hub', body = '' } = payload.notification || {};
+      _sendNotifDirect(title, body, payload.data?.tag);
+    });
+  } catch(e) { console.warn('[GKHub] FCM init:', e.message); }
+}
+
+async function requestNotifPermission() {
+  if (!('Notification' in window)) {
+    toast('Este navegador não suporta notificações', 'error'); return;
+  }
+  const permission = await Notification.requestPermission();
+  _updateNotifPermUI();
+  if (permission === 'granted') {
+    toast('Notificações ativadas!', 'success');
+    await _subscribePush();
+  } else if (permission === 'denied') {
+    toast('Permissão de notificações negada. Desbloqueie nas configurações do navegador.', 'error');
+  }
+}
+
+async function _subscribePush() {
+  try {
+    const sw = await navigator.serviceWorker.ready;
+
+    // 1. FCM token (se Firebase Messaging disponível)
+    if (_fcmMessaging) {
+      try {
+        const token = await _fcmMessaging.getToken({ vapidKey: _VAPID_PUBLIC_KEY, serviceWorkerRegistration: sw });
+        if (token) {
+          localStorage.setItem('gkhub_fcm_token', token);
+          // Envia token para o backend (best-effort)
+          const session = _getSession();
+          if (session?.token) {
+            apiRequest('POST', '/notifications/subscribe', { token, platform: 'web' }).catch(() => {});
+          }
+        }
+      } catch(e) { console.warn('[GKHub] FCM token:', e.message); }
+    }
+
+    // 2. Web Push subscription (fallback e redundância)
+    try {
+      const sub = await sw.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(_VAPID_PUBLIC_KEY)
+      });
+      _pushSubscription = sub;
+      localStorage.setItem('gkhub_push_sub', JSON.stringify(sub.toJSON()));
+    } catch(e) { /* Push API pode não estar disponível em todos os browsers */ }
+
+  } catch(e) { console.warn('[GKHub] Push subscribe:', e.message); }
+}
+
+function _urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+function _updateNotifPermUI() {
+  const btn = document.getElementById('btn-req-notif');
+  const status = document.getElementById('notif-perm-status');
+  if (!('Notification' in window)) {
+    if (btn) btn.style.display = 'none';
+    if (status) status.textContent = 'Notificações não suportadas neste navegador.';
+    return;
+  }
+  const p = Notification.permission;
+  if (btn) btn.style.display = p === 'granted' ? 'none' : '';
+  if (status) {
+    status.textContent = p === 'granted' ? '✅ Notificações push ativadas' :
+                         p === 'denied'  ? '🚫 Notificações bloqueadas — desbloqueie nas configurações do navegador' : '';
+    status.style.color = p === 'granted' ? 'var(--success)' : 'var(--error)';
+  }
+}
+
+function _sendNotifDirect(title, body, tag) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    if (navigator.serviceWorker.controller) {
+      // Usa Service Worker para mostrar notificação (funciona em background)
+      navigator.serviceWorker.ready.then(sw => {
+        sw.showNotification(title, {
+          body,
+          tag: tag || 'gkhub',
+          icon: './icons/icon-192.png',
+          badge: './icons/icon-192.png',
+          vibrate: [200, 100, 200],
+          data: { url: './' }
+        });
+      });
+    } else {
+      new Notification(title, { body, tag: tag || 'gkhub', icon: './icons/icon-192.png', badge: './icons/icon-192.png' });
+    }
+  } catch(e) {}
+}
+
+function _sendNotif(title, body, tag) {
+  const prefs = loadPreferences();
+  if (!prefs) { _sendNotifDirect(title, body, tag); return; }
+  // Respeita preferências do usuário por tipo de notificação
+  const tagMap = { scout: 'notifScout', pdf: 'notifPdf', sync: 'notifSync', match: 'notifMatch' };
+  const prefKey = tagMap[tag];
+  if (prefKey && !prefs[prefKey]) return;
+  _sendNotifDirect(title, body, tag);
 }
 
 // ── Favorites ─────────────────────────────────────────────
@@ -7435,6 +8234,32 @@ function switchUserTab(tab) {
   if (tab === 'preferencias') applyPreferences();
 }
 
+function setDashPeriod(key) {
+  document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.remove('active'));
+  const today = new Date();
+  if (key === 'all') {
+    dashFilterFrom = ''; dashFilterTo = '';
+    document.getElementById('dash-from').value = '';
+    document.getElementById('dash-to').value = '';
+    document.getElementById('dpb-all')?.classList.add('active');
+  } else {
+    const days = parseInt(key);
+    const from = new Date(today); from.setDate(from.getDate() - days);
+    dashFilterFrom = from.toISOString().slice(0,10);
+    dashFilterTo   = today.toISOString().slice(0,10);
+    document.getElementById('dash-from').value = dashFilterFrom;
+    document.getElementById('dash-to').value   = dashFilterTo;
+    document.getElementById('dpb-'+key)?.classList.add('active');
+  }
+  refreshDashboard();
+}
+function setDashCustomPeriod() {
+  dashFilterFrom = document.getElementById('dash-from')?.value || '';
+  dashFilterTo   = document.getElementById('dash-to')?.value   || '';
+  document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.remove('active'));
+  refreshDashboard();
+}
+
 // INIT
 initAuth();
 applyPreferences();
@@ -7460,6 +8285,7 @@ if ('serviceWorker' in navigator) {
       } catch(e) { window.location.reload(); }
     };
 
+    // Registra SW principal
     navigator.serviceWorker.register('./sw.js').then(reg => {
       if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       reg.addEventListener('updatefound', () => {
@@ -7468,7 +8294,10 @@ if ('serviceWorker' in navigator) {
           if (sw.state === 'installed') sw.postMessage({ type: 'SKIP_WAITING' });
         });
       });
-    }).catch(() => {});
+    }).catch(e => console.warn('[GKHub] SW registration failed:', e));
+    // Registra SW do Firebase Messaging (para push em background)
+    navigator.serviceWorker.register('./firebase-messaging-sw.js', { scope: './' })
+      .catch(e => console.warn('[GKHub] FCM SW registration failed:', e));
     // Reload quando novo SW assume controle — só se não houver sessão ativa
     navigator.serviceWorker.addEventListener('controllerchange', _swSafeReload);
   });
@@ -7481,6 +8310,14 @@ window.addEventListener('beforeinstallprompt', e => {
   document.getElementById('btn-install').style.display = 'flex';
 });
 
+// Show install button on iOS Safari (no beforeinstallprompt support)
+if (_isIOS() && !_isInStandaloneMode()) {
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('btn-install');
+    if (btn) btn.style.display = 'flex';
+  });
+}
+
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
   document.getElementById('btn-install').style.display = 'none';
@@ -7488,14 +8325,133 @@ window.addEventListener('appinstalled', () => {
 });
 
 function installPWA() {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  deferredInstallPrompt.userChoice.then(result => {
-    deferredInstallPrompt = null;
-    document.getElementById('btn-install').style.display = 'none';
-    if (result.outcome === 'accepted') toast('GK Hub instalado!', 'success');
-  });
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(result => {
+      deferredInstallPrompt = null;
+      document.getElementById('btn-install').style.display = 'none';
+      if (result.outcome === 'accepted') toast('GK Hub instalado!', 'success');
+    });
+  } else {
+    showInstallGuide();
+  }
 }
+
+function _isIOS() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function _isInStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+}
+
+function showInstallGuide() {
+  if (document.getElementById('modal-install-guide')) return;
+  const isIOS = _isIOS();
+  const overlay = document.createElement('div');
+  overlay.id = 'modal-install-guide';
+  overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);animation:fadeIn .2s ease;';
+  overlay.innerHTML = `
+    <div style="background:var(--card);border-radius:20px 20px 0 0;padding:28px 24px 36px;width:100%;max-width:480px;box-shadow:0 -20px 60px rgba(0,0,0,.4);border-top:1px solid rgba(255,255,255,.08);animation:slideUp .25s ease;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="./icons/icon-192.png" style="width:44px;height:44px;border-radius:10px;">
+          <div>
+            <div style="font-size:15px;font-weight:800;">Instalar GK Hub</div>
+            <div style="font-size:12px;color:var(--muted);">Acesso rápido na tela inicial</div>
+          </div>
+        </div>
+        <button onclick="document.getElementById('modal-install-guide').remove()" style="background:rgba(255,255,255,.08);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;color:var(--text);font-size:18px;display:flex;align-items:center;justify-content:center;">&times;</button>
+      </div>
+      ${isIOS ? `
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Siga os passos no <strong style="color:var(--text);">Safari</strong>:</div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">1</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Toque em Compartilhar</div>
+            <div style="font-size:11px;color:var(--muted);">Ícone <svg style="vertical-align:middle;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> na barra inferior do Safari</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">2</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Selecione "Adicionar à Tela de Início"</div>
+            <div style="font-size:11px;color:var(--muted);">Role a lista de opções para baixo</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">3</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Toque em "Adicionar"</div>
+            <div style="font-size:11px;color:var(--muted);">O ícone do GK Hub aparecerá na tela inicial</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:16px;padding:10px 14px;background:rgba(59,130,246,.08);border-radius:10px;font-size:11px;color:var(--muted);">
+        ⚠️ Abra este link no <strong style="color:var(--primary);">Safari</strong> — Chrome e Firefox no iOS não suportam instalação de PWA.
+      </div>
+      ` : `
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Siga os passos no navegador:</div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">1</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Abra o menu do Chrome/Edge</div>
+            <div style="font-size:11px;color:var(--muted);">Ícone ⋮ no canto superior direito</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">2</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Selecione "Instalar app" ou "Adicionar à tela inicial"</div>
+            <div style="font-size:11px;color:var(--muted);">Ou clique no ícone ⊕ na barra de endereço</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--bg);border-radius:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:800;color:#fff;">3</div>
+          <div>
+            <div style="font-size:13px;font-weight:600;">Confirme a instalação</div>
+            <div style="font-size:11px;color:var(--muted);">O app abrirá em janela própria sem barra do navegador</div>
+          </div>
+        </div>
+      </div>
+      `}
+      <button onclick="document.getElementById('modal-install-guide').remove()" class="btn btn-primary" style="width:100%;margin-top:20px;justify-content:center;">
+        Entendi
+      </button>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+}
+
+// Auto-show iOS install tip once (after 30s, if not installed and is iOS Safari)
+window.addEventListener('load', () => {
+  if (_isIOS() && !_isInStandaloneMode() && !localStorage.getItem('gkhub_ios_tip_shown')) {
+    setTimeout(() => {
+      if (!_isInStandaloneMode()) {
+        localStorage.setItem('gkhub_ios_tip_shown', '1');
+        document.getElementById('btn-install').style.display = 'flex';
+        // Show a subtle nudge after 30s
+        const nudge = document.createElement('div');
+        nudge.id = 'ios-nudge';
+        nudge.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card);border:1px solid rgba(255,255,255,.1);border-radius:14px;padding:12px 18px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.4);z-index:8000;cursor:pointer;max-width:340px;animation:slideUp .3s ease;';
+        nudge.innerHTML = `
+          <img src="./icons/icon-192.png" style="width:36px;height:36px;border-radius:8px;flex-shrink:0;">
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:700;">Instalar GK Hub</div>
+            <div style="font-size:11px;color:var(--muted);">Adicione à tela inicial para acesso rápido</div>
+          </div>
+          <button onclick="event.stopPropagation();document.getElementById('ios-nudge').remove()" style="background:rgba(255,255,255,.08);border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;color:var(--text);font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">&times;</button>
+        `;
+        nudge.addEventListener('click', () => { nudge.remove(); showInstallGuide(); });
+        document.body.appendChild(nudge);
+        setTimeout(() => nudge?.remove(), 10000);
+      }
+    }, 30000);
+  }
+});
 
 // Offline / Online status
 let offlineBanner = null;

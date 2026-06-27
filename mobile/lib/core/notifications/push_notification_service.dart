@@ -43,7 +43,11 @@ class PushNotificationService {
     _initialized = true;
 
     try {
-      await Firebase.initializeApp();
+      // main() already calls Firebase.initializeApp(options: ...). Only
+      // initialize here if that hasn't happened yet (e.g. a different entry).
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
       _available = true;
     } catch (e) {
       // Firebase not configured for this build — push disabled, app continues.
