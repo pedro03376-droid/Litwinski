@@ -40,6 +40,9 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     // Attach teamId and planStatus from the JWT payload so guards can use them
+    // Use direct property assignment to preserve the User class prototype chain
+    // (including hashPassword and validatePassword methods) instead of spreading
+    // into a plain object, which would strip the prototype and fail type checking.
     (user as User & { planStatus: string | null }).teamId = payload.teamId ?? user.teamId ?? null;
     (user as User & { planStatus: string | null }).planStatus = payload.planStatus ?? null;
     return user as User & { teamId: string | null; planStatus: string | null };
