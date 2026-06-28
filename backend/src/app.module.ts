@@ -17,6 +17,8 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ImportModule } from './modules/import/import.module';
 import { SeasonsModule } from './modules/seasons/seasons.module';
 import { CompetitionsModule } from './modules/competitions/competitions.module';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { databaseConfig } from './config/database.config';
 
 @Module({
@@ -27,6 +29,9 @@ import { databaseConfig } from './config/database.config';
       useFactory: databaseConfig,
       inject: [ConfigService],
     }),
+    // Global rate limit: 100 requests per minute per IP (stricter limits are
+    // applied per-route via @Throttle, e.g. on auth/login).
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     CacheModule.register({ isGlobal: true, ttl: 60000 }),
     AuthModule,
     UsersModule,
@@ -43,6 +48,9 @@ import { databaseConfig } from './config/database.config';
     ImportModule,
     SeasonsModule,
     CompetitionsModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
 export class AppModule {}

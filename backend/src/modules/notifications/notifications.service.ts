@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { Notification, NotificationType } from './entities/notification.entity';
 import { PushSubscription, PushProvider } from './entities/push-subscription.entity';
 import { FirebaseService } from './firebase.service';
@@ -92,9 +92,20 @@ export class NotificationsService {
   private _dispatchPush(userId: string, title: string, body: string, data?: Record<string, string>): void {
     this.subscriptionRepo
       .find({ where: { userId, isActive: true } })
-      .then((subs) => {
+      .then(async (subs) => {
         const tokens = subs.map((s) => s.fcmToken).filter(Boolean) as string[];
-        return this.firebase.sendToTokens(tokens, title, body, data);
+        if (tokens.length === 0) return;
+        const { invalidTokens } = await this.firebase.sendToTokens(
+          tokens, title, body, data,
+        );
+        // Deactivate tokens FCM reported as unregistered/invalid so the table
+        // doesn't accumulate dead devices and we stop retrying them.
+        if (invalidTokens.length > 0) {
+          await this.subscriptionRepo.update(
+            { userId, fcmToken: In(invalidTokens) },
+            { isActive: false },
+          );
+        }
       })
       .catch(() => {/* fire-and-forget – ignore errors */});
   }
@@ -107,8 +118,11 @@ export class NotificationsService {
     await this.notificationRepo.update({ userId, isRead: false }, { isRead: true });
   }
 
-  async remove(id: string): Promise<void> {
-    await this.notificationRepo.delete(id);
+  async remove(id: string, userId: string): Promise<void> {
+    const result = await this.notificationRepo.delete({ id, userId });
+    if (!result.affected) {
+      throw new NotFoundException(`Notification ${id} not found`);
+    }
   }
 
   async countUnread(userId: string): Promise<number> {

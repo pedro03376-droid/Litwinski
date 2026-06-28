@@ -129,27 +129,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final token = data['accessToken'] as String? ?? data['access_token'] as String? ?? '';
       if (token.isEmpty) throw Exception('No token from backend');
       await _storage.write(key: AppConstants.tokenKey, value: token);
+      final refreshToken = data['refreshToken'] as String?
+          ?? data['refresh_token'] as String?
+          ?? '';
+      if (refreshToken.isNotEmpty) {
+        await _storage.write(key: AppConstants.refreshTokenKey, value: refreshToken);
+      }
       final user = data['user'] as Map<String, dynamic>? ?? userInfo;
       state = state.copyWith(isLoading: false, isAuthenticated: true, user: user);
+      _registerPush();
       return true;
     } catch (e) {
-      // If backend doesn't support Google auth, create local session from Firebase token
-      try {
-        await _storage.write(key: AppConstants.tokenKey, value: idToken);
-        state = state.copyWith(
-          isLoading: false,
-          isAuthenticated: true,
-          user: userInfo,
-          error: null,
-        );
-        return true;
-      } catch (_) {
-        state = state.copyWith(
-          isLoading: false,
-          error: 'Erro ao autenticar com Google.',
-        );
-        return false;
-      }
+      // No insecure fallback: without a real backend session token the app must
+      // NOT consider the user authenticated (the Firebase idToken is not a valid
+      // bearer for our API and would only produce 401s).
+      state = state.copyWith(
+        isLoading: false,
+        isAuthenticated: false,
+        error: 'Erro ao autenticar com Google.',
+      );
+      return false;
     }
   }
 

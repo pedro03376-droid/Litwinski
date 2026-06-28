@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Report, ReportType } from './entities/report.entity';
@@ -151,8 +151,16 @@ export class ReportsService {
     return this.reportRepo.save(report);
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, user?: { teamId?: string | null; role?: string }): Promise<void> {
     const report = await this.findOne(id);
+    // Ownership: a non-admin user may only delete reports for goalkeepers in
+    // their own team. Skips the check when no user is supplied (internal calls).
+    if (user && user.role !== 'admin') {
+      const ownerTeamId = (report.goalkeeper as any)?.teamId;
+      if (ownerTeamId && user.teamId && ownerTeamId !== user.teamId) {
+        throw new ForbiddenException('You cannot delete this report');
+      }
+    }
     if (report.pdfUrl && fs.existsSync('.' + report.pdfUrl)) fs.unlinkSync('.' + report.pdfUrl);
     await this.reportRepo.remove(report);
   }

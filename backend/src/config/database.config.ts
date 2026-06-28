@@ -17,6 +17,15 @@ import { Notification } from '../modules/notifications/entities/notification.ent
 import { Season } from '../modules/seasons/entities/season.entity';
 import { Competition } from '../modules/competitions/entities/competition.entity';
 
+// Single source of truth for the entity list, shared by the Nest TypeORM
+// module and the standalone CLI DataSource (migrations).
+export const entities = [
+  User, Team, UserTeamMembership, Goalkeeper, Match, MatchScout,
+  TrainingSession, Exercise, ExerciseResult,
+  PerformanceIndex, Video, Report, AiAnalysis,
+  Notification, Season, Competition,
+];
+
 export const databaseConfig = (
   configService: ConfigService,
 ): TypeOrmModuleOptions => {
@@ -25,13 +34,12 @@ export const databaseConfig = (
 
   const base: TypeOrmModuleOptions = {
     type: 'postgres',
-    entities: [
-      User, Team, UserTeamMembership, Goalkeeper, Match, MatchScout,
-      TrainingSession, Exercise, ExerciseResult,
-      PerformanceIndex, Video, Report, AiAnalysis,
-      Notification, Season, Competition,
-    ],
-    synchronize: !isProd || configService.get('DB_SYNC') === 'true',
+    entities,
+    // synchronize is DEV-ONLY. In production the schema is managed by
+    // migrations (migrationsRun) so the DB is never altered automatically.
+    synchronize: !isProd,
+    migrations: [__dirname + '/../migrations/*.{ts,js}'],
+    migrationsRun: isProd,
     logging: !isProd,
     ssl: isProd ? { rejectUnauthorized: false } : false,
   };

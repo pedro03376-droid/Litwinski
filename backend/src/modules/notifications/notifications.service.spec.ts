@@ -27,7 +27,7 @@ const mockSubscriptionRepo = {
 };
 
 const mockFirebaseService = {
-  sendToTokens: jest.fn().mockResolvedValue(0),
+  sendToTokens: jest.fn().mockResolvedValue({ success: 0, invalidTokens: [] }),
 };
 
 describe('NotificationsService', () => {
