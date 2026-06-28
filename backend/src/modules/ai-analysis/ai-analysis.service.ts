@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AiAnalysis, AnalysisSource } from './entities/ai-analysis.entity';
+import { LlmAnalysisService } from './llm-analysis.service';
 
 interface ScoutMetrics {
   highSaveRight: number;
@@ -31,6 +32,7 @@ export class AiAnalysisService {
   constructor(
     @InjectRepository(AiAnalysis)
     private readonly analysisRepo: Repository<AiAnalysis>,
+    private readonly llm: LlmAnalysisService,
   ) {}
 
   async analyzeMatch(
@@ -39,7 +41,9 @@ export class AiAnalysisService {
     metrics: ScoutMetrics,
     previousMetrics?: ScoutMetrics,
   ): Promise<AiAnalysis> {
-    const analysis = this.generateMatchAnalysis(metrics, previousMetrics);
+    const analysis =
+      (this.llm.isEnabled() && (await this.llm.analyzeMatch(metrics, previousMetrics))) ||
+      this.generateMatchAnalysis(metrics, previousMetrics);
 
     const entity = this.analysisRepo.create({
       goalkeeperId,
@@ -61,7 +65,9 @@ export class AiAnalysisService {
     trainingSessionId: string,
     metrics: TrainingMetrics,
   ): Promise<AiAnalysis> {
-    const analysis = this.generateTrainingAnalysis(metrics);
+    const analysis =
+      (this.llm.isEnabled() && (await this.llm.analyzeTraining(metrics))) ||
+      this.generateTrainingAnalysis(metrics);
 
     const entity = this.analysisRepo.create({
       goalkeeperId,

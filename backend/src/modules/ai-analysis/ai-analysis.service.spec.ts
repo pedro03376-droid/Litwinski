@@ -2,6 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { AiAnalysisService } from './ai-analysis.service';
 import { AiAnalysis, AnalysisSource } from './entities/ai-analysis.entity';
+import { LlmAnalysisService } from './llm-analysis.service';
+
+// LLM disabled in tests so the deterministic heuristic path is exercised.
+const mockLlm = {
+  isEnabled: jest.fn().mockReturnValue(false),
+  analyzeMatch: jest.fn(),
+  analyzeTraining: jest.fn(),
+};
 
 const mockRepo = {
   create: jest.fn().mockImplementation((dto) => dto),
@@ -46,6 +54,10 @@ describe('AiAnalysisService', () => {
         {
           provide: getRepositoryToken(AiAnalysis),
           useValue: mockRepo,
+        },
+        {
+          provide: LlmAnalysisService,
+          useValue: mockLlm,
         },
       ],
     }).compile();
