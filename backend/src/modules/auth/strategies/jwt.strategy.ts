@@ -40,10 +40,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     }
 
     // Attach teamId and planStatus from the JWT payload so guards can use them
-    return {
-      ...user,
-      teamId: payload.teamId ?? user.teamId ?? null,
-      planStatus: payload.planStatus ?? null,
-    };
+    (user as User & { planStatus: string | null }).teamId = payload.teamId ?? user.teamId ?? null;
+    (user as User & { planStatus: string | null }).planStatus = payload.planStatus ?? null;
+    return user as User & { teamId: string | null; planStatus: string | null };
   }
 }
