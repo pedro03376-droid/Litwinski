@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Anthropic from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI, SchemaType } from '@google/generative-ai';
 
 export interface AnalysisResult {
   strengths: string[];
@@ -10,32 +11,43 @@ export interface AnalysisResult {
   overallScore: number;
 }
 
+type Provider = 'anthropic' | 'gemini' | null;
+
 /**
- * Generates goalkeeper analyses with Claude when ANTHROPIC_API_KEY is set.
+ * Generates goalkeeper analyses with an LLM when a provider key is set.
+ * Provider priority: Anthropic (ANTHROPIC_API_KEY) → Gemini (GEMINI_API_KEY).
  * Falls back (returns null) when disabled or on any error, so the caller can
  * use the deterministic heuristic instead — the feature degrades gracefully.
  */
 @Injectable()
 export class LlmAnalysisService {
   private readonly logger = new Logger(LlmAnalysisService.name);
-  private client: Anthropic | null = null;
-  private readonly model: string;
+  private provider: Provider = null;
+  private anthropic: Anthropic | null = null;
+  private gemini: GoogleGenerativeAI | null = null;
+  private model = '';
 
   constructor(private readonly config: ConfigService) {
-    const apiKey = this.config.get<string>('ANTHROPIC_API_KEY');
-    // Default to a fast, cost-effective model for per-match analysis; override
-    // with ANTHROPIC_MODEL (e.g. a higher-tier model for maximum quality).
-    this.model = this.config.get<string>('ANTHROPIC_MODEL') || 'claude-sonnet-4-6';
-    if (apiKey) {
-      this.client = new Anthropic({ apiKey });
-      this.logger.log(`LLM analysis enabled (model: ${this.model})`);
+    const anthropicKey = this.config.get<string>('ANTHROPIC_API_KEY');
+    const geminiKey = this.config.get<string>('GEMINI_API_KEY');
+
+    if (anthropicKey) {
+      this.provider = 'anthropic';
+      this.anthropic = new Anthropic({ apiKey: anthropicKey });
+      this.model = this.config.get<string>('ANTHROPIC_MODEL') || 'claude-sonnet-4-6';
+      this.logger.log(`LLM analysis enabled (anthropic, model: ${this.model})`);
+    } else if (geminiKey) {
+      this.provider = 'gemini';
+      this.gemini = new GoogleGenerativeAI(geminiKey);
+      this.model = this.config.get<string>('GEMINI_MODEL') || 'gemini-2.0-flash';
+      this.logger.log(`LLM analysis enabled (gemini, model: ${this.model})`);
     } else {
-      this.logger.warn('ANTHROPIC_API_KEY not set – LLM analysis disabled, using heuristic');
+      this.logger.warn('No LLM key set – LLM analysis disabled, using heuristic');
     }
   }
 
   isEnabled(): boolean {
-    return this.client !== null;
+    return this.provider !== null;
   }
 
   async analyzeMatch(metrics: any, previousMetrics?: any): Promise<AnalysisResult | null> {
@@ -70,53 +82,81 @@ export class LlmAnalysisService {
   }
 
   private async _run(prompt: string): Promise<AnalysisResult | null> {
-    if (!this.client) return null;
     try {
-      const response = await this.client.messages.create({
-        model: this.model,
-        max_tokens: 2000,
-        tools: [
-          {
-            name: 'submit_analysis',
-            description: 'Submete a análise técnica estruturada da goleira.',
-            input_schema: {
-              type: 'object',
-              additionalProperties: false,
-              properties: {
-                strengths: { type: 'array', items: { type: 'string' }, description: 'Pontos fortes observados' },
-                attentionPoints: { type: 'array', items: { type: 'string' }, description: 'Pontos de atenção a melhorar' },
-                evolutionNotes: { type: 'array', items: { type: 'string' }, description: 'Notas de evolução vs. período anterior (vazio se não aplicável)' },
-                trainingSuggestions: { type: 'array', items: { type: 'string' }, description: 'Sugestões de treino' },
-                overallScore: { type: 'number', description: 'Nota geral de 0 a 10' },
-              },
-              required: ['strengths', 'attentionPoints', 'evolutionNotes', 'trainingSuggestions', 'overallScore'],
-            },
-          },
-        ],
-        tool_choice: { type: 'tool', name: 'submit_analysis' },
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      const block = response.content.find(
-        (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
-      );
-      if (!block) {
-        this.logger.warn('LLM returned no tool_use block; falling back to heuristic');
-        return null;
-      }
-      const input = block.input as Partial<AnalysisResult>;
-      const arr = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
-      const score = typeof input.overallScore === 'number' ? input.overallScore : 0;
-      return {
-        strengths: arr(input.strengths),
-        attentionPoints: arr(input.attentionPoints),
-        evolutionNotes: arr(input.evolutionNotes),
-        trainingSuggestions: arr(input.trainingSuggestions),
-        overallScore: Math.max(0, Math.min(10, parseFloat(score.toFixed(2)))),
-      };
+      if (this.provider === 'anthropic') return await this._runAnthropic(prompt);
+      if (this.provider === 'gemini') return await this._runGemini(prompt);
+      return null;
     } catch (e: any) {
       this.logger.warn(`LLM analysis failed, falling back to heuristic: ${e.message}`);
       return null;
     }
+  }
+
+  private _normalize(input: Partial<AnalysisResult>): AnalysisResult {
+    const arr = (v: unknown): string[] => (Array.isArray(v) ? v.map(String) : []);
+    const score = typeof input.overallScore === 'number' ? input.overallScore : 0;
+    return {
+      strengths: arr(input.strengths),
+      attentionPoints: arr(input.attentionPoints),
+      evolutionNotes: arr(input.evolutionNotes),
+      trainingSuggestions: arr(input.trainingSuggestions),
+      overallScore: Math.max(0, Math.min(10, parseFloat(score.toFixed(2)))),
+    };
+  }
+
+  private async _runAnthropic(prompt: string): Promise<AnalysisResult | null> {
+    const response = await this.anthropic!.messages.create({
+      model: this.model,
+      max_tokens: 2000,
+      tools: [
+        {
+          name: 'submit_analysis',
+          description: 'Submete a análise técnica estruturada da goleira.',
+          input_schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              strengths: { type: 'array', items: { type: 'string' }, description: 'Pontos fortes observados' },
+              attentionPoints: { type: 'array', items: { type: 'string' }, description: 'Pontos de atenção a melhorar' },
+              evolutionNotes: { type: 'array', items: { type: 'string' }, description: 'Notas de evolução (vazio se não aplicável)' },
+              trainingSuggestions: { type: 'array', items: { type: 'string' }, description: 'Sugestões de treino' },
+              overallScore: { type: 'number', description: 'Nota geral de 0 a 10' },
+            },
+            required: ['strengths', 'attentionPoints', 'evolutionNotes', 'trainingSuggestions', 'overallScore'],
+          },
+        },
+      ],
+      tool_choice: { type: 'tool', name: 'submit_analysis' },
+      messages: [{ role: 'user', content: prompt }],
+    });
+    const block = response.content.find(
+      (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+    );
+    if (!block) return null;
+    return this._normalize(block.input as Partial<AnalysisResult>);
+  }
+
+  private async _runGemini(prompt: string): Promise<AnalysisResult | null> {
+    const model = this.gemini!.getGenerativeModel({
+      model: this.model,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: SchemaType.OBJECT,
+          properties: {
+            strengths: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            attentionPoints: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            evolutionNotes: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            trainingSuggestions: { type: SchemaType.ARRAY, items: { type: SchemaType.STRING } },
+            overallScore: { type: SchemaType.NUMBER },
+          },
+          required: ['strengths', 'attentionPoints', 'evolutionNotes', 'trainingSuggestions', 'overallScore'],
+        },
+      },
+    });
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    if (!text) return null;
+    return this._normalize(JSON.parse(text) as Partial<AnalysisResult>);
   }
 }
