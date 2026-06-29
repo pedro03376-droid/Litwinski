@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import 'package:gkhub/main.dart' show RestartWidget;
 import '../../../../core/providers/auth_provider.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/empty_state.dart';
@@ -470,6 +471,8 @@ class _HomeAppBar extends ConsumerWidget {
                     fontFamily: 'Inter',
                   ),
                 ),
+                const SizedBox(height: 8),
+                const _TeamSelector(),
               ],
             ),
           ),
@@ -490,6 +493,184 @@ class _HomeAppBar extends ConsumerWidget {
         ],
       ),
     ).animate().fade(duration: 400.ms).slideY(begin: -0.1, end: 0, duration: 400.ms);
+  }
+}
+
+// ─── Team / workspace selector ──────────────────────────────────────────────
+
+class _TeamSelector extends ConsumerWidget {
+  const _TeamSelector();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final workspacesAsync = ref.watch(myWorkspacesProvider);
+    final currentTeamId = ref.watch(
+      authStateProvider.select((s) => s.user?['teamId'] as String?),
+    );
+
+    return workspacesAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (workspaces) {
+        if (workspaces.isEmpty) return const SizedBox.shrink();
+        final current = workspaces.firstWhere(
+          (w) => w['teamId'] == currentTeamId,
+          orElse: () => workspaces.first,
+        );
+        final name = (current['teamName'] as String?) ?? 'Meu clube';
+        final canSwitch = workspaces.length > 1;
+
+        return InkWell(
+          onTap: canSwitch
+              ? () => _openSheet(context, ref, workspaces, current['teamId'] as String?)
+              : null,
+          borderRadius: BorderRadius.circular(8),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.cyan.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.cyan.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.shield_outlined, size: 14, color: AppColors.cyan),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    name,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.cyan,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                if (canSwitch) ...[
+                  const SizedBox(width: 4),
+                  const Icon(Icons.unfold_more, size: 14, color: AppColors.cyan),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openSheet(
+    BuildContext context,
+    WidgetRef ref,
+    List<Map<String, dynamic>> workspaces,
+    String? currentTeamId,
+  ) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.darkCard,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textMuted,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Trocar de clube / seleção',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            ...workspaces.map((w) {
+              final isCurrent = w['teamId'] == currentTeamId;
+              return ListTile(
+                leading: Icon(
+                  isCurrent ? Icons.shield : Icons.shield_outlined,
+                  color: isCurrent ? AppColors.cyan : AppColors.textMuted,
+                ),
+                title: Text(
+                  (w['teamName'] as String?) ?? 'Clube',
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+                subtitle: Text(
+                  _roleLabel(w['role'] as String?),
+                  style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                ),
+                trailing: isCurrent
+                    ? const Icon(Icons.check_circle, color: AppColors.cyan, size: 20)
+                    : null,
+                onTap: isCurrent
+                    ? null
+                    : () => _switch(context, sheetCtx, ref, w['teamId'] as String),
+              );
+            }),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _roleLabel(String? role) {
+    switch (role) {
+      case 'admin':
+        return 'Administrador';
+      case 'coach':
+        return 'Comissão técnica';
+      case 'viewer':
+        return 'Visualização';
+      default:
+        return role ?? '';
+    }
+  }
+
+  Future<void> _switch(
+    BuildContext context,
+    BuildContext sheetCtx,
+    WidgetRef ref,
+    String teamId,
+  ) async {
+    Navigator.pop(sheetCtx);
+    // Show a brief loading barrier while we swap the token.
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(
+        child: CircularProgressIndicator(color: AppColors.cyan),
+      ),
+    );
+    final ok = await ref.read(authStateProvider.notifier).switchTeam(teamId);
+    if (!context.mounted) return;
+    Navigator.of(context, rootNavigator: true).pop(); // close loader
+    if (ok) {
+      // Recreate the ProviderScope so every screen reloads with the new scope.
+      RestartWidget.restart(context);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível trocar de clube.')),
+      );
+    }
   }
 }
 

@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   ConflictException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Team } from '../teams/entities/team.entity';
+import { UserTeamMembership } from '../teams/entities/user-team-membership.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -26,9 +28,42 @@ export class AuthService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Team)
     private readonly teamRepository: Repository<Team>,
+    @InjectRepository(UserTeamMembership)
+    private readonly membershipRepository: Repository<UserTeamMembership>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  /**
+   * Switches the user's active team/workspace and issues a new token scoped
+   * to it. Requires an active membership in the target team.
+   */
+  async switchTeam(userId: string, teamId: string): Promise<AuthPayload> {
+    const membership = await this.membershipRepository.findOne({
+      where: { userId, teamId, isActive: true },
+    });
+    if (!membership) {
+      throw new ForbiddenException('You are not a member of this team');
+    }
+
+    const team = await this.teamRepository.findOne({ where: { id: teamId } });
+    if (!team) {
+      throw new NotFoundException('Team not found');
+    }
+    if (team.planStatus === 'suspended' || team.planStatus === 'cancelled') {
+      throw new UnauthorizedException('This team is suspended');
+    }
+
+    // Persist the active team so it survives re-login.
+    await this.userRepository.update(userId, { teamId });
+
+    const user = await this.getProfile(userId);
+    const token = this._signToken(user, team.planStatus);
+    return {
+      access_token: token,
+      user: { ...user, teamName: team.name } as any,
+    };
+  }
 
   /**
    * Validates a user by email and password.

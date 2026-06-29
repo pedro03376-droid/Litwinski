@@ -10,6 +10,14 @@ final authStateProvider =
   return AuthNotifier(ref.read(apiClientProvider));
 });
 
+/// Lists the teams/clubs/national teams the current user belongs to.
+final myWorkspacesProvider =
+    FutureProvider<List<Map<String, dynamic>>>((ref) async {
+  final api = ref.read(apiClientProvider);
+  final data = await api.get<List<dynamic>>('/teams/my-workspaces');
+  return List<Map<String, dynamic>>.from(data ?? []);
+});
+
 class AuthState {
   final bool isAuthenticated;
   final bool isLoading;
@@ -156,6 +164,26 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await _unregisterPush();
     await _storage.deleteAll();
     state = const AuthState(isLoading: false, isAuthenticated: false);
+  }
+
+  /// Switches the active team/workspace: gets a new token scoped to [teamId]
+  /// and persists it. The caller should then restart the app so every screen
+  /// reloads with the new scope. Returns true on success.
+  Future<bool> switchTeam(String teamId) async {
+    try {
+      final data = await _api.post<Map<String, dynamic>>(
+        '/auth/switch-team',
+        data: {'teamId': teamId},
+      );
+      final token = data['accessToken'] as String?
+          ?? data['access_token'] as String?
+          ?? '';
+      if (token.isEmpty) return false;
+      await _storage.write(key: AppConstants.tokenKey, value: token);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   // ─── Push registration ──────────────────────────────────────────────────────

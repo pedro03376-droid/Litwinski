@@ -23,7 +23,38 @@ void main() async {
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
   ));
-  runApp(const ProviderScope(child: GKHubApp()));
+  runApp(const RestartWidget(child: GKHubApp()));
+}
+
+/// Wraps the app so the entire Riverpod ProviderScope can be recreated on
+/// demand — used when switching the active team to reload every screen with
+/// the new (re-scoped) token. Call `RestartWidget.restart(context)`.
+class RestartWidget extends StatefulWidget {
+  final Widget child;
+  const RestartWidget({super.key, required this.child});
+
+  static void restart(BuildContext context) {
+    context.findAncestorStateOfType<_RestartWidgetState>()?.restart();
+  }
+
+  @override
+  State<RestartWidget> createState() => _RestartWidgetState();
+}
+
+class _RestartWidgetState extends State<RestartWidget> {
+  Key _key = UniqueKey();
+
+  void restart() => setState(() => _key = UniqueKey());
+
+  @override
+  Widget build(BuildContext context) {
+    // Recreating the ProviderScope under a fresh key resets all provider state,
+    // so every FutureProvider/StateNotifier refetches with the new token.
+    return KeyedSubtree(
+      key: _key,
+      child: ProviderScope(child: widget.child),
+    );
+  }
 }
 
 class GKHubApp extends ConsumerWidget {

@@ -128,4 +128,21 @@ export class AuthController {
   async refreshToken(@Request() req: any) {
     return this.authService.refreshToken(req.user.id);
   }
+
+  // ─── POST /auth/switch-team ────────────────────────────────────────────────
+
+  @UseGuards(JwtAuthGuard)
+  @Post('switch-team')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Switch active team/workspace',
+    description:
+      'Sets the active club/national team and returns a new token scoped to it. Requires membership.',
+  })
+  @ApiResponse({ status: 200, description: 'New token issued for the selected team.' })
+  @ApiResponse({ status: 403, description: 'Not a member of the requested team.' })
+  async switchTeam(@Request() req: any, @Body() body: { teamId: string }) {
+    return this.authService.switchTeam(req.user.id, body.teamId);
+  }
 }
