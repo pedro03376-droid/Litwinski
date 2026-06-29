@@ -150,6 +150,21 @@ export class TeamsController {
     return this.teamsService.create(createTeamDto);
   }
 
+  // ─── POST /teams/mine ──────────────────────────────────────────────────────
+
+  @Post('mine')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create a club/national team for the current user',
+    description:
+      'Creates a team and an admin membership for the caller so it appears in their workspace switcher.',
+  })
+  createMine(@Request() req: any, @Body() body: { name: string; category?: string }) {
+    return this.teamsService.createForUser(req.user.id, body.name, body.category);
+  }
+
   // ─── PATCH /teams/:id ─────────────────────────────────────────────────────
 
   @Patch(':id')

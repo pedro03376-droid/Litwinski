@@ -132,6 +132,36 @@ export class TeamsService {
   ) {}
 
   /**
+   * Creates a team for the current user and makes them its admin (membership),
+   * so it shows up in their workspace switcher. Used for "create club/national
+   * team" from inside the app.
+   */
+  async createForUser(
+    userId: string,
+    name: string,
+    category: string,
+  ): Promise<Team> {
+    const trimmed = (name || '').trim();
+    if (!trimmed) throw new BadRequestException('name is required');
+    const team = await this.teamRepository.save(
+      this.teamRepository.create({
+        name: trimmed,
+        category: (category || 'Clube').trim(),
+        isActive: true,
+      }),
+    );
+    await this.membershipRepo.save(
+      this.membershipRepo.create({
+        userId,
+        teamId: team.id,
+        role: TeamMemberRole.ADMIN,
+        isActive: true,
+      }),
+    );
+    return team;
+  }
+
+  /**
    * Returns a paginated list of teams with optional search / filter support.
    */
   async findAll(params: TeamQueryParams = {}): Promise<PaginatedTeams> {

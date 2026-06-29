@@ -3,8 +3,8 @@ builder = "NIXPACKS"
 # --include=dev forces devDependencies (nest cli, typescript) to install even
 # when NODE_ENV=production, otherwise `nest build` fails with "nest: not found".
 buildCommand = "npm install --include=dev && npm run build"
-# Only redeploy when backend code changes — avoids rebuilding (and failing) the
-# backend on frontend/CI-only commits.
+# Only redeploy when backend code changes — avoids rebuilding the backend on
+# frontend/CI-only commits.
 watchPatterns = ["backend/**"]
 
 [deploy]
