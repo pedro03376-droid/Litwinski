@@ -7628,9 +7628,14 @@ async function apiLogin(email, password) {
   });
   if (!res.ok) return null;
   const data = await res.json();
-  if (data?.data?.accessToken) {
-    localStorage.setItem(_API_TOKEN_KEY, data.data.accessToken);
-    return data.data;
+  const payload = data?.data || data || {};
+  // Backend returns snake_case access_token (wrapped in {data}); tolerate both.
+  const tok = payload.access_token || payload.accessToken
+    || data?.access_token || data?.accessToken;
+  if (tok) {
+    localStorage.setItem(_API_TOKEN_KEY, tok);
+    // Normalize so callers can read .accessToken regardless of source casing.
+    return { ...payload, accessToken: tok };
   }
   return null;
 }
