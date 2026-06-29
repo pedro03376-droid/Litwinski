@@ -7192,7 +7192,7 @@ function _renderClubSelector() {
   if (!overlay || !list) return;
   const roleLabel = { admin:'Administrador', coach:'Preparador', viewer:'Visualizador' };
   list.innerHTML = _workspaces.map(w => `
-    <button onclick="_setActiveWorkspace('${_esc(w.teamId)}','${_esc(w.teamName)}');navigate('dashboard');"
+    <button onclick="switchWorkspace('${_esc(w.teamId)}','${_esc(w.teamName)}')"
       style="width:100%;text-align:left;padding:16px 18px;background:var(--card);
              border:1px solid ${_activeWorkspaceId===w.teamId?'var(--primary)':'var(--border)'};
              border-radius:var(--radius);cursor:pointer;transition:border-color .2s;
@@ -7339,14 +7339,38 @@ async function loadWorkspaces() {
   } catch(e) { /* API not available or user has no memberships */ }
 }
 
-function switchWorkspace(teamId, teamName) {
-  _activeWorkspaceId = teamId;
-  document.getElementById('workspace-name').textContent = teamName;
-  document.getElementById('workspace-menu').style.display = 'none';
-  // Store active workspace
-  localStorage.setItem('gkhub_active_workspace', JSON.stringify({ teamId, teamName }));
-  loadClubMembers();
-  toast('Workspace: ' + teamName, 'success');
+async function switchWorkspace(teamId, teamName) {
+  const menu = document.getElementById('workspace-menu');
+  if (menu) menu.style.display = 'none';
+  const overlay = document.getElementById('club-selector-overlay');
+
+  // Same team — just set it locally, no reload needed.
+  if (teamId === _activeWorkspaceId) {
+    _activeWorkspaceId = teamId;
+    localStorage.setItem('gkhub_active_workspace', JSON.stringify({ teamId, teamName }));
+    const nameEl = document.getElementById('workspace-name');
+    if (nameEl) nameEl.textContent = teamName;
+    if (overlay) overlay.style.display = 'none';
+    navigate('dashboard');
+    return;
+  }
+
+  // Different team — ask the backend for a token scoped to it, then hard-reload
+  // so every screen (goalkeepers, matches, training, …) shows that team's data.
+  try {
+    toast('Trocando de clube…', 'info');
+    const result = await api.post('/auth/switch-team', { teamId });
+    const payload = (result && result.data) ? result.data : (result || {});
+    const newToken = payload.accessToken || payload.access_token
+      || (result && (result.accessToken || result.access_token));
+    if (!newToken) throw new Error('no token');
+    localStorage.setItem(_API_TOKEN_KEY, newToken);
+    localStorage.setItem('gkhub_active_workspace', JSON.stringify({ teamId, teamName }));
+    if (overlay) overlay.style.display = 'none';
+    location.reload();
+  } catch (e) {
+    toast('Não foi possível trocar de clube. Tente novamente.', 'error');
+  }
 }
 
 function initWorkspaceSwitcher() {
