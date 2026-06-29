@@ -10,6 +10,7 @@ import { LocalStrategy } from './strategies/local.strategy';
 import { User } from '../users/entities/user.entity';
 import { Team } from '../teams/entities/team.entity';
 import { UserTeamMembership } from '../teams/entities/user-team-membership.entity';
+import { FirebaseService } from '../notifications/firebase.service';
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { UserTeamMembership } from '../teams/entities/user-team-membership.entit
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, LocalStrategy],
+  providers: [AuthService, JwtStrategy, LocalStrategy, FirebaseService],
   exports: [AuthService],
 })
 export class AuthModule {}

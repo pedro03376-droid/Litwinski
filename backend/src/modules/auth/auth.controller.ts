@@ -60,6 +60,18 @@ export class AuthController {
     return this.authService.login(_loginDto);
   }
 
+  // ─── POST /auth/google ─────────────────────────────────────────────────────
+
+  @Post('google')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Login with a Firebase Google ID token',
+    description: 'Verifies the Google ID token and returns a backend JWT.',
+  })
+  async google(@Body() body: { idToken: string }) {
+    return this.authService.loginWithGoogle(body?.idToken);
+  }
+
   // ─── POST /auth/register ───────────────────────────────────────────────────
 
   @Post('register')

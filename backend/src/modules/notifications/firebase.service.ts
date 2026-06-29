@@ -27,6 +27,20 @@ export class FirebaseService implements OnModuleInit {
     }
   }
 
+  /** Verifies a Firebase ID token and returns its decoded claims, or null. */
+  async verifyIdToken(
+    idToken: string,
+  ): Promise<{ uid: string; email?: string; name?: string } | null> {
+    if (!this.initialized) return null;
+    try {
+      const decoded = await admin.auth().verifyIdToken(idToken);
+      return { uid: decoded.uid, email: decoded.email, name: decoded.name };
+    } catch (e: any) {
+      this.logger.warn(`verifyIdToken failed: ${e.message}`);
+      return null;
+    }
+  }
+
   // Returns 'sent', or 'invalid' when FCM reports the token is unregistered.
   async sendToToken(
     token: string, title: string, body: string, data?: Record<string, string>,

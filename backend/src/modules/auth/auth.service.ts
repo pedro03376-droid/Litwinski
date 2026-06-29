@@ -13,6 +13,7 @@ import * as bcrypt from 'bcryptjs';
 import { User, UserRole } from '../users/entities/user.entity';
 import { Team } from '../teams/entities/team.entity';
 import { UserTeamMembership } from '../teams/entities/user-team-membership.entity';
+import { FirebaseService } from '../notifications/firebase.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 
@@ -32,7 +33,41 @@ export class AuthService {
     private readonly membershipRepository: Repository<UserTeamMembership>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly firebase: FirebaseService,
   ) {}
+
+  /**
+   * Logs in via a Firebase Google ID token: verifies it, finds-or-creates the
+   * user by email, and returns a backend JWT. Requires FIREBASE_SERVICE_ACCOUNT_JSON.
+   */
+  async loginWithGoogle(idToken: string): Promise<AuthPayload> {
+    const decoded = await this.firebase.verifyIdToken(idToken);
+    if (!decoded?.email) {
+      throw new UnauthorizedException('Invalid or unverifiable Google token');
+    }
+    const email = decoded.email.toLowerCase().trim();
+    let user = await this.userRepository.findOne({ where: { email } });
+    if (!user) {
+      user = await this.userRepository.save(
+        this.userRepository.create({
+          email,
+          name: decoded.name || email.split('@')[0],
+          // Random password — this account signs in via Google, not a password.
+          password: Math.random().toString(36).slice(2) + 'Aa1!',
+          role: UserRole.TECHNICAL_STAFF,
+          isActive: true,
+        }),
+      );
+    }
+    let planStatus: string | undefined;
+    if (user.teamId) {
+      const team = await this.teamRepository.findOne({ where: { id: user.teamId } });
+      if (team) planStatus = team.planStatus;
+    }
+    await this.userRepository.update(user.id, { lastLoginAt: new Date() });
+    const { password: _pw, ...safe } = user as any;
+    return { access_token: this._signToken(user, planStatus), user: safe as User };
+  }
 
   /**
    * Switches the user's active team/workspace and issues a new token scoped
