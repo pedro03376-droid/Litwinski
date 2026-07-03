@@ -42,6 +42,11 @@ export class TrainingPlusController {
   @Delete('sessions/:id')
   removeSession(@Param('id') id: string) { return this.svc.removeSession(id); }
 
+  @Post('sessions/:id/blocks')
+  setBlocks(@Param('id') id: string, @Body() body: { blocks: any[] }) {
+    return this.svc.setBlocks(id, body.blocks || []);
+  }
+
   // Attendance / RPE / Evaluation
   @Post('sessions/:id/attendance')
   setAttendance(@Param('id') id: string, @Body() body: { entries: any[] }) {

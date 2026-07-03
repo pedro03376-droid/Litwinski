@@ -71,6 +71,26 @@ export class TrainingPlusService {
     if (!res.affected) throw new NotFoundException(`Session ${id} not found`);
   }
 
+  // Replace the full set of blocks for a session (planner save).
+  async setBlocks(sessionId: string, incoming: Partial<TpSessionBlock>[]) {
+    const session = await this.sessions.findOne({ where: { id: sessionId } });
+    if (!session) throw new NotFoundException(`Session ${sessionId} not found`);
+    await this.blocks.delete({ sessionId });
+    if (incoming?.length) {
+      await this.blocks.save(
+        incoming.map((b, i) => this.blocks.create({
+          type: b.type,
+          plannedMinutes: b.plannedMinutes ?? 0,
+          objective: b.objective ?? null,
+          observations: b.observations ?? null,
+          order: b.order ?? i,
+          sessionId,
+        })),
+      );
+    }
+    return this.getSession(sessionId);
+  }
+
   // ─── Exercise library ───────────────────────────────────────────────────────
   createExercise(dto: Partial<TpExercise>) {
     return this.exercises.save(this.exercises.create(dto));

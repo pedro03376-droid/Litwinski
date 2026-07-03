@@ -2317,6 +2317,16 @@
         </div>
       </div>
 
+      <!-- Calendar -->
+      <div class="stat-card" style="padding:16px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <button class="btn btn-secondary btn-sm" onclick="tpCalMove(-1)">‹</button>
+          <div id="tp-cal-title" style="font-weight:700;"></div>
+          <button class="btn btn-secondary btn-sm" onclick="tpCalMove(1)">›</button>
+        </div>
+        <div id="tp-calendar"></div>
+      </div>
+
       <!-- Sessions list -->
       <div class="stat-card" style="padding:16px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -7610,6 +7620,63 @@ const TP_STATUS_LABEL = {
 const TP_STATUS_COLOR = {
   scheduled: 'var(--muted)', ongoing: 'var(--warning,#f59e0b)', finished: 'var(--success)', cancelled: '#ef4444',
 };
+const TP_BLOCK_TYPES = [
+  { v: 'warmup', l: 'Aquecimento' }, { v: 'technical', l: 'Parte Técnica' },
+  { v: 'physical', l: 'Parte Física' }, { v: 'tactical', l: 'Parte Tática' },
+  { v: 'game', l: 'Jogo Aplicado' }, { v: 'stretching', l: 'Alongamento' },
+];
+const TP_BLOCK_LABEL = TP_BLOCK_TYPES.reduce((m, b) => (m[b.v] = b.l, m), {});
+
+// Calendar state — sessions cache for the current view + month offset
+let _tpSessionsCache = [];
+let _tpCalOffset = 0; // months from current
+
+function _tpMonthDate() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth() + _tpCalOffset, 1);
+}
+
+function tpCalMove(delta) {
+  _tpCalOffset += delta;
+  tpRenderCalendar();
+}
+
+function tpRenderCalendar() {
+  const title = document.getElementById('tp-cal-title');
+  const grid = document.getElementById('tp-calendar');
+  if (!grid) return;
+  const base = _tpMonthDate();
+  const year = base.getFullYear(), month = base.getMonth();
+  const MONTHS = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  if (title) title.textContent = MONTHS[month] + ' ' + year;
+
+  // Map sessions by yyyy-mm-dd
+  const byDay = {};
+  _tpSessionsCache.forEach(s => { if (s.date) (byDay[String(s.date).slice(0, 10)] = byDay[String(s.date).slice(0, 10)] || []).push(s); });
+
+  const firstDow = new Date(year, month, 1).getDay(); // 0=Sun
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const DOW = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+  const pad = (n) => String(n).padStart(2, '0');
+
+  let cells = DOW.map(d => `<div style="text-align:center;font-size:11px;color:var(--muted);font-weight:600;padding:4px 0;">${d}</div>`).join('');
+  for (let i = 0; i < firstDow; i++) cells += '<div></div>';
+  for (let day = 1; day <= daysInMonth; day++) {
+    const key = `${year}-${pad(month + 1)}-${pad(day)}`;
+    const list = byDay[key] || [];
+    const dots = list.slice(0, 3).map(s => `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${TP_STATUS_COLOR[s.status] || 'var(--muted)'};margin:0 1px;"></span>`).join('');
+    const click = list.length ? ` onclick="tpOpenSession('${_esc(list[0].id)}')"` : '';
+    cells += `<div${click} title="${list.map(s => _esc(s.title || 'Treino')).join(', ')}" style="min-height:52px;border:1px solid var(--border,#2a2a3a);border-radius:8px;padding:4px;${list.length ? 'cursor:pointer;' : ''}">
+      <div style="font-size:12px;font-weight:600;">${day}</div>
+      <div style="margin-top:4px;">${dots}</div>
+      ${list.length > 3 ? `<div style="font-size:10px;color:var(--muted);">+${list.length - 3}</div>` : ''}
+    </div>`;
+  }
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = 'repeat(7,1fr)';
+  grid.style.gap = '4px';
+  grid.innerHTML = cells;
+}
 
 async function renderTreinos() {
   const teamId = _tpTeamId();
@@ -7629,6 +7696,8 @@ async function renderTreinos() {
   try {
     sessions = _tpUnwrap(await api.get('/training-plus/sessions' + q), []) || [];
   } catch (e) { sessions = []; }
+  _tpSessionsCache = sessions;
+  tpRenderCalendar();
 
   // KPI cards
   const pct = (v) => (v == null ? '—' : Math.round(v) + '%');
@@ -7770,10 +7839,15 @@ async function createTpSession() {
   }
 }
 
+let _tpDetailSession = null;
+let _tpPlannerBlocks = [];
+
 async function tpOpenSession(id) {
   let s;
   try { s = _tpUnwrap(await api.get('/training-plus/sessions/' + id), null); } catch (e) { toast('Não foi possível abrir a sessão.', 'error'); return; }
   if (!s) return;
+  _tpDetailSession = s;
+  _tpPlannerBlocks = (s.blocks || []).map(b => ({ type: b.type, plannedMinutes: b.plannedMinutes || 0, objective: b.objective || '' }));
   let modal = document.getElementById('tp-detail-modal');
   if (!modal) {
     modal = document.createElement('div');
@@ -7781,27 +7855,108 @@ async function tpOpenSession(id) {
     modal.className = 'modal-backdrop';
     document.body.appendChild(modal);
   }
+  tpRenderDetail();
+  openModal('tp-detail-modal');
+}
+
+function tpStatusButtons(s) {
+  const opts = ['scheduled', 'ongoing', 'finished', 'cancelled'];
+  return opts.map(o => {
+    const active = (s.status || 'scheduled') === o;
+    return `<button class="btn btn-sm ${active ? 'btn-primary' : 'btn-secondary'}" onclick="tpSetStatus('${_esc(s.id)}','${o}')">${TP_STATUS_LABEL[o]}</button>`;
+  }).join(' ');
+}
+
+function _tpPlannedTotal() {
+  return _tpPlannerBlocks.reduce((sum, b) => sum + (parseInt(b.plannedMinutes, 10) || 0), 0);
+}
+
+function tpRenderDetail() {
+  const s = _tpDetailSession;
+  const modal = document.getElementById('tp-detail-modal');
+  if (!s || !modal) return;
   const st = s.status || 'scheduled';
+  const typeOpts = (sel) => TP_BLOCK_TYPES.map(t => `<option value="${t.v}"${t.v === sel ? ' selected' : ''}>${t.l}</option>`).join('');
+  const blockRows = _tpPlannerBlocks.map((b, i) => `
+    <div style="display:grid;grid-template-columns:1.2fr 70px 1.6fr 32px;gap:6px;align-items:center;margin-bottom:6px;">
+      <select class="form-input" style="padding:6px;" onchange="_tpBlockField(${i},'type',this.value)">${typeOpts(b.type)}</select>
+      <input class="form-input" style="padding:6px;" type="number" min="0" value="${b.plannedMinutes}" onchange="_tpBlockField(${i},'plannedMinutes',this.value)" title="minutos">
+      <input class="form-input" style="padding:6px;" value="${_esc(b.objective || '')}" placeholder="Objetivo do bloco" onchange="_tpBlockField(${i},'objective',this.value)">
+      <button class="btn btn-secondary btn-sm" style="color:#ef4444;padding:6px;" onclick="_tpRemoveBlock(${i})">✕</button>
+    </div>`).join('');
   modal.innerHTML = `
-    <div class="modal" style="max-width:560px;">
+    <div class="modal" style="max-width:600px;">
       <div class="modal-header">
         <span class="modal-title">${_esc(s.title || 'Treino')}</span>
         <button class="modal-close" onclick="closeModal('tp-detail-modal')">&times;</button>
       </div>
-      <div class="modal-body" style="display:grid;gap:10px;font-size:14px;">
+      <div class="modal-body" style="display:grid;gap:12px;font-size:14px;">
         <div><b>Data:</b> ${s.date ? formatDate(s.date) : '—'}${s.time ? ' · ' + _esc(s.time) : ''}</div>
-        <div><b>Local:</b> ${s.location ? _esc(s.location) : '—'}</div>
-        <div><b>Categoria:</b> ${s.category ? _esc(s.category) : '—'}</div>
+        <div><b>Local:</b> ${s.location ? _esc(s.location) : '—'} · <b>Categoria:</b> ${s.category ? _esc(s.category) : '—'}</div>
         <div><b>Duração:</b> ${s.durationMinutes ? s.durationMinutes + ' min' : '—'} · <b>Intensidade:</b> ${s.plannedIntensity ?? '—'}</div>
-        <div><b>Status:</b> <span style="color:${TP_STATUS_COLOR[st] || 'var(--muted)'};font-weight:600;">${TP_STATUS_LABEL[st] || st}</span></div>
         ${s.objective ? `<div><b>Objetivo:</b> ${_esc(s.objective)}</div>` : ''}
+        <div>
+          <div style="font-weight:600;margin-bottom:6px;">Status</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">${tpStatusButtons(s)}</div>
+        </div>
+        <div style="border-top:1px solid var(--border,#2a2a3a);padding-top:12px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+            <div style="font-weight:700;">Planejamento (blocos)</div>
+            <div style="font-size:12px;color:var(--muted);">Total: ${_tpPlannedTotal()} min${s.durationMinutes ? ' / ' + s.durationMinutes + ' min' : ''}</div>
+          </div>
+          ${_tpPlannerBlocks.length ? blockRows : '<div style="color:var(--muted);font-size:13px;margin-bottom:8px;">Nenhum bloco. Adicione para estruturar a sessão.</div>'}
+          <div style="display:flex;gap:8px;margin-top:6px;">
+            <button class="btn btn-secondary btn-sm" onclick="_tpAddBlock()">+ Bloco</button>
+            <button class="btn btn-primary btn-sm" onclick="tpSaveBlocks('${_esc(s.id)}')">Salvar blocos</button>
+          </div>
+        </div>
       </div>
       <div class="modal-footer" style="display:flex;justify-content:space-between;gap:8px;">
         <button class="btn btn-secondary" onclick="tpDeleteSession('${_esc(s.id)}')" style="color:#ef4444;">Excluir</button>
         <button class="btn btn-primary" onclick="closeModal('tp-detail-modal')">Fechar</button>
       </div>
     </div>`;
-  openModal('tp-detail-modal');
+}
+
+function _tpBlockField(i, field, value) {
+  // Mutate in place; the total line refreshes on next add/remove/save.
+  if (_tpPlannerBlocks[i]) _tpPlannerBlocks[i][field] = value;
+}
+
+function _tpAddBlock() {
+  _tpPlannerBlocks.push({ type: 'warmup', plannedMinutes: 10, objective: '' });
+  tpRenderDetail();
+}
+
+function _tpRemoveBlock(i) {
+  _tpPlannerBlocks.splice(i, 1);
+  tpRenderDetail();
+}
+
+async function tpSaveBlocks(id) {
+  const blocks = _tpPlannerBlocks.map((b, i) => ({
+    type: b.type,
+    plannedMinutes: parseInt(b.plannedMinutes, 10) || 0,
+    objective: (b.objective || '').trim() || undefined,
+    order: i,
+  }));
+  try {
+    toast('Salvando blocos…', 'info');
+    const updated = _tpUnwrap(await api.post('/training-plus/sessions/' + id + '/blocks', { blocks }), null);
+    if (updated) { _tpDetailSession = updated; _tpPlannerBlocks = (updated.blocks || []).map(b => ({ type: b.type, plannedMinutes: b.plannedMinutes || 0, objective: b.objective || '' })); tpRenderDetail(); }
+    toast('Planejamento salvo!', 'success');
+  } catch (e) { toast('Não foi possível salvar os blocos.', 'error'); }
+}
+
+async function tpSetStatus(id, status) {
+  try {
+    const updated = _tpUnwrap(await api.patch('/training-plus/sessions/' + id, { status }), null);
+    if (updated) _tpDetailSession = updated;
+    else _tpDetailSession.status = status;
+    tpRenderDetail();
+    toast('Status atualizado.', 'success');
+    renderTreinos();
+  } catch (e) { toast('Não foi possível atualizar o status.', 'error'); }
 }
 
 async function tpDeleteSession(id) {
