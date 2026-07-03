@@ -2238,6 +2238,21 @@
             </table>
           </div>
         </div>
+        <!-- Treinos da goleira -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header"><span class="card-title">Treinos</span><span id="perfil-tp-label" style="font-size:12px;color:var(--muted);"></span></div>
+          <div id="perfil-tp-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="tp-grid">
+            <div><div style="font-weight:600;font-size:13px;margin-bottom:6px;">Evolução por fundamento</div><div style="height:200px;"><canvas id="chart-perfil-tp"></canvas></div></div>
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <div style="font-weight:600;font-size:13px;">Metas individuais</div>
+                <button class="btn btn-secondary btn-sm" onclick="openTpGoalForm()">+ Meta</button>
+              </div>
+              <div id="perfil-tp-goals"></div>
+            </div>
+          </div>
+        </div>
         <!-- Botão Análise -->
         <div style="display:flex;justify-content:center;margin-bottom:8px;">
           <button class="btn btn-primary" style="padding:14px 36px;font-size:15px;letter-spacing:.3px;box-shadow:var(--glow-primary);" onclick="abrirAnalise()">
@@ -2299,7 +2314,10 @@
           <h2 style="margin:0;font-size:20px;font-weight:800;">Dashboard de Treinos</h2>
           <p style="margin:2px 0 0;color:var(--muted);font-size:13px;">Planejamento, presença, carga e avaliações</p>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openTpSessionForm()">+ Nova sessão</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="tpExportPdf()">📄 Relatório PDF</button>
+          <button class="btn btn-primary btn-sm" onclick="openTpSessionForm()">+ Nova sessão</button>
+        </div>
       </div>
 
       <!-- Indicators -->
@@ -2314,6 +2332,19 @@
         <div class="stat-card" style="padding:16px;">
           <div style="font-weight:700;margin-bottom:10px;">Próximo treino</div>
           <div id="tp-next"></div>
+        </div>
+      </div>
+
+      <!-- Correlation + AI insights -->
+      <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:20px;" class="tp-grid">
+        <div class="stat-card" style="padding:16px;">
+          <div style="font-weight:700;margin-bottom:4px;">Correlação treino × jogo</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Carga de treino na semana anterior a cada partida × nota da goleira</div>
+          <canvas id="tp-chart-correlation" height="130"></canvas>
+        </div>
+        <div class="stat-card" style="padding:16px;">
+          <div style="font-weight:700;margin-bottom:10px;">🧠 Insights</div>
+          <div id="tp-insights"></div>
         </div>
       </div>
 
@@ -4331,6 +4362,7 @@ function renderPerfil() {
   const gk = DB.goleiras.find(g => g.id === gkId);
   if (!gk) return;
   content.style.display='block'; empty.style.display='none';
+  renderPerfilTreinos(gkId);
 
   // Foto + nome
   const fotoEl = document.getElementById('perfil-foto');
@@ -7827,8 +7859,11 @@ async function renderTreinos() {
     sessions = _tpUnwrap(await api.get('/training-plus/sessions' + q), []) || [];
   } catch (e) { sessions = []; }
   _tpSessionsCache = sessions;
+  _tpDashCache = dash;
   tpRenderCalendar();
   renderTpExercises();
+  tpRenderCorrelation(sessions);
+  tpRenderInsights(dash, sessions);
 
   // KPI cards
   const pct = (v) => (v == null ? '—' : Math.round(v) + '%');
@@ -8235,6 +8270,239 @@ async function tpDeleteSession(id) {
     toast('Sessão excluída.', 'success');
     renderTreinos();
   } catch (e) { toast('Não foi possível excluir.', 'error'); }
+}
+
+// ── Treinos: goalkeeper profile tab (Phase 5) ─────────────────
+let perfilTpChart = null;
+let _tpProfileGkId = null;
+
+async function renderPerfilTreinos(gkId) {
+  _tpProfileGkId = gkId;
+  const kpis = document.getElementById('perfil-tp-kpis');
+  const goalsEl = document.getElementById('perfil-tp-goals');
+  const label = document.getElementById('perfil-tp-label');
+  if (!kpis) return;
+  let sum = null;
+  try { sum = _tpUnwrap(await api.get('/training-plus/goalkeeper/' + gkId + '/summary'), null); } catch (e) { sum = null; }
+  if (!sum) {
+    kpis.innerHTML = '<div style="color:var(--muted);font-size:13px;">Sem dados de treino (ou servidor indisponível).</div>';
+    if (goalsEl) goalsEl.innerHTML = '';
+    if (perfilTpChart) { perfilTpChart.destroy(); perfilTpChart = null; }
+    return;
+  }
+  if (label) label.textContent = (sum.trainings || 0) + ' treinos';
+  const cards = [
+    ['Presença', (sum.attendanceRate ?? 0) + '%'],
+    ['Técnico', sum.avgTechnical ?? '—'],
+    ['Físico', sum.avgPhysical ?? '—'],
+    ['Mental', sum.avgMental ?? '—'],
+    ['PSE média', sum.avgRpe ?? '—'],
+    ['Carga acum.', sum.accumulatedWorkload ?? 0],
+  ];
+  kpis.innerHTML = cards.map(([k, v]) => `
+    <div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;">
+      <div style="font-size:18px;font-weight:800;color:var(--primary);">${_esc(String(v))}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;">${k}</div>
+    </div>`).join('');
+
+  // Evolution chart per fundamental from recentEvaluations (reverse to chrono)
+  const evals = [...(sum.recentEvaluations || [])].reverse();
+  const avgMap = (m) => { const v = Object.values(m || {}).filter(n => typeof n === 'number'); return v.length ? +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(2) : null; };
+  const canvas = document.getElementById('chart-perfil-tp');
+  if (canvas && typeof Chart !== 'undefined') {
+    if (perfilTpChart) perfilTpChart.destroy();
+    if (evals.length) {
+      const labels = evals.map((_, i) => 'A' + (i + 1));
+      perfilTpChart = new Chart(canvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Técnico', data: evals.map(e => avgMap(e.technical)), borderColor: '#3B82F6', tension: .4, spanGaps: true },
+            { label: 'Físico', data: evals.map(e => avgMap(e.physical)), borderColor: '#10B981', tension: .4, spanGaps: true },
+            { label: 'Mental', data: evals.map(e => avgMap(e.mental)), borderColor: '#A855F7', tension: .4, spanGaps: true },
+          ],
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#8A8AAA', font: { size: 10 } } } }, scales: { x: { grid: { color: '#1E1E3A' }, ticks: { color: '#5A5A7A' } }, y: { min: 0, max: 10, grid: { color: '#1E1E3A' }, ticks: { color: '#5A5A7A' } } } },
+      });
+    } else {
+      const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  // Goals
+  if (goalsEl) {
+    const goals = sum.goals || [];
+    goalsEl.innerHTML = goals.length ? goals.map(g => {
+      const prog = g.progress ?? 0;
+      const done = g.status === 'achieved';
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border,#2a2a3a);">
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
+          <div style="font-weight:600;font-size:13px;${done ? 'text-decoration:line-through;opacity:.6;' : ''}">${_esc(g.title || 'Meta')}</div>
+          <div style="display:flex;gap:4px;">
+            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;" onclick="tpGoalProgress('${_esc(g.id)}',${Math.min(100, prog + 25)})" title="+25%">+</button>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;color:#ef4444;" onclick="tpDeleteGoal('${_esc(g.id)}')">✕</button>
+          </div>
+        </div>
+        ${g.fundamental ? `<div style="font-size:11px;color:var(--muted);">${_esc(g.fundamental)}</div>` : ''}
+        <div style="height:6px;background:var(--bg);border-radius:4px;margin-top:6px;overflow:hidden;">
+          <div style="height:100%;width:${prog}%;background:${done ? 'var(--success)' : 'var(--primary)'};"></div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${prog}%</div>
+      </div>`;
+    }).join('') : '<div style="color:var(--muted);font-size:13px;">Nenhuma meta. Clique em “+ Meta”.</div>';
+  }
+}
+
+function openTpGoalForm() {
+  if (!_tpProfileGkId) { toast('Selecione uma goleira.', 'info'); return; }
+  const title = (prompt('Título da meta (ex.: Melhorar reposição longa):') || '').trim();
+  if (!title) return;
+  const fundamental = (prompt('Fundamento relacionado (opcional):') || '').trim();
+  api.post('/training-plus/goals', { goalkeeperId: _tpProfileGkId, title, fundamental: fundamental || undefined, progress: 0 })
+    .then(() => { toast('Meta criada!', 'success'); renderPerfilTreinos(_tpProfileGkId); })
+    .catch(() => toast('Não foi possível criar a meta.', 'error'));
+}
+
+function tpGoalProgress(id, progress) {
+  const body = { progress };
+  if (progress >= 100) body.status = 'achieved';
+  api.patch('/training-plus/goals/' + id, body)
+    .then(() => renderPerfilTreinos(_tpProfileGkId))
+    .catch(() => toast('Não foi possível atualizar.', 'error'));
+}
+
+function tpDeleteGoal(id) {
+  if (!confirm('Excluir esta meta?')) return;
+  api.delete('/training-plus/goals/' + id)
+    .then(() => { toast('Meta excluída.', 'success'); renderPerfilTreinos(_tpProfileGkId); })
+    .catch(() => toast('Não foi possível excluir.', 'error'));
+}
+
+// ── Treinos: correlation, insights, PDF (Phase 6) ─────────────
+let _tpDashCache = {};
+let tpCorrelationChart = null;
+
+// Plot training load (planned = duration × intensity) in the 7 days before
+// each match against that match's goalkeeper rating. Reveals if heavier
+// training weeks precede better/worse performances.
+function tpRenderCorrelation(sessions) {
+  const canvas = document.getElementById('tp-chart-correlation');
+  if (!canvas || typeof Chart === 'undefined') return;
+  const partidas = (typeof DB !== 'undefined' && DB.partidas) ? DB.partidas : [];
+  const points = [];
+  partidas.forEach(p => {
+    if (!p.data) return;
+    const nota = (typeof calcPerformance === 'function' && typeof _mergeScouts === 'function')
+      ? (() => { const sc = _mergeScouts(DB.scouts.filter(s => s.partidaId === p.id)); return sc.length ? calcPerformance(sc[0]) : null; })()
+      : null;
+    if (nota == null) return;
+    const matchDay = new Date(p.data + 'T00:00:00').getTime();
+    const weekBefore = matchDay - 7 * 864e5;
+    const load = sessions.reduce((sum, s) => {
+      if (!s.date) return sum;
+      const d = new Date(String(s.date).slice(0, 10) + 'T00:00:00').getTime();
+      return (d >= weekBefore && d < matchDay) ? sum + (s.durationMinutes || 0) * (s.plannedIntensity || 0) : sum;
+    }, 0);
+    points.push({ x: load, y: nota });
+  });
+  if (tpCorrelationChart) tpCorrelationChart.destroy();
+  if (!points.length) {
+    const ctx = canvas.getContext('2d'); ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+  tpCorrelationChart = new Chart(canvas, {
+    type: 'scatter',
+    data: { datasets: [{ label: 'Partidas', data: points, backgroundColor: 'rgba(168,85,247,.7)', pointRadius: 5 }] },
+    options: {
+      responsive: true, plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `Carga ${c.parsed.x} · Nota ${c.parsed.y}` } } },
+      scales: { x: { title: { display: true, text: 'Carga de treino (semana)', color: '#8A8AAA' }, grid: { color: '#1E1E3A' }, ticks: { color: '#5A5A7A' } }, y: { min: 0, max: 10, title: { display: true, text: 'Nota', color: '#8A8AAA' }, grid: { color: '#1E1E3A' }, ticks: { color: '#5A5A7A' } } },
+    },
+  });
+}
+
+// Heuristic insight engine (structured for a future LLM upgrade — same shape
+// of {level, text} the AI backend could later return). Rules over dashboard.
+function tpBuildInsights(dash, sessions) {
+  const out = [];
+  const att = dash.attendanceRate;
+  if (att != null) {
+    if (att >= 90) out.push({ level: 'good', text: `Presença excelente (${att}%). Grupo engajado.` });
+    else if (att < 70) out.push({ level: 'warn', text: `Presença baixa (${att}%). Avalie horários/comunicação.` });
+  }
+  if (dash.avgRpe != null && dash.avgRpe >= 8) out.push({ level: 'warn', text: `PSE média alta (${dash.avgRpe}). Atenção ao risco de sobrecarga.` });
+  if (dash.avgRpe != null && dash.avgRpe > 0 && dash.avgRpe <= 3) out.push({ level: 'info', text: `PSE média baixa (${dash.avgRpe}). Há espaço para intensificar.` });
+  if (dash.avgEvaluation != null && dash.avgEvaluation > 0) {
+    if (dash.avgEvaluation >= 8) out.push({ level: 'good', text: `Avaliação técnica média forte (${dash.avgEvaluation}).` });
+    else if (dash.avgEvaluation < 6) out.push({ level: 'warn', text: `Avaliação média abaixo do ideal (${dash.avgEvaluation}). Priorize fundamentos fracos.` });
+  }
+  // Workload trend: compare last 3 vs previous 3 sessions (planned load)
+  const load = [...sessions].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+    .map(s => (s.durationMinutes || 0) * (s.plannedIntensity || 0));
+  if (load.length >= 4) {
+    const recent = load.slice(-3).reduce((a, b) => a + b, 0);
+    const prev = load.slice(-6, -3).reduce((a, b) => a + b, 0);
+    if (prev > 0) {
+      const chg = Math.round((recent - prev) / prev * 100);
+      if (chg >= 30) out.push({ level: 'warn', text: `Carga subiu ${chg}% nas últimas sessões. Monitore recuperação.` });
+      else if (chg <= -30) out.push({ level: 'info', text: `Carga caiu ${Math.abs(chg)}%. Semana de recuperação?` });
+    }
+  }
+  if (dash.nextSession) out.push({ level: 'info', text: `Próximo treino: ${dash.nextSession.title || 'Treino'} em ${dash.nextSession.date ? formatDate(dash.nextSession.date) : '—'}.` });
+  if (!out.length) out.push({ level: 'info', text: 'Registre presença, PSE e avaliações para gerar insights automáticos.' });
+  return out;
+}
+
+function tpRenderInsights(dash, sessions) {
+  const el = document.getElementById('tp-insights');
+  if (!el) return;
+  const colors = { good: 'var(--success)', warn: 'var(--warning,#f59e0b)', info: 'var(--muted)' };
+  const icons = { good: '✅', warn: '⚠️', info: 'ℹ️' };
+  el.innerHTML = tpBuildInsights(dash || {}, sessions || []).map(i =>
+    `<div style="display:flex;gap:8px;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border,#2a2a3a);">
+      <span>${icons[i.level] || 'ℹ️'}</span>
+      <span style="font-size:13px;color:${colors[i.level] || 'var(--muted)'};">${_esc(i.text)}</span>
+    </div>`).join('');
+}
+
+async function tpExportPdf() {
+  if (!window.jspdf) { toast('Biblioteca PDF não carregada', 'error'); return; }
+  const dash = _tpDashCache || {};
+  const sessions = _tpSessionsCache || [];
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+  pdfHeader(doc, 'Relatório de Treinos');
+  const num = (v) => (v == null ? '—' : v);
+  doc.autoTable({
+    startY: 52,
+    head: [['Indicador', 'Valor']],
+    body: [
+      ['Sessões totais', num(dash.totalSessions)],
+      ['Sessões concluídas', num(dash.finishedSessions)],
+      ['Presença média', dash.attendanceRate != null ? dash.attendanceRate + '%' : '—'],
+      ['Avaliação média', num(dash.avgEvaluation)],
+      ['PSE média', num(dash.avgRpe)],
+      ['Carga semanal', num(dash.weeklyWorkload)],
+      ['Próximo treino', dash.nextSession ? ((dash.nextSession.title || 'Treino') + ' · ' + (dash.nextSession.date ? formatDate(dash.nextSession.date) : '—')) : '—'],
+    ],
+    headStyles: { fillColor: [30, 30, 53], textColor: [0, 212, 255] }, styles: { fontSize: 9 },
+  });
+  if (sessions.length) {
+    doc.text('Sessões', 14, doc.lastAutoTable.finalY + 12);
+    const rows = [...sessions].sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))).slice(0, 30).map(s => [
+      s.date ? formatDate(s.date) : '—',
+      s.title || 'Treino',
+      s.location || '—',
+      s.durationMinutes ? s.durationMinutes + ' min' : '—',
+      TP_STATUS_LABEL[s.status || 'scheduled'] || s.status || '—',
+    ]);
+    doc.autoTable({ startY: doc.lastAutoTable.finalY + 16, head: [['Data', 'Título', 'Local', 'Duração', 'Status']], body: rows, headStyles: { fillColor: [30, 30, 53], textColor: [0, 212, 255] }, styles: { fontSize: 8 } });
+  }
+  const insights = tpBuildInsights(dash, sessions);
+  doc.text('Insights', 14, doc.lastAutoTable.finalY + 12);
+  doc.autoTable({ startY: doc.lastAutoTable.finalY + 16, head: [['Observação']], body: insights.map(i => [i.text]), headStyles: { fillColor: [30, 30, 53], textColor: [0, 212, 255] }, styles: { fontSize: 9 } });
+  doc.save('gkhub_treinos_' + new Date().toISOString().slice(0, 10) + '.pdf');
+  toast('PDF gerado!', 'success');
 }
 
 // ── Backend API Client ────────────────────────────────────────
