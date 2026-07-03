@@ -16,6 +16,9 @@ import { AiAnalysis } from '../modules/ai-analysis/entities/ai-analysis.entity';
 import { Notification } from '../modules/notifications/entities/notification.entity';
 import { Season } from '../modules/seasons/entities/season.entity';
 import { Competition } from '../modules/competitions/entities/competition.entity';
+import { TpSession, TpSessionBlock } from '../modules/training-plus/entities/session.entity';
+import { TpExercise } from '../modules/training-plus/entities/exercise-library.entity';
+import { TpAttendance, TpRpe, TpEvaluation, TpGoal } from '../modules/training-plus/entities/records.entity';
 
 // Single source of truth for the entity list, shared by the Nest TypeORM
 // module and the standalone CLI DataSource (migrations).
@@ -24,6 +27,7 @@ export const entities = [
   TrainingSession, Exercise, ExerciseResult,
   PerformanceIndex, Video, Report, AiAnalysis,
   Notification, Season, Competition,
+  TpSession, TpSessionBlock, TpExercise, TpAttendance, TpRpe, TpEvaluation, TpGoal,
 ];
 
 export const databaseConfig = (
@@ -35,9 +39,10 @@ export const databaseConfig = (
   const base: TypeOrmModuleOptions = {
     type: 'postgres',
     entities,
-    // synchronize is DEV-ONLY. In production the schema is managed by
-    // migrations (migrationsRun) so the DB is never altered automatically.
-    synchronize: !isProd,
+    // synchronize is DEV-ONLY by default. In production the schema is managed by
+    // migrations. Set DB_SYNC=true for a one-off bootstrap when new tables are
+    // added (e.g. the training-plus module), then remove it.
+    synchronize: !isProd || configService.get('DB_SYNC') === 'true',
     migrations: [__dirname + '/../migrations/*.{ts,js}'],
     migrationsRun: isProd,
     logging: !isProd,

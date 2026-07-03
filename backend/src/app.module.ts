@@ -17,6 +17,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { ImportModule } from './modules/import/import.module';
 import { SeasonsModule } from './modules/seasons/seasons.module';
 import { CompetitionsModule } from './modules/competitions/competitions.module';
+import { TrainingPlusModule } from './modules/training-plus/training-plus.module';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { databaseConfig } from './config/database.config';
@@ -48,6 +49,7 @@ import { databaseConfig } from './config/database.config';
     ImportModule,
     SeasonsModule,
     CompetitionsModule,
+    TrainingPlusModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
