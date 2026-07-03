@@ -2328,11 +2328,21 @@
       </div>
 
       <!-- Sessions list -->
-      <div class="stat-card" style="padding:16px;">
+      <div class="stat-card" style="padding:16px;margin-bottom:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div style="font-weight:700;">Sessões</div>
         </div>
         <div id="tp-sessions"></div>
+      </div>
+
+      <!-- Exercise library -->
+      <div class="stat-card" style="padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+          <div style="font-weight:700;">Biblioteca de exercícios</div>
+          <button class="btn btn-primary btn-sm" onclick="openTpExerciseForm()">+ Novo exercício</button>
+        </div>
+        <input id="tp-ex-search" class="form-input" placeholder="Buscar exercício…" oninput="renderTpExercises()" style="margin-bottom:12px;max-width:280px;">
+        <div id="tp-exercises"></div>
       </div>
     </div>
 
@@ -7627,6 +7637,126 @@ const TP_BLOCK_TYPES = [
 ];
 const TP_BLOCK_LABEL = TP_BLOCK_TYPES.reduce((m, b) => (m[b.v] = b.l, m), {});
 
+const TP_EX_CATEGORIES = [
+  { v: 'reflex', l: 'Reflexo' }, { v: 'aerial', l: 'Bola aérea' },
+  { v: 'lateral_dive', l: 'Mergulho lateral' }, { v: 'positioning', l: 'Posicionamento' },
+  { v: 'goal_exit', l: 'Saída do gol' }, { v: 'one_v_one', l: '1x1' },
+  { v: 'short_distribution', l: 'Reposição curta' }, { v: 'long_distribution', l: 'Reposição longa' },
+  { v: 'communication', l: 'Comunicação' }, { v: 'decision_making', l: 'Tomada de decisão' },
+  { v: 'coordination', l: 'Coordenação' }, { v: 'agility', l: 'Agilidade' },
+  { v: 'explosiveness', l: 'Explosão' }, { v: 'endurance', l: 'Resistência' },
+];
+const TP_EX_LABEL = TP_EX_CATEGORIES.reduce((m, c) => (m[c.v] = c.l, m), {});
+
+const TP_ATT_STATUS = [
+  { v: 'present', l: 'Presente', c: 'var(--success)' },
+  { v: 'partial', l: 'Parcial', c: 'var(--warning,#f59e0b)' },
+  { v: 'absent', l: 'Ausente', c: '#ef4444' },
+  { v: 'injured', l: 'Lesionada', c: '#a855f7' },
+];
+const TP_EVAL_FUNDAMENTALS = {
+  technical: ['Reflexo', 'Saída de gol', 'Jogo de pés', 'Reposição', 'Bola aérea', '1x1'],
+  physical: ['Explosão', 'Agilidade', 'Resistência', 'Força'],
+  mental: ['Concentração', 'Comunicação', 'Tomada de decisão', 'Confiança'],
+};
+const TP_EVAL_GROUP_LABEL = { technical: 'Técnico', physical: 'Físico', mental: 'Mental' };
+
+let _tpExercisesCache = [];
+
+async function renderTpExercises() {
+  const el = document.getElementById('tp-exercises');
+  if (!el) return;
+  const teamId = _tpTeamId();
+  const search = (document.getElementById('tp-ex-search')?.value || '').trim();
+  const params = [];
+  if (teamId) params.push('teamId=' + encodeURIComponent(teamId));
+  if (search) params.push('search=' + encodeURIComponent(search));
+  const q = params.length ? '?' + params.join('&') : '';
+  let list = [];
+  try { list = _tpUnwrap(await api.get('/training-plus/exercises' + q), []) || []; } catch (e) { list = []; }
+  _tpExercisesCache = list;
+  if (!list.length) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0;">Nenhum exercício cadastrado.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">' +
+    list.map(x => `
+      <div class="stat-card" style="padding:12px;">
+        <div style="display:flex;justify-content:space-between;gap:6px;align-items:start;">
+          <div style="font-weight:700;font-size:14px;">${_esc(x.name || 'Exercício')}</div>
+          <button class="btn btn-ghost btn-sm" style="color:#ef4444;padding:2px 6px;" onclick="tpDeleteExercise('${_esc(x.id)}')">✕</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${_esc(TP_EX_LABEL[x.category] || x.category || '—')}${x.estimatedMinutes ? ' · ' + x.estimatedMinutes + ' min' : ''}${x.difficulty ? ' · dif. ' + x.difficulty : ''}</div>
+        ${x.objective ? `<div style="font-size:12px;margin-top:6px;">${_esc(x.objective)}</div>` : ''}
+        ${x.materials ? `<div style="font-size:11px;color:var(--muted);margin-top:4px;">🎒 ${_esc(x.materials)}</div>` : ''}
+      </div>`).join('') + '</div>';
+}
+
+function openTpExerciseForm() {
+  let modal = document.getElementById('tp-exercise-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'tp-exercise-modal';
+    modal.className = 'modal-backdrop';
+    modal.innerHTML = `
+      <div class="modal" style="max-width:480px;">
+        <div class="modal-header">
+          <span class="modal-title">Novo exercício</span>
+          <button class="modal-close" onclick="closeModal('tp-exercise-modal')">&times;</button>
+        </div>
+        <div class="modal-body" style="display:grid;gap:12px;">
+          <div><label class="form-label">Nome</label><input id="tp-ex-name" class="form-input"></div>
+          <div><label class="form-label">Categoria</label>
+            <select id="tp-ex-category" class="form-input">${TP_EX_CATEGORIES.map(c => `<option value="${c.v}">${c.l}</option>`).join('')}</select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div><label class="form-label">Duração (min)</label><input id="tp-ex-minutes" type="number" min="0" class="form-input" value="10"></div>
+            <div><label class="form-label">Dificuldade (1-5)</label><input id="tp-ex-difficulty" type="number" min="1" max="5" class="form-input" value="3"></div>
+          </div>
+          <div><label class="form-label">Objetivo</label><input id="tp-ex-objective" class="form-input"></div>
+          <div><label class="form-label">Materiais</label><input id="tp-ex-materials" class="form-input" placeholder="Ex.: cones, bolas"></div>
+          <div><label class="form-label">Descrição</label><textarea id="tp-ex-description" class="form-input" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px;">
+          <button class="btn btn-secondary" onclick="closeModal('tp-exercise-modal')">Cancelar</button>
+          <button class="btn btn-primary" onclick="createTpExercise()">Salvar</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+  }
+  ['name', 'objective', 'materials', 'description'].forEach(f => { const el = document.getElementById('tp-ex-' + f); if (el) el.value = ''; });
+  openModal('tp-exercise-modal');
+}
+
+async function createTpExercise() {
+  const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const name = val('tp-ex-name');
+  if (!name) { toast('Informe o nome do exercício.', 'error'); return; }
+  const body = {
+    teamId: _tpTeamId() || undefined,
+    name,
+    category: document.getElementById('tp-ex-category')?.value,
+    estimatedMinutes: parseInt(val('tp-ex-minutes'), 10) || undefined,
+    difficulty: parseInt(val('tp-ex-difficulty'), 10) || undefined,
+    objective: val('tp-ex-objective') || undefined,
+    materials: val('tp-ex-materials') || undefined,
+    description: val('tp-ex-description') || undefined,
+  };
+  try {
+    toast('Salvando exercício…', 'info');
+    await api.post('/training-plus/exercises', body);
+    closeModal('tp-exercise-modal');
+    toast('Exercício criado!', 'success');
+    renderTpExercises();
+  } catch (e) { toast('Não foi possível salvar.', 'error'); }
+}
+
+async function tpDeleteExercise(id) {
+  if (!confirm('Excluir este exercício?')) return;
+  try { await api.delete('/training-plus/exercises/' + id); toast('Exercício excluído.', 'success'); renderTpExercises(); }
+  catch (e) { toast('Não foi possível excluir.', 'error'); }
+}
+
 // Calendar state — sessions cache for the current view + month offset
 let _tpSessionsCache = [];
 let _tpCalOffset = 0; // months from current
@@ -7698,6 +7828,7 @@ async function renderTreinos() {
   } catch (e) { sessions = []; }
   _tpSessionsCache = sessions;
   tpRenderCalendar();
+  renderTpExercises();
 
   // KPI cards
   const pct = (v) => (v == null ? '—' : Math.round(v) + '%');
@@ -7841,12 +7972,18 @@ async function createTpSession() {
 
 let _tpDetailSession = null;
 let _tpPlannerBlocks = [];
+let _tpDetailTab = 'plan';
 
 async function tpOpenSession(id) {
   let s;
   try { s = _tpUnwrap(await api.get('/training-plus/sessions/' + id), null); } catch (e) { toast('Não foi possível abrir a sessão.', 'error'); return; }
   if (!s) return;
   _tpDetailSession = s;
+  _tpDetailTab = 'plan';
+  _tpEvalGkId = null;
+  // Seed attendance state from what's already stored so a save keeps everyone.
+  Object.keys(_tpAttState).forEach(k => delete _tpAttState[k]);
+  (s.attendance || []).forEach(a => { _tpAttState[a.goalkeeperId] = a.status; });
   _tpPlannerBlocks = (s.blocks || []).map(b => ({ type: b.type, plannedMinutes: b.plannedMinutes || 0, objective: b.objective || '' }));
   let modal = document.getElementById('tp-detail-modal');
   if (!modal) {
@@ -7857,6 +7994,127 @@ async function tpOpenSession(id) {
   }
   tpRenderDetail();
   openModal('tp-detail-modal');
+}
+
+function tpSetTab(tab) { _tpDetailTab = tab; tpRenderDetail(); }
+
+// Attendance tab — one status row per goalkeeper
+function _tpAttendanceHtml(s) {
+  const gks = (typeof DB !== 'undefined' && DB.goleiras) ? DB.goleiras : [];
+  if (!gks.length) return '<div style="color:var(--muted);font-size:13px;">Cadastre goleiras primeiro.</div>';
+  const existing = {}; (s.attendance || []).forEach(a => existing[a.goalkeeperId] = a.status);
+  const rows = gks.map(g => {
+    const cur = existing[g.id] || '';
+    const btns = TP_ATT_STATUS.map(st =>
+      `<button class="btn btn-sm ${cur === st.v ? 'btn-primary' : 'btn-secondary'}" style="${cur === st.v ? 'background:' + st.c + ';border-color:' + st.c + ';' : ''}" onclick="_tpSetAtt('${_esc(g.id)}','${st.v}',this)">${st.l}</button>`
+    ).join(' ');
+    return `<div data-gk="${_esc(g.id)}" style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:6px 0;border-bottom:1px solid var(--border,#2a2a3a);">
+      <div style="font-weight:600;font-size:13px;">${_esc(g.nome)}</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap;">${btns}</div>
+    </div>`;
+  }).join('');
+  return `<div>${rows}</div>
+    <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="tpSaveAttendance('${_esc(s.id)}')">Salvar presença</button>`;
+}
+const _tpAttState = {};
+function _tpSetAtt(gkId, status, btn) {
+  _tpAttState[gkId] = status;
+  const row = btn.closest('[data-gk]');
+  if (row) row.querySelectorAll('button').forEach(b => { b.className = 'btn btn-sm btn-secondary'; b.style.background = ''; b.style.borderColor = ''; });
+  const st = TP_ATT_STATUS.find(x => x.v === status);
+  btn.className = 'btn btn-sm btn-primary';
+  if (st) { btn.style.background = st.c; btn.style.borderColor = st.c; }
+}
+async function tpSaveAttendance(id) {
+  const entries = Object.keys(_tpAttState).map(gk => ({ goalkeeperId: gk, status: _tpAttState[gk] }));
+  if (!entries.length) { toast('Marque ao menos uma goleira.', 'info'); return; }
+  try {
+    toast('Salvando presença…', 'info');
+    const updated = _tpUnwrap(await api.post('/training-plus/sessions/' + id + '/attendance', { entries }), null);
+    if (updated) _tpDetailSession.attendance = updated;
+    toast('Presença salva!', 'success');
+    renderTreinos();
+  } catch (e) { toast('Não foi possível salvar a presença.', 'error'); }
+}
+
+// PSE/RPE tab — 0-10 per goalkeeper
+function _tpRpeHtml(s) {
+  const gks = (typeof DB !== 'undefined' && DB.goleiras) ? DB.goleiras : [];
+  if (!gks.length) return '<div style="color:var(--muted);font-size:13px;">Cadastre goleiras primeiro.</div>';
+  const existing = {}; (s.rpe || []).forEach(r => existing[r.goalkeeperId] = r);
+  const dur = s.durationMinutes || 0;
+  const rows = gks.map(g => {
+    const r = existing[g.id];
+    const val = r ? r.value : '';
+    const load = r && r.workload != null ? r.workload : (dur && val !== '' ? dur * val : '');
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border,#2a2a3a);">
+      <div style="font-weight:600;font-size:13px;flex:1;">${_esc(g.nome)}</div>
+      <input class="form-input" style="width:70px;padding:6px;" type="number" min="0" max="10" placeholder="0-10" value="${val}" data-rpe="${_esc(g.id)}">
+      <div style="width:80px;text-align:right;font-size:12px;color:var(--muted);" data-load="${_esc(g.id)}">${load !== '' ? 'Carga ' + load : ''}</div>
+    </div>`;
+  }).join('');
+  return `<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">PSE 0-10 · Carga interna = duração (${dur} min) × PSE</div>
+    <div>${rows}</div>
+    <button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="tpSaveRpe('${_esc(s.id)}')">Salvar PSE</button>`;
+}
+async function tpSaveRpe(id) {
+  const inputs = document.querySelectorAll('#tp-detail-modal [data-rpe]');
+  const jobs = [];
+  inputs.forEach(inp => {
+    const v = inp.value.trim();
+    if (v !== '') jobs.push({ goalkeeperId: inp.getAttribute('data-rpe'), value: Math.max(0, Math.min(10, parseFloat(v))) });
+  });
+  if (!jobs.length) { toast('Informe ao menos uma PSE.', 'info'); return; }
+  try {
+    toast('Salvando PSE…', 'info');
+    for (const j of jobs) await api.post('/training-plus/sessions/' + id + '/rpe', j);
+    const fresh = _tpUnwrap(await api.get('/training-plus/sessions/' + id), null);
+    if (fresh) { _tpDetailSession = fresh; }
+    toast('PSE salva!', 'success');
+    tpRenderDetail();
+    renderTreinos();
+  } catch (e) { toast('Não foi possível salvar a PSE.', 'error'); }
+}
+
+// Evaluation tab — pick a goalkeeper, score fundamentals
+function _tpEvalHtml(s) {
+  const gks = (typeof DB !== 'undefined' && DB.goleiras) ? DB.goleiras : [];
+  if (!gks.length) return '<div style="color:var(--muted);font-size:13px;">Cadastre goleiras primeiro.</div>';
+  const gkId = _tpEvalGkId || gks[0].id;
+  const existing = (s.evaluations || []).find(e => e.goalkeeperId === gkId) || {};
+  const groups = Object.keys(TP_EVAL_FUNDAMENTALS).map(grp => {
+    const stored = existing[grp] || {};
+    const items = TP_EVAL_FUNDAMENTALS[grp].map(f =>
+      `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;">
+        <div style="font-size:13px;">${f}</div>
+        <input class="form-input" style="width:64px;padding:5px;" type="number" min="0" max="10" value="${stored[f] != null ? stored[f] : ''}" data-eval-grp="${grp}" data-eval-key="${_esc(f)}">
+      </div>`).join('');
+    return `<div style="margin-bottom:10px;"><div style="font-weight:700;font-size:13px;margin-bottom:4px;">${TP_EVAL_GROUP_LABEL[grp]}</div>${items}</div>`;
+  }).join('');
+  const gkOpts = gks.map(g => `<option value="${_esc(g.id)}"${g.id === gkId ? ' selected' : ''}>${_esc(g.nome)}</option>`).join('');
+  return `<div style="margin-bottom:10px;"><select class="form-input" onchange="_tpEvalPick(this.value)">${gkOpts}</select></div>
+    ${groups}
+    <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="tpSaveEvaluation('${_esc(s.id)}')">Salvar avaliação</button>`;
+}
+let _tpEvalGkId = null;
+function _tpEvalPick(gkId) { _tpEvalGkId = gkId; tpRenderDetail(); }
+async function tpSaveEvaluation(id) {
+  const gks = (typeof DB !== 'undefined' && DB.goleiras) ? DB.goleiras : [];
+  const gkId = _tpEvalGkId || (gks[0] && gks[0].id);
+  if (!gkId) return;
+  const payload = { goalkeeperId: gkId, technical: {}, physical: {}, mental: {} };
+  document.querySelectorAll('#tp-detail-modal [data-eval-grp]').forEach(inp => {
+    const v = inp.value.trim();
+    if (v !== '') payload[inp.getAttribute('data-eval-grp')][inp.getAttribute('data-eval-key')] = Math.max(0, Math.min(10, parseFloat(v)));
+  });
+  try {
+    toast('Salvando avaliação…', 'info');
+    await api.post('/training-plus/sessions/' + id + '/evaluation', payload);
+    const fresh = _tpUnwrap(await api.get('/training-plus/sessions/' + id), null);
+    if (fresh) _tpDetailSession = fresh;
+    toast('Avaliação salva!', 'success');
+    renderTreinos();
+  } catch (e) { toast('Não foi possível salvar a avaliação.', 'error'); }
 }
 
 function tpStatusButtons(s) {
@@ -7884,6 +8142,25 @@ function tpRenderDetail() {
       <input class="form-input" style="padding:6px;" value="${_esc(b.objective || '')}" placeholder="Objetivo do bloco" onchange="_tpBlockField(${i},'objective',this.value)">
       <button class="btn btn-secondary btn-sm" style="color:#ef4444;padding:6px;" onclick="_tpRemoveBlock(${i})">✕</button>
     </div>`).join('');
+  const planHtml = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <div style="font-weight:700;">Planejamento (blocos)</div>
+      <div style="font-size:12px;color:var(--muted);">Total: ${_tpPlannedTotal()} min${s.durationMinutes ? ' / ' + s.durationMinutes + ' min' : ''}</div>
+    </div>
+    ${_tpPlannerBlocks.length ? blockRows : '<div style="color:var(--muted);font-size:13px;margin-bottom:8px;">Nenhum bloco. Adicione para estruturar a sessão.</div>'}
+    <div style="display:flex;gap:8px;margin-top:6px;">
+      <button class="btn btn-secondary btn-sm" onclick="_tpAddBlock()">+ Bloco</button>
+      <button class="btn btn-primary btn-sm" onclick="tpSaveBlocks('${_esc(s.id)}')">Salvar blocos</button>
+    </div>`;
+
+  const TABS = [['plan', 'Planejamento'], ['attendance', 'Presença'], ['eval', 'Avaliação'], ['rpe', 'PSE']];
+  const tabBar = TABS.map(([k, l]) =>
+    `<button class="btn btn-sm ${_tpDetailTab === k ? 'btn-primary' : 'btn-secondary'}" onclick="tpSetTab('${k}')">${l}</button>`).join(' ');
+  let tabBody = planHtml;
+  if (_tpDetailTab === 'attendance') tabBody = _tpAttendanceHtml(s);
+  else if (_tpDetailTab === 'eval') tabBody = _tpEvalHtml(s);
+  else if (_tpDetailTab === 'rpe') tabBody = _tpRpeHtml(s);
+
   modal.innerHTML = `
     <div class="modal" style="max-width:600px;">
       <div class="modal-header">
@@ -7899,17 +8176,8 @@ function tpRenderDetail() {
           <div style="font-weight:600;margin-bottom:6px;">Status</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap;">${tpStatusButtons(s)}</div>
         </div>
-        <div style="border-top:1px solid var(--border,#2a2a3a);padding-top:12px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-            <div style="font-weight:700;">Planejamento (blocos)</div>
-            <div style="font-size:12px;color:var(--muted);">Total: ${_tpPlannedTotal()} min${s.durationMinutes ? ' / ' + s.durationMinutes + ' min' : ''}</div>
-          </div>
-          ${_tpPlannerBlocks.length ? blockRows : '<div style="color:var(--muted);font-size:13px;margin-bottom:8px;">Nenhum bloco. Adicione para estruturar a sessão.</div>'}
-          <div style="display:flex;gap:8px;margin-top:6px;">
-            <button class="btn btn-secondary btn-sm" onclick="_tpAddBlock()">+ Bloco</button>
-            <button class="btn btn-primary btn-sm" onclick="tpSaveBlocks('${_esc(s.id)}')">Salvar blocos</button>
-          </div>
-        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;border-top:1px solid var(--border,#2a2a3a);padding-top:12px;">${tabBar}</div>
+        <div>${tabBody}</div>
       </div>
       <div class="modal-footer" style="display:flex;justify-content:space-between;gap:8px;">
         <button class="btn btn-secondary" onclick="tpDeleteSession('${_esc(s.id)}')" style="color:#ef4444;">Excluir</button>
