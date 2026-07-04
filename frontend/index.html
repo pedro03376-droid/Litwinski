@@ -10822,6 +10822,20 @@ initFirebaseFromStorage();
 // ═══════════════════════════════════════════════════════════
 let deferredInstallPrompt = null;
 
+// Shows a dismissible "new version available" banner for logged-in users, so
+// updates (like layout fixes) reach them without silently waiting for a manual
+// refresh. Reloading is safe — the session lives in localStorage.
+function _showUpdateBanner() {
+  if (document.getElementById('gkhub-update-banner')) return;
+  const b = document.createElement('div');
+  b.id = 'gkhub-update-banner';
+  b.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:700;display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border-h);border-radius:14px;padding:12px 16px;box-shadow:0 12px 32px rgba(0,0,0,.4);font-size:13px;max-width:92vw;';
+  b.innerHTML = '<span>✨ Nova versão disponível.</span>'
+    + '<button class="btn btn-primary btn-sm" onclick="location.reload()">Atualizar</button>'
+    + '<button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()">Depois</button>';
+  document.body.appendChild(b);
+}
+
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -10829,9 +10843,10 @@ if ('serviceWorker' in navigator) {
     const _swSafeReload = () => {
       try {
         const s = JSON.parse(localStorage.getItem('gkhub_session') || 'null');
-        // Não recarrega se houver sessão ativa OU redirect Google pendente
+        // Sem sessão: recarrega direto. Com sessão: oferece atualização manual
+        // (recarregar preserva a sessão, que fica no localStorage).
         if (!s?.token && !localStorage.getItem('gkhub_google_redirect')) window.location.reload();
-        // Se logado, o novo SW entrará em vigor na próxima abertura natural da página
+        else _showUpdateBanner();
       } catch(e) { window.location.reload(); }
     };
 
