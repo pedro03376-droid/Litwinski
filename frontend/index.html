@@ -1729,6 +1729,19 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
       <span class="nav-item-label">Relatórios PDF</span>
     </div>
+    <div class="nav-section-label">Sistema</div>
+    <div class="nav-item" data-page="notificacoes" data-tooltip="Notificações" onclick="navigate('notificacoes')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="nav-item-label">Notificações</span>
+    </div>
+    <div class="nav-item" data-page="central-relatorios" data-tooltip="Central de Relatórios" onclick="navigate('central-relatorios')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <span class="nav-item-label">Central de Relatórios</span>
+    </div>
+    <div class="nav-item" data-page="auditoria" data-tooltip="Auditoria" onclick="navigate('auditoria')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <span class="nav-item-label">Auditoria</span>
+    </div>
     <div class="nav-item" data-page="usuario" data-tooltip="Meu Perfil" onclick="navigate('usuario')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       <span class="nav-item-label">Meu Perfil</span>
@@ -1778,6 +1791,10 @@
     </div>
     <div class="topbar-actions">
       <span class="topbar-date" id="topbar-date"></span>
+      <button class="topbar-icon-btn" onclick="navigate('notificacoes')" title="Notificações" style="position:relative;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span id="notif-badge" style="display:none;position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--error);color:#fff;font-size:10px;font-weight:700;line-height:16px;text-align:center;"></span>
+      </button>
       <button class="topbar-icon-btn" id="btn-install" onclick="installPWA()" title="Instalar App">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </button>
@@ -1965,6 +1982,60 @@
         <div class="card"><div class="card-header"><span class="card-title">📅 Próximos treinos</span></div><div id="exec-next-trainings"></div></div>
         <div class="card"><div class="card-header"><span class="card-title">⚽ Próximas partidas</span></div><div id="exec-next-matches"></div></div>
       </div>
+    </div>
+
+    <!-- ══ NOTIFICAÇÕES ══ -->
+    <div id="page-notificacoes" class="page">
+      <div class="card-header" style="margin-bottom:16px;">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" id="notif-search" type="text" placeholder="Buscar notificação…" oninput="renderNotificacoes()">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="form-select" id="notif-filter" style="width:auto;padding:8px 12px;" onchange="renderNotificacoes()">
+            <option value="">Todas</option><option value="unread">Não lidas</option>
+            <option value="match">Partidas</option><option value="scout">Scouts</option>
+            <option value="pdf">Relatórios</option><option value="alert">Alertas</option><option value="goal">Metas</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="markAllNotifRead()">Marcar todas como lidas</button>
+        </div>
+      </div>
+      <div class="card"><div id="notif-list"></div></div>
+    </div>
+
+    <!-- ══ CENTRAL DE RELATÓRIOS ══ -->
+    <div id="page-central-relatorios" class="page">
+      <div class="card-header" style="margin-bottom:16px;">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" id="rep-search" type="text" placeholder="Buscar relatório…" oninput="renderCentralRelatorios()">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select class="form-select" id="rep-filter" style="width:auto;padding:8px 12px;" onchange="renderCentralRelatorios()">
+            <option value="">Todos os tipos</option><option value="individual">Individual</option>
+            <option value="geral">Geral</option><option value="partidas">Partidas</option>
+            <option value="competicao">Competição</option><option value="analise">Análise IA</option><option value="treinos">Treinos</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="repShowFav=!repShowFav;renderCentralRelatorios()" id="rep-fav-btn">★ Favoritos</button>
+          <button class="btn btn-primary btn-sm" onclick="navigate('relatorios')">Gerar novo</button>
+        </div>
+      </div>
+      <div class="card"><div id="rep-list"></div></div>
+    </div>
+
+    <!-- ══ AUDITORIA ══ -->
+    <div id="page-auditoria" class="page">
+      <div class="card-header" style="margin-bottom:16px;">
+        <div class="search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input class="search-input" id="audit-search" type="text" placeholder="Buscar ação, usuário, módulo…" oninput="renderAuditoria()">
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="exportAuditCsv()">Exportar CSV</button>
+      </div>
+      <div class="card"><div class="table-wrap"><table>
+        <thead><tr><th>Data / Hora</th><th>Usuário</th><th>Módulo</th><th>Ação</th></tr></thead>
+        <tbody id="audit-tbody"></tbody>
+      </table></div></div>
     </div>
 
     <!-- ══ GOLEIRAS ══ -->
@@ -3420,7 +3491,198 @@ const DB = {
   saveGoleiras(d) { this.save('goleiras', d); },
   savePartidas(d) { this.save('partidas', d); },
   saveScouts(d)   { this.save('scouts', d); },
+  get notifications() { return this.load('notifications'); },
+  get auditlog()      { return this.load('auditlog'); },
+  get reports()       { return this.load('reports'); },
+  saveNotifications(d){ this.save('notifications', d); },
+  saveAuditlog(d)     { this.save('auditlog', d); },
+  saveReports(d)      { this.save('reports', d); },
 };
+
+/* ═══════════════════════════════════════════════════════════
+   SISTEMA — Notificações · Auditoria · Central de Relatórios
+   Persistido em localStorage (mesmo padrão do DB). Aditivo.
+   ═══════════════════════════════════════════════════════════ */
+function _nowParts() {
+  const d = new Date();
+  return { ts: d.getTime(), date: d.toISOString().slice(0, 10), time: d.toTimeString().slice(0, 5) };
+}
+function _uid() { return 'x' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
+function _currentUserName() {
+  return localStorage.getItem('gkhub_backend_email') || localStorage.getItem('gkhub_user_name') || 'Você';
+}
+
+// Audit log — capped ring buffer
+function logAudit(module, description) {
+  try {
+    const { ts, date, time } = _nowParts();
+    const list = DB.auditlog;
+    list.unshift({ id: _uid(), user: _currentUserName(), ts, date, time, module, description });
+    DB.saveAuditlog(list.slice(0, 500));
+  } catch (e) {}
+}
+
+// In-app notification store
+function pushNotif(type, title, text) {
+  try {
+    const { ts } = _nowParts();
+    const list = DB.notifications;
+    list.unshift({ id: _uid(), type: type || 'info', title, text: text || '', ts, read: false });
+    DB.saveNotifications(list.slice(0, 200));
+    updateNotifBadge();
+  } catch (e) {}
+}
+
+// Report library entry (metadata for generated PDFs)
+function logReport(meta) {
+  try {
+    const { ts, date } = _nowParts();
+    const list = DB.reports;
+    list.unshift({ id: _uid(), ts, date, favorite: false, ...meta });
+    DB.saveReports(list.slice(0, 300));
+  } catch (e) {}
+}
+
+function updateNotifBadge() {
+  const badge = document.getElementById('notif-badge');
+  if (!badge) return;
+  const n = DB.notifications.filter(x => !x.read).length;
+  if (n > 0) { badge.style.display = 'block'; badge.textContent = n > 99 ? '99+' : String(n); }
+  else badge.style.display = 'none';
+}
+
+const _NOTIF_ICON = { match: '⚽', partida: '⚽', scout: '📊', pdf: '📄', report: '📄', alert: '⚠️', goal: '🎯', info: 'ℹ️', sync: '☁️', csv: '📁' };
+function _relTime(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'agora';
+  if (s < 3600) return Math.floor(s / 60) + ' min';
+  if (s < 86400) return Math.floor(s / 3600) + ' h';
+  const d = Math.floor(s / 86400);
+  return d < 30 ? d + ' d' : formatDate(new Date(ts).toISOString().slice(0, 10));
+}
+
+// ── Notificações ──
+function renderNotificacoes() {
+  updateNotifBadge();
+  const el = document.getElementById('notif-list');
+  if (!el) return;
+  const q = (document.getElementById('notif-search')?.value || '').trim().toLowerCase();
+  const f = document.getElementById('notif-filter')?.value || '';
+  let list = DB.notifications;
+  if (f === 'unread') list = list.filter(n => !n.read);
+  else if (f) list = list.filter(n => n.type === f);
+  if (q) list = list.filter(n => (n.title || '').toLowerCase().includes(q) || (n.text || '').toLowerCase().includes(q));
+  if (!list.length) { el.innerHTML = '<div class="empty-state"><p>Nenhuma notificação.</p></div>'; return; }
+  el.innerHTML = list.map(n => `
+    <div style="display:flex;gap:12px;align-items:flex-start;padding:12px 4px;border-bottom:1px solid var(--border);${n.read ? 'opacity:.62;' : ''}">
+      <span style="font-size:18px;">${_NOTIF_ICON[n.type] || 'ℹ️'}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:13px;">${_esc(n.title || '')}${n.read ? '' : ' <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--primary);vertical-align:middle;margin-left:4px;"></span>'}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${_esc(n.text || '')}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${_relTime(n.ts)}</span>
+        <div style="display:flex;gap:4px;">
+          ${n.read ? '' : `<button class="btn btn-ghost btn-sm" style="padding:2px 8px;" onclick="markNotifRead('${n.id}')">Lida</button>`}
+          <button class="btn btn-ghost btn-sm" style="padding:2px 6px;color:#ef4444;" onclick="deleteNotif('${n.id}')">✕</button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function markNotifRead(id) { const l = DB.notifications; const n = l.find(x => x.id === id); if (n) n.read = true; DB.saveNotifications(l); renderNotificacoes(); }
+function deleteNotif(id) { DB.saveNotifications(DB.notifications.filter(x => x.id !== id)); renderNotificacoes(); }
+function markAllNotifRead() { const l = DB.notifications.map(n => ({ ...n, read: true })); DB.saveNotifications(l); renderNotificacoes(); toast('Todas marcadas como lidas.', 'success'); }
+
+// Auto-generate insight-based notifications (deduped so they don't spam)
+function syncIntelligenceNotifications() {
+  try {
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem('gkhub_intel_notified') || '{}'); } catch (e) { seen = {}; }
+    const activeKeys = new Set();
+    DB.goleiras.forEach(g => {
+      gkIntelligence(g.id, DB.partidas, DB.scouts).filter(i => i.level === 'warn').forEach(i => {
+        const key = g.id + '::' + i.title;
+        activeKeys.add(key);
+        if (!seen[key]) { pushNotif('alert', i.title + ' — ' + g.nome, i.text); seen[key] = 1; }
+      });
+    });
+    // Clear resolved conditions so they can fire again if they return
+    Object.keys(seen).forEach(k => { if (!activeKeys.has(k)) delete seen[k]; });
+    localStorage.setItem('gkhub_intel_notified', JSON.stringify(seen));
+  } catch (e) {}
+}
+
+// ── Central de Relatórios ──
+let repShowFav = false;
+function renderCentralRelatorios() {
+  const el = document.getElementById('rep-list');
+  if (!el) return;
+  const q = (document.getElementById('rep-search')?.value || '').trim().toLowerCase();
+  const f = document.getElementById('rep-filter')?.value || '';
+  const favBtn = document.getElementById('rep-fav-btn');
+  if (favBtn) favBtn.className = 'btn btn-sm ' + (repShowFav ? 'btn-primary' : 'btn-secondary');
+  let list = DB.reports;
+  if (f) list = list.filter(r => r.type === f);
+  if (repShowFav) list = list.filter(r => r.favorite);
+  if (q) list = list.filter(r => (r.title || '').toLowerCase().includes(q) || (r.athlete || '').toLowerCase().includes(q) || (r.competition || '').toLowerCase().includes(q));
+  if (!list.length) { el.innerHTML = '<div class="empty-state"><p>Nenhum relatório na biblioteca. Gere um PDF para começar.</p></div>'; return; }
+  const typeLabel = { individual: 'Individual', geral: 'Geral', partidas: 'Partidas', competicao: 'Competição', analise: 'Análise IA', treinos: 'Treinos' };
+  el.innerHTML = list.map(r => `
+    <div style="display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--border);">
+      <span style="font-size:18px;">📄</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:700;font-size:13px;">${_esc(r.title || 'Relatório')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">
+          <span class="badge badge-dev">${typeLabel[r.type] || r.type}</span>
+          ${r.athlete ? ' · ' + _esc(r.athlete) : ''}${r.competition ? ' · ' + _esc(r.competition) : ''} · ${formatDate(r.date)}
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 8px;color:${r.favorite ? '#FCD34D' : 'var(--muted)'};" onclick="repToggleFav('${r.id}')" title="Favoritar">${r.favorite ? '★' : '☆'}</button>
+      <button class="btn btn-secondary btn-sm" onclick="repRegen('${_esc(r.type)}','${_esc(r.athleteId || '')}')">Gerar novamente</button>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 6px;color:#ef4444;" onclick="repDelete('${r.id}')">✕</button>
+    </div>`).join('');
+}
+function repToggleFav(id) { const l = DB.reports; const r = l.find(x => x.id === id); if (r) r.favorite = !r.favorite; DB.saveReports(l); renderCentralRelatorios(); }
+function repDelete(id) { DB.saveReports(DB.reports.filter(x => x.id !== id)); renderCentralRelatorios(); }
+function repRegen(type, athleteId) {
+  // Take the user to the report generator with context (regeneration is manual
+  // and always reflects the latest data — no stale snapshot stored).
+  if (type === 'treinos') { navigate('treinos'); toast('Use “📄 Relatório PDF” na aba Treinos.', 'info'); return; }
+  if ((type === 'individual' || type === 'analise') && athleteId) {
+    navigate('relatorios');
+    setTimeout(() => { const s = document.getElementById('pdf-gk-select'); if (s) { s.value = athleteId; } }, 200);
+    toast('Selecione o formato e gere o relatório atualizado.', 'info');
+    return;
+  }
+  navigate('relatorios');
+}
+
+// ── Auditoria ──
+function renderAuditoria() {
+  const tb = document.getElementById('audit-tbody');
+  if (!tb) return;
+  const q = (document.getElementById('audit-search')?.value || '').trim().toLowerCase();
+  let list = DB.auditlog;
+  if (q) list = list.filter(a => (a.description || '').toLowerCase().includes(q) || (a.user || '').toLowerCase().includes(q) || (a.module || '').toLowerCase().includes(q));
+  if (!list.length) { tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nenhuma ação registrada ainda.</p></div></td></tr>'; return; }
+  tb.innerHTML = list.slice(0, 200).map(a => `
+    <tr>
+      <td style="white-space:nowrap;">${formatDate(a.date)} <span style="color:var(--muted);">${a.time || ''}</span></td>
+      <td>${_esc(a.user || '—')}</td>
+      <td><span class="badge badge-dev">${_esc(a.module || '—')}</span></td>
+      <td>${_esc(a.description || '')}</td>
+    </tr>`).join('');
+}
+function exportAuditCsv() {
+  const rows = [['Data', 'Hora', 'Usuário', 'Módulo', 'Descrição']].concat(
+    DB.auditlog.map(a => [a.date, a.time, a.user, a.module, (a.description || '').replace(/"/g, '""')]));
+  const csv = rows.map(r => r.map(c => `"${c ?? ''}"`).join(',')).join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'gkhub_auditoria.csv'; a.click();
+  URL.revokeObjectURL(url);
+  toast('Auditoria exportada.', 'success');
+}
 
 let editingId = { goleira: null, partida: null, scout: null };
 let dashFilterFrom = '';
@@ -3468,7 +3730,8 @@ const pageTitles = {
   performance: 'Performance',
   treinos: 'Treinos',
   usuario: 'Meu Perfil',
-  heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)'
+  heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)',
+  notificacoes: 'Notificações', 'central-relatorios': 'Central de Relatórios', auditoria: 'Auditoria'
 };
 
 function navigate(page) {
@@ -3492,6 +3755,9 @@ function navigate(page) {
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
   if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); loadClubMembers(); }
   if (page === 'usuario') { loadUserPage(); }
+  if (page === 'notificacoes') renderNotificacoes();
+  if (page === 'central-relatorios') renderCentralRelatorios();
+  if (page === 'auditoria') renderAuditoria();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3622,6 +3888,8 @@ function salvarGoleira() {
   }
   DB.saveGoleiras(goleiras);
   cloudSet('goleiras', editingId.goleira ? goleiras.find(g=>g.id===editingId.goleira) : obj);
+  logAudit('Goleiras', (editingId.goleira ? 'Atualizou' : 'Cadastrou') + ' a goleira ' + nome);
+  if (!editingId.goleira) pushNotif('info', 'Nova goleira', nome + ' foi cadastrada.');
   closeModal('modal-goleira');
   renderGoleiras();
   updateGoleiraSelects();
@@ -3650,6 +3918,8 @@ function editarGoleira(id) {
 
 function excluirGoleira(id) {
   if (!confirm('Excluir esta goleira? Os scouts e dados associados também serão removidos.')) return;
+  const _gk = DB.goleiras.find(g => g.id === id);
+  logAudit('Goleiras', 'Excluiu a goleira ' + (_gk ? _gk.nome : id));
   DB.saveGoleiras(DB.goleiras.filter(g => g.id !== id));
   DB.saveScouts(DB.scouts.filter(s => s.goalkeeperId !== id));
   cloudDelete('goleiras', id);
@@ -3781,6 +4051,8 @@ function editarPartida(id) {
 
 function excluirPartida(id) {
   if (!confirm('Excluir esta partida e todos os scouts vinculados a ela?')) return;
+  const _pt = DB.partidas.find(p => p.id === id);
+  logAudit('Partidas', 'Excluiu a partida ' + (_pt ? ('vs ' + (_pt.adversario || '—')) : id));
   DB.savePartidas(DB.partidas.filter(p => p.id !== id));
   const scoutsVinculados = DB.scouts.filter(s => s.partidaId === id);
   DB.saveScouts(DB.scouts.filter(s => s.partidaId !== id));
@@ -3993,6 +4265,7 @@ function editarScout(id) {
 
 function excluirScout(id) {
   if (!confirm('Excluir este scout?')) return;
+  logAudit('Scouts', 'Excluiu um scout');
   DB.saveScouts(DB.scouts.filter(s => s.id !== id));
   cloudDelete('scouts', id);
   renderScouts();
@@ -4446,6 +4719,7 @@ function refreshDashboard() {
 
   // ── Central de Inteligência (cross-module insights) ──
   renderDashIntelligence(goleiras, partidas, scouts);
+  syncIntelligenceNotifications();
 
   // ── Destaques do Treinador ──
   function gkScoutSum(gkId, keys) {
@@ -5310,6 +5584,7 @@ function exportarAnalisePDF() {
     theme:'grid'
   });
   doc.save(`analise_${gk?.nome?.replace(/\s+/g,'_')||'goleira'}_${new Date().toISOString().slice(0,10)}.pdf`);
+  logReport({ type: 'analise', title: 'Análise de Desempenho — ' + (gk?.nome || 'goleira'), athlete: gk?.nome, athleteId: gk?.id });
   toast('PDF exportado!','success');
 }
 
@@ -5658,6 +5933,7 @@ function pdfGeral() {
     body: [['Total de goleiras', goleiras.length],['Partidas', DB.partidas.length],['Scouts', DB.scouts.length]],
     styles: { fontSize: 9 } });
   doc.save('gkhub_relatorio_geral.pdf');
+  logReport({ type: 'geral', title: 'Relatório Geral do Elenco' });
   toast('PDF gerado!','success');
   if (loadPreferences().notifPdf) _sendNotif('PDF gerado', 'Relatório Geral exportado', 'pdf');
 }
@@ -5686,6 +5962,7 @@ function pdfIndividual() {
     ], headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
   }
   doc.save('gkhub_'+gk.nome.replace(/\s/g,'_')+'.pdf');
+  logReport({ type: 'individual', title: 'Relatório Individual — ' + gk.nome, athlete: gk.nome, athleteId: gk.id });
   toast('PDF gerado!','success');
   if (loadPreferences().notifPdf) _sendNotif('PDF gerado', `Relatório de ${gk.nome} exportado`, 'pdf');
 }
@@ -5705,6 +5982,7 @@ function pdfPartidas() {
   doc.autoTable({ startY: 52, head: [['Data','Adversário','Competição','Goleira','Resultado']], body: rows,
     headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
   doc.save('gkhub_partidas.pdf');
+  logReport({ type: 'partidas', title: 'Relatório de Partidas' });
   toast('PDF gerado!','success');
   if (loadPreferences().notifPdf) _sendNotif('PDF gerado', 'Relatório de Partidas exportado', 'pdf');
 }
@@ -5808,6 +6086,7 @@ function pdfCompeticao() {
   });
 
   doc.save('gkhub_' + comp.replace(/\s+/g,'_') + '.pdf');
+  logReport({ type: 'competicao', title: 'Relatório — ' + comp, competition: comp });
   toast('PDF gerado!','success');
   if (loadPreferences().notifPdf) _sendNotif('PDF gerado', `Relatório de ${comp} exportado`, 'pdf');
 }
@@ -7432,6 +7711,7 @@ function _mcExportarRelatorioPDFImpl() {
   }
 
   doc.save(`GKHub_${(gk?.nome||'goleira').replace(/\s+/g,'_')}_${new Date().toISOString().slice(0,10)}.pdf`);
+  logReport({ type: 'individual', title: 'Relatório Completo — ' + (gk?.nome || 'goleira'), athlete: gk?.nome, athleteId: gk?.id });
   toast('Relatório exportado com sucesso!','success');
 }
 
@@ -9087,6 +9367,7 @@ async function tpExportPdf() {
   doc.text('Insights', 14, doc.lastAutoTable.finalY + 12);
   doc.autoTable({ startY: doc.lastAutoTable.finalY + 16, head: [['Observação']], body: insights.map(i => [i.text]), headStyles: { fillColor: [30, 30, 53], textColor: [0, 212, 255] }, styles: { fontSize: 9 } });
   doc.save('gkhub_treinos_' + new Date().toISOString().slice(0, 10) + '.pdf');
+  logReport({ type: 'treinos', title: 'Relatório de Treinos' });
   toast('PDF gerado!', 'success');
 }
 
@@ -9723,6 +10004,13 @@ function _sendNotifDirect(title, body, tag) {
 }
 
 function _sendNotif(title, body, tag) {
+  // Always record in-app (Notification Center) + audit for user actions,
+  // independent of OS notification permission/preferences.
+  try {
+    pushNotif(tag || 'info', title, body);
+    const auditMods = { partida: 'Partidas', scout: 'Scouts', pdf: 'Relatórios', match: 'Partidas' };
+    if (auditMods[tag]) logAudit(auditMods[tag], body || title);
+  } catch (e) {}
   const prefs = loadPreferences();
   if (!prefs) { _sendNotifDirect(title, body, tag); return; }
   // Respeita preferências do usuário por tipo de notificação
@@ -9912,6 +10200,7 @@ initAuth();
 applyPreferences();
 updateGoleiraSelects();
 refreshDashboard();
+updateNotifBadge();
 initFirebaseFromStorage();
 
 // ═══════════════════════════════════════════════════════════
