@@ -2541,6 +2541,11 @@
             <div class="card" id="perfil-stats"></div>
           </div>
         </div>
+        <!-- IGD — Índice Global de Desenvolvimento -->
+        <div class="card" id="perfil-igd-card" style="margin-bottom:20px;display:none;border:1px solid rgba(59,130,246,.25);">
+          <div class="card-header"><span class="card-title">⚡ Índice Global de Desenvolvimento</span><span style="font-size:11px;color:var(--muted);">0–100</span></div>
+          <div id="perfil-igd"></div>
+        </div>
         <!-- Evolução técnica -->
         <div class="card" style="margin-bottom:20px;">
           <div class="card-header"><span class="card-title">Evolução Técnica</span><span id="perfil-evol-label" style="font-size:12px;color:var(--muted);"></span></div>
@@ -4598,6 +4603,154 @@ function renderDashIntelligence(goleiras, partidas, scouts) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   IGD — Índice Global de Desenvolvimento (0–100)
+   Composto por 6 dimensões com pesos configuráveis. Usa dados
+   locais (partidas/scouts) + resumo de treino quando disponível.
+   ═══════════════════════════════════════════════════════════ */
+const IGD_DEFAULT_WEIGHTS = { tecnica: 25, fisica: 15, mental: 15, participacao: 15, evolucao: 15, consistencia: 15 };
+const IGD_DIM_LABEL = { tecnica: 'Técnica', fisica: 'Física', mental: 'Mental', participacao: 'Participação', evolucao: 'Evolução', consistencia: 'Consistência' };
+function igdWeights() {
+  try { return { ...IGD_DEFAULT_WEIGHTS, ...(JSON.parse(localStorage.getItem('gkhub_igd_weights') || '{}')) }; }
+  catch (e) { return { ...IGD_DEFAULT_WEIGHTS }; }
+}
+function _igdClamp(v) { return Math.max(0, Math.min(100, v)); }
+
+// summary = training-plus goalkeeper summary (optional). Returns {score, dims, weights}.
+function computeIGD(gkId, summary) {
+  const line = _gkMatchTimeline(gkId, DB.partidas, DB.scouts);
+  const notas = line.map(r => r.nota);
+  const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+  const dims = {};
+
+  // Técnica — blend of match performance + training technical evaluation
+  const perf = avgPerformance(gkId);
+  const tech = [];
+  if (perf != null) tech.push(perf * 10);
+  if (summary && summary.avgTechnical) tech.push(summary.avgTechnical * 10);
+  dims.tecnica = tech.length ? +avg(tech).toFixed(0) : null;
+
+  // Física / Mental — from training evaluations
+  dims.fisica = (summary && summary.avgPhysical) ? Math.round(summary.avgPhysical * 10) : null;
+  dims.mental = (summary && summary.avgMental) ? Math.round(summary.avgMental * 10) : null;
+
+  // Participação — attendance if trained, else games played (8 = 100)
+  if (summary && summary.attendanceRate != null && summary.trainings > 0) dims.participacao = Math.round(summary.attendanceRate);
+  else if (line.length) dims.participacao = Math.round(Math.min(100, line.length * 12.5));
+  else dims.participacao = null;
+
+  // Evolução — recent vs first half trend
+  if (line.length >= 4) {
+    const half = Math.ceil(line.length / 2);
+    dims.evolucao = Math.round(_igdClamp(50 + (avg(notas.slice(-half)) - avg(notas.slice(0, half))) * 12));
+  } else dims.evolucao = null;
+
+  // Consistência — inverse of nota variability
+  if (notas.length >= 3) {
+    const m = avg(notas), sd = Math.sqrt(avg(notas.map(n => (n - m) ** 2)));
+    dims.consistencia = Math.round(_igdClamp(100 - sd * 22));
+  } else dims.consistencia = null;
+
+  const w = igdWeights();
+  let sum = 0, wsum = 0;
+  Object.keys(w).forEach(k => { if (dims[k] != null) { sum += dims[k] * w[k]; wsum += w[k]; } });
+  return { score: wsum ? Math.round(sum / wsum) : null, dims, weights: w };
+}
+
+// Daily-deduped IGD history per goalkeeper → weekly/monthly deltas
+function _igdRecord(gkId, score) {
+  if (score == null) return;
+  try {
+    const all = JSON.parse(localStorage.getItem('gkhub_igd_history') || '{}');
+    const arr = all[gkId] || [];
+    const today = new Date().toISOString().slice(0, 10);
+    if (!arr.length || arr[arr.length - 1].d !== today) arr.push({ d: today, s: score, t: Date.now() });
+    else arr[arr.length - 1].s = score;
+    all[gkId] = arr.slice(-180);
+    localStorage.setItem('gkhub_igd_history', JSON.stringify(all));
+  } catch (e) {}
+}
+function _igdDelta(gkId, days) {
+  try {
+    const all = JSON.parse(localStorage.getItem('gkhub_igd_history') || '{}');
+    const arr = all[gkId] || [];
+    if (arr.length < 2) return null;
+    const cutoff = Date.now() - days * 864e5;
+    const past = [...arr].reverse().find(x => x.t <= cutoff) || arr[0];
+    const cur = arr[arr.length - 1];
+    return past ? cur.s - past.s : null;
+  } catch (e) { return null; }
+}
+
+function igdInsights(gkId, igd, summary) {
+  const out = [];
+  if (!igd || igd.score == null) return out;
+  const dm = _igdDelta(gkId, 30), dw = _igdDelta(gkId, 7);
+  if (dm != null && dm !== 0) out.push({ level: dm > 0 ? 'good' : 'warn', text: `Seu IGD ${dm > 0 ? 'subiu' : 'caiu'} ${Math.abs(dm)} ponto(s) no último mês.` });
+  if (dw != null && dw > 0) out.push({ level: 'good', text: `+${dw} ponto(s) na última semana.` });
+  const present = Object.keys(igd.dims).filter(k => igd.dims[k] != null);
+  if (present.length) {
+    const strong = present.reduce((a, b) => (igd.dims[b] > igd.dims[a] ? b : a));
+    const weak = present.reduce((a, b) => (igd.dims[b] < igd.dims[a] ? b : a));
+    out.push({ level: 'good', text: `Ponto forte: ${IGD_DIM_LABEL[strong]} (${igd.dims[strong]}).` });
+    if (igd.dims[weak] < 60) out.push({ level: 'warn', text: `A desenvolver: ${IGD_DIM_LABEL[weak]} (${igd.dims[weak]}).` });
+  }
+  if (igd.dims.participacao != null && igd.dims.participacao < 70) out.push({ level: 'warn', text: `Frequência abaixo da meta reduziu o índice.` });
+
+  // Comparação com equipe e categoria (base local, comparável)
+  const me = DB.goleiras.find(g => g.id === gkId);
+  const scoreOf = (g) => { const s = computeIGD(g.id).score; return s == null ? null : s; };
+  const teamScores = DB.goleiras.filter(g => g.equipe && me && g.equipe === me.equipe).map(scoreOf).filter(v => v != null);
+  const catScores = DB.goleiras.filter(g => g.categoria && me && g.categoria === me.categoria).map(scoreOf).filter(v => v != null);
+  const mean = (a) => Math.round(a.reduce((x, y) => x + y, 0) / a.length);
+  if (teamScores.length >= 2) { const m = mean(teamScores); const d = igd.score - m; out.push({ level: d >= 0 ? 'good' : 'info', text: `Equipe: ${igd.score} vs média ${m} (${d >= 0 ? '+' : ''}${d}).` }); }
+  if (catScores.length >= 2) { const m = mean(catScores); const d = igd.score - m; out.push({ level: d >= 0 ? 'good' : 'info', text: `Categoria: ${igd.score} vs média ${m} (${d >= 0 ? '+' : ''}${d}).` }); }
+  return out;
+}
+
+function igdColor(score) {
+  if (score == null) return 'var(--muted)';
+  if (score >= 80) return 'var(--success)';
+  if (score >= 60) return 'var(--primary)';
+  if (score >= 40) return 'var(--warning)';
+  return 'var(--error)';
+}
+
+// Renders the IGD card in the goalkeeper profile (summary optional).
+function renderPerfilIGD(gkId, summary) {
+  const card = document.getElementById('perfil-igd-card');
+  const el = document.getElementById('perfil-igd');
+  if (!card || !el) return;
+  const igd = computeIGD(gkId, summary);
+  if (igd.score == null) { card.style.display = 'none'; return; }
+  _igdRecord(gkId, igd.score);
+  card.style.display = 'block';
+  const col = igdColor(igd.score);
+  const dm = _igdDelta(gkId, 30), dw = _igdDelta(gkId, 7);
+  const deltaChip = (d, lbl) => d == null ? '' : `<span style="font-size:11px;color:${d > 0 ? 'var(--success)' : d < 0 ? 'var(--error)' : 'var(--muted)'};font-weight:600;">${d > 0 ? '▲' : d < 0 ? '▼' : '='} ${Math.abs(d)} ${lbl}</span>`;
+  const dims = Object.keys(IGD_DIM_LABEL).filter(k => igd.dims[k] != null);
+  const bars = dims.map(k => `
+    <div style="margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span style="color:var(--muted);">${IGD_DIM_LABEL[k]}</span><span style="font-weight:700;">${igd.dims[k]}</span></div>
+      <div style="height:6px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${igd.dims[k]}%;background:${igdColor(igd.dims[k])};border-radius:4px;transition:width .7s;"></div></div>
+    </div>`).join('');
+  const insights = igdInsights(gkId, igd, summary);
+  el.innerHTML = `
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:center;">
+      <div style="text-align:center;">
+        <div style="width:120px;height:120px;border-radius:50%;background:conic-gradient(${col} ${igd.score * 3.6}deg, rgba(255,255,255,.08) 0);display:flex;align-items:center;justify-content:center;">
+          <div style="width:92px;height:92px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;">
+            <div style="font-size:32px;font-weight:800;color:${col};line-height:1;">${igd.score}</div>
+            <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:2px;">IGD</div>
+          </div>
+        </div>
+        <div style="margin-top:8px;display:flex;flex-direction:column;gap:2px;">${deltaChip(dw, 'sem')}${deltaChip(dm, 'mês')}</div>
+      </div>
+      <div>${bars}</div>
+    </div>
+    ${insights.length ? `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px;">${insights.map(i => `<div style="font-size:12px;color:${i.level === 'good' ? 'var(--success)' : i.level === 'warn' ? 'var(--warning)' : 'var(--muted)'};">${i.level === 'good' ? '📈' : i.level === 'warn' ? '⚠️' : 'ℹ️'} ${_esc(i.text)}</div>`).join('')}</div>` : ''}`;
+}
+
+/* ═══════════════════════════════════════════════════════════
    DASHBOARD EXECUTIVO — coordinator view (local + training API)
    ═══════════════════════════════════════════════════════════ */
 function _evolDelta(gkId) {
@@ -5950,6 +6103,7 @@ function pdfIndividual() {
     ['Nome', gk.nome],['Equipe', gk.equipe||'-'],['Categoria', gk.categoria||'-'],
     ['Altura', gk.altura?gk.altura+' cm':'-'],['Peso', gk.peso?gk.peso+' kg':'-'],
     ['Pé dominante', gk.pe||'-'],['Performance média', avg!==null?avg+' ('+label+')':'sem dados'],
+    ['IGD — Índice Global', (()=>{ const i=computeIGD(gk.id); return i.score!=null? i.score+' / 100' : 'sem dados'; })()],
     ['Partidas com scout', scouts.length],
   ], headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
   if (scouts.length) {
@@ -9149,6 +9303,7 @@ async function renderPerfilTreinos(gkId) {
   if (!kpis) return;
   let sum = null;
   try { sum = _tpUnwrap(await api.get('/training-plus/goalkeeper/' + gkId + '/summary'), null); } catch (e) { sum = null; }
+  renderPerfilIGD(gkId, sum);
   if (!sum) {
     kpis.innerHTML = '<div style="color:var(--muted);font-size:13px;">Sem dados de treino (ou servidor indisponível).</div>';
     if (goalsEl) goalsEl.innerHTML = '';
