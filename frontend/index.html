@@ -20,6 +20,33 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script>
+    /* Global Chart.js polish — applies to every chart, filled only where a
+       chart's own options don't already override it (visual-only). */
+    (function () {
+      if (typeof Chart === 'undefined') return;
+      const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      Chart.defaults.font.family = "'Inter', sans-serif";
+      Chart.defaults.font.size = 12;
+      Chart.defaults.color = '#94A3B8';
+      Chart.defaults.animation = reduce ? false : { duration: 700, easing: 'easeOutQuart' };
+      Chart.defaults.animations = reduce ? {} : { y: { from: (ctx) => (ctx.chart.scales.y ? ctx.chart.scales.y.getPixelForValue(0) : undefined) } };
+      Chart.defaults.plugins.legend.labels.usePointStyle = true;
+      Chart.defaults.plugins.legend.labels.boxWidth = 8;
+      Chart.defaults.plugins.legend.labels.padding = 14;
+      const tt = Chart.defaults.plugins.tooltip;
+      tt.backgroundColor = 'rgba(15,23,42,.95)';
+      tt.borderColor = 'rgba(255,255,255,.12)';
+      tt.borderWidth = 1;
+      tt.titleColor = '#F8FAFC';
+      tt.bodyColor = '#CBD5E1';
+      tt.padding = 12;
+      tt.cornerRadius = 10;
+      tt.boxPadding = 6;
+      tt.usePointStyle = true;
+      tt.titleFont = { weight: '700', size: 12 };
+    })();
+  </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
   <!-- Firebase SDK -->
@@ -1341,6 +1368,158 @@
     }
     .dash-period-btn:hover { border-color: var(--primary); color: var(--primary); }
     .dash-period-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+
+    /* ════════════════════════════════════════════════════════
+       REFINEMENT LAYER · 2026.2  (visual-only, additive)
+       Elevação · tipografia · estados · acessibilidade
+       Nada aqui altera comportamento — apenas cascade tardio.
+    ════════════════════════════════════════════════════════ */
+
+    /* ── Elevation scale (tokens) ── */
+    :root {
+      --elev-1: 0 1px 2px rgba(0,0,0,.20), 0 1px 3px rgba(0,0,0,.14);
+      --elev-2: 0 4px 12px rgba(0,0,0,.22), 0 1px 3px rgba(0,0,0,.16);
+      --elev-3: 0 12px 32px rgba(0,0,0,.30), 0 2px 8px rgba(0,0,0,.18);
+      --ring:   0 0 0 3px rgba(59,130,246,.45);
+    }
+
+    /* ── Number rendering: tabular figures stop layout jitter ── */
+    .stat-value, .kpi-value, td, th, .comp-val-a, .comp-val-b,
+    .perf-bar-val, .badge { font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+
+    /* ── Cards: softer, layered depth + focus-within ── */
+    .card, .stat-card { box-shadow: var(--elev-1); }
+    .card:hover { box-shadow: var(--elev-3), 0 0 0 1px rgba(59,130,246,.08); }
+    .stat-card:hover { box-shadow: var(--elev-3); }
+    .card:focus-within { border-color: var(--border-h); box-shadow: var(--elev-2); }
+
+    /* ── Accessible keyboard focus everywhere (mouse clicks unaffected) ── */
+    a:focus-visible, button:focus-visible, .btn:focus-visible, .nav-item:focus-visible,
+    .tab-btn:focus-visible, .modal-close:focus-visible, [tabindex]:focus-visible,
+    .dash-period-btn:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: none;
+      box-shadow: var(--ring);
+      border-radius: var(--radius-sm);
+    }
+    .form-input:focus-visible, .form-select:focus-visible, .form-textarea:focus-visible {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59,130,246,.20);
+    }
+
+    /* ── Button system: complete the variants + states ── */
+    .btn { min-height: 38px; }
+    .btn-sm { min-height: 32px; }
+    .btn-secondary {
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,.09); border-color: var(--border-h); }
+    body.theme-light .btn-secondary { background: rgba(0,0,0,.04); }
+    body.theme-light .btn-secondary:hover { background: rgba(0,0,0,.07); }
+
+    .btn-warning { background: linear-gradient(135deg,#F59E0B,#D97706); color: #fff; box-shadow: var(--elev-1); }
+    .btn-warning:hover { box-shadow: var(--glow-warning); }
+
+    .btn-icon {
+      padding: 0; width: 38px; height: 38px; justify-content: center;
+      background: rgba(255,255,255,.05); border: 1px solid var(--border); color: var(--text);
+    }
+    .btn-icon:hover { background: rgba(255,255,255,.09); border-color: var(--border-h); }
+
+    .btn:disabled, .btn[disabled], .btn.is-disabled {
+      opacity: .5; cursor: not-allowed; transform: none !important; box-shadow: var(--elev-1) !important;
+      filter: saturate(.8);
+    }
+    .btn:disabled:hover, .btn[disabled]:hover { transform: none !important; }
+
+    /* Loading: add class="btn is-loading" — hides label, shows spinner */
+    .btn.is-loading { color: transparent !important; pointer-events: none; }
+    .btn.is-loading::after {
+      content: ''; position: absolute; top: 50%; left: 50%;
+      width: 15px; height: 15px; margin: -7.5px 0 0 -7.5px;
+      border: 2px solid rgba(255,255,255,.35); border-top-color: #fff;
+      border-radius: 50%; animation: btnSpin .6s linear infinite;
+    }
+    @keyframes btnSpin { to { transform: rotate(360deg); } }
+
+    /* Ripple on press (transform already scales; this adds a soft flash) */
+    .btn::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(circle at center, rgba(255,255,255,.28), transparent 60%);
+      opacity: 0; transition: opacity .4s; pointer-events: none;
+    }
+    .btn:active::before { opacity: 1; transition: none; }
+
+    /* ── Skeleton loading utility ── */
+    .skeleton {
+      position: relative; overflow: hidden;
+      background: rgba(255,255,255,.06); border-radius: var(--radius-sm);
+      color: transparent !important;
+    }
+    .skeleton::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,.10), transparent);
+      background-size: 200% 100%; animation: shimmer 1.3s infinite;
+    }
+    .skeleton-text { height: .8em; margin: .25em 0; }
+    .skeleton-line { height: 12px; border-radius: 6px; margin-bottom: 10px; }
+    body.theme-light .skeleton { background: rgba(0,0,0,.07); }
+    body.theme-light .skeleton::after { background: linear-gradient(90deg, transparent, rgba(0,0,0,.06), transparent); background-size: 200% 100%; }
+    body.theme-light .btn-secondary::before { background: radial-gradient(circle at center, rgba(0,0,0,.12), transparent 60%); }
+
+    /* ── Inputs: hover affordance + invalid state ── */
+    .form-input:hover:not(:focus), .form-select:hover:not(:focus), .form-textarea:hover:not(:focus),
+    .search-input:hover:not(:focus) { border-color: var(--border-h); }
+    .form-input.invalid, .form-select.invalid, .form-textarea.invalid,
+    .form-input:invalid:not(:placeholder-shown) {
+      border-color: var(--error); box-shadow: 0 0 0 3px rgba(239,68,68,.15);
+    }
+
+    /* ── Toast: leading accent bar + a11y-friendly weight ── */
+    .toast { border-left-width: 3px; box-shadow: var(--elev-3); }
+    .toast-success { border-left-color: var(--success); }
+    .toast-error   { border-left-color: var(--error); }
+    .toast-info    { border-left-color: var(--primary); }
+    .toast-warning { background: #241a06; color: #FCD34D; border-color: rgba(245,158,11,.25); border-left-color: var(--warning); }
+
+    /* ── Modal: spring-in entrance ── */
+    .modal { animation: modalIn .26s cubic-bezier(.34,1.4,.5,1); box-shadow: var(--elev-3); }
+    @keyframes modalIn {
+      from { opacity: 0; transform: translateY(14px) scale(.985); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* ── Nav active: crisp left indicator ── */
+    .nav-item.active::before {
+      content: ''; position: absolute; left: -8px; top: 20%; bottom: 20%;
+      width: 3px; border-radius: 0 3px 3px 0; background: var(--primary);
+    }
+    body.sidebar-collapsed .nav-item.active::before { left: -4px; }
+
+    /* ── Section title: subtle brand tick ── */
+    .section-title::before {
+      content: ''; width: 4px; height: 20px; border-radius: 3px;
+      background: var(--primary-g); flex-shrink: 0;
+    }
+
+    /* ── Touch targets: keep small action buttons tappable ── */
+    @media (max-width: 768px) {
+      .btn-sm { min-height: 36px; }
+      .nav-item { padding-top: 12px; padding-bottom: 12px; }
+      .stats-grid { gap: 12px; }
+    }
+
+    /* ── Respect reduced-motion (accessibility) ── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+        scroll-behavior: auto !important;
+      }
+      .btn:hover, .card:hover, .stat-card:hover { transform: none !important; }
+    }
 
   </style>
 </head>
