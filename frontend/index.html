@@ -1845,6 +1845,15 @@
         </div>
       </div><!-- /stats-grid -->
 
+      <!-- Central de Inteligência -->
+      <div class="card" id="dash-intelligence" style="margin-bottom:24px;display:none;">
+        <div class="card-header">
+          <span class="card-title">🧠 Central de Inteligência</span>
+          <span id="dash-intel-summary" style="font-size:12px;color:var(--muted);"></span>
+        </div>
+        <div id="dash-intel-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;"></div>
+      </div>
+
       <!-- Destaques da Temporada -->
       <div id="dash-destaques" style="display:none;margin-bottom:24px;">
         <div class="section-header">
@@ -2406,6 +2415,11 @@
         <div class="card" style="margin-bottom:20px;">
           <div class="card-header"><span class="card-title">Evolução Técnica</span><span id="perfil-evol-label" style="font-size:12px;color:var(--muted);"></span></div>
           <div style="height:200px;"><canvas id="chart-perfil-evol"></canvas></div>
+        </div>
+        <!-- Insights automáticos da goleira -->
+        <div class="card" id="perfil-insights-card" style="margin-bottom:20px;display:none;">
+          <div class="card-header"><span class="card-title">🧠 Insights</span></div>
+          <div id="perfil-insights" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;"></div>
         </div>
         <!-- Histórico de partidas -->
         <div class="card" style="margin-bottom:20px;">
@@ -4056,6 +4070,127 @@ function renderEvolucaoChart(labels, data) {
 // ═══════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════════
+   CENTRAL DE INTELIGÊNCIA — cross-module insight engine
+   Reads existing data (goleiras + partidas + scouts) and derives
+   automatic insights. Pure/derived — no writes, no new endpoints.
+   ═══════════════════════════════════════════════════════════ */
+
+// Chronological per-goalkeeper match line: [{ id, date, nota, gc }]
+function _gkMatchTimeline(gkId, partidas, scouts) {
+  const byMatch = {};
+  scouts.filter(s => s.goalkeeperId === gkId && s.partidaId).forEach(s => {
+    (byMatch[s.partidaId] = byMatch[s.partidaId] || []).push(s);
+  });
+  const rows = Object.keys(byMatch).map(pid => {
+    const merged = (typeof _mergeScouts === 'function') ? (_mergeScouts(byMatch[pid])[0] || byMatch[pid][0]) : byMatch[pid][0];
+    const p = partidas.find(x => x.id === pid);
+    const gc = ['gda', 'gfa', 'gpe', 'gfl'].reduce((a, k) => a + (+merged[k] || 0), 0);
+    return { id: pid, date: (p && p.data) || '', nota: (typeof calcPerformance === 'function' ? calcPerformance(merged) : null), gc };
+  });
+  return rows.filter(r => r.nota != null).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+}
+
+// Returns insight objects for one goalkeeper (most relevant first).
+function gkIntelligence(gkId, partidas, scouts) {
+  const line = _gkMatchTimeline(gkId, partidas, scouts);
+  const out = [];
+  const avg = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+  const notas = line.map(r => r.nota);
+
+  // Trend: recent half vs first half
+  if (line.length >= 4) {
+    const half = Math.ceil(line.length / 2);
+    const delta = +(avg(notas.slice(-half)) - avg(notas.slice(0, half))).toFixed(1);
+    if (delta >= 0.5) out.push({ icon: '📈', level: 'good', title: 'Em evolução', text: `Média subiu ${delta > 0 ? '+' : ''}${delta} pts nas partidas recentes.` });
+    else if (delta <= -0.5) out.push({ icon: '📉', level: 'warn', title: 'Queda de rendimento', text: `Média caiu ${delta} pts. Vale acompanhamento.` });
+  }
+
+  // Recent slump: last 3 vs previous 3
+  if (line.length >= 6) {
+    const d = +(avg(notas.slice(-3)) - avg(notas.slice(-6, -3))).toFixed(1);
+    if (d <= -1) out.push({ icon: '⚠️', level: 'warn', title: 'Alerta de forma', text: `Queda de ${d} pts nos últimos 3 jogos.` });
+  }
+
+  // Best streak of strong games (nota >= 7)
+  let best = 0, cur = 0;
+  notas.forEach(n => { if (n >= 7) { cur++; best = Math.max(best, cur); } else cur = 0; });
+  if (best >= 3) out.push({ icon: '🔥', level: 'good', title: 'Boa sequência', text: `${best} jogos seguidos com nota ≥ 7.` });
+
+  // Trailing clean-sheet streak
+  let cs = 0;
+  for (let i = line.length - 1; i >= 0; i--) { if (line[i].gc === 0) cs++; else break; }
+  if (cs >= 2) out.push({ icon: '🔒', level: 'good', title: 'Sem sofrer gols', text: `${cs} jogos seguidos sem levar gol.` });
+
+  // Peak of the season
+  if (notas.length) {
+    const peak = Math.max(...notas);
+    if (peak >= 8.5) out.push({ icon: '⭐', level: 'good', title: 'Pico da temporada', text: `Melhor nota registrada: ${peak}.` });
+  }
+
+  // Too few games → follow-up
+  if (line.length > 0 && line.length < 2) out.push({ icon: '🔎', level: 'info', title: 'Poucos dados', text: 'Apenas 1 partida analisada. Registre mais scouts.' });
+
+  return out.map(o => ({ ...o, gkId }));
+}
+
+function renderPerfilInsights(gkId) {
+  const card = document.getElementById('perfil-insights-card');
+  const el = document.getElementById('perfil-insights');
+  if (!card || !el) return;
+  const ins = gkIntelligence(gkId, DB.partidas, DB.scouts);
+  if (!ins.length) { card.style.display = 'none'; return; }
+  const colors = { good: 'var(--success)', warn: 'var(--warning)', info: 'var(--muted)' };
+  card.style.display = 'block';
+  el.innerHTML = ins.map(i => `
+    <div style="border:1px solid var(--border);border-left:3px solid ${colors[i.level]};border-radius:var(--radius);padding:12px 14px;background:rgba(255,255,255,.02);">
+      <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:18px;">${i.icon}</span><div style="font-weight:700;font-size:13px;">${_esc(i.title)}</div></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">${_esc(i.text)}</div>
+    </div>`).join('');
+}
+
+function renderDashIntelligence(goleiras, partidas, scouts) {
+  const wrap = document.getElementById('dash-intelligence');
+  const grid = document.getElementById('dash-intel-grid');
+  const summary = document.getElementById('dash-intel-summary');
+  if (!wrap || !grid) return;
+
+  const all = [];
+  let evolving = 0, alert = 0;
+  goleiras.forEach(g => {
+    const ins = gkIntelligence(g.id, partidas, scouts);
+    if (ins.some(i => i.title === 'Em evolução')) evolving++;
+    if (ins.some(i => i.level === 'warn')) alert++;
+    ins.forEach(i => all.push({ ...i, gk: g }));
+  });
+
+  if (!all.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  // Warnings first, then positives; cap to keep the panel focused.
+  const rank = { warn: 0, good: 1, info: 2 };
+  all.sort((a, b) => (rank[a.level] - rank[b.level]));
+  const shown = all.slice(0, 9);
+
+  if (summary) summary.textContent = `${goleiras.length} atletas · ${evolving} em evolução · ${alert} em alerta`;
+
+  const colors = { good: 'var(--success)', warn: 'var(--warning)', info: 'var(--muted)' };
+  grid.innerHTML = shown.map(i => {
+    const first = (i.gk.nome || '').split(' ')[0];
+    return `<div onclick="verPerfil('${_esc(i.gk.id)}')" title="Abrir perfil de ${_esc(i.gk.nome)}"
+      style="cursor:pointer;border:1px solid var(--border);border-left:3px solid ${colors[i.level]};border-radius:var(--radius);padding:12px 14px;transition:border-color .18s,transform .18s;background:rgba(255,255,255,.02);"
+      onmouseover="this.style.transform='translateY(-2px)';this.style.borderColor='var(--border-h)';this.style.borderLeftColor='${colors[i.level]}';"
+      onmouseout="this.style.transform='';this.style.borderColor='var(--border)';this.style.borderLeftColor='${colors[i.level]}';">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">${i.icon}</span>
+        <div style="font-weight:700;font-size:13px;">${_esc(i.title)}</div>
+        <div style="margin-left:auto;font-size:11px;color:var(--muted);font-weight:600;">${_esc(first)}</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;">${_esc(i.text)}</div>
+    </div>`;
+  }).join('');
+}
+
 function refreshDashboard() {
   const goleiras = DB.goleiras;
   const partidas = DB.partidas.filter(p => {
@@ -4080,6 +4215,9 @@ function refreshDashboard() {
   } else {
     elAvg.textContent = '—';
   }
+
+  // ── Central de Inteligência (cross-module insights) ──
+  renderDashIntelligence(goleiras, partidas, scouts);
 
   // ── Destaques do Treinador ──
   function gkScoutSum(gkId, keys) {
@@ -4543,6 +4681,7 @@ function renderPerfil() {
   if (!gk) return;
   content.style.display='block'; empty.style.display='none';
   renderPerfilTreinos(gkId);
+  renderPerfilInsights(gkId);
 
   // Foto + nome
   const fotoEl = document.getElementById('perfil-foto');
