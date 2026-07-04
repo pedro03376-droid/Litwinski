@@ -1546,6 +1546,16 @@
     /* Two-column helper grids must stack on small screens (was missing → overflow) */
     @media (max-width: 900px) { .tp-grid { grid-template-columns: 1fr !important; } }
 
+    /* Guard against horizontal overflow ("fora da tela"). overflow-x:clip
+       contains wide children without forcing overflow-y:auto (which would
+       break the sticky topbar). Flex/grid children get min-width:0 so they
+       actually shrink instead of pushing the page wider than the viewport. */
+    html, body { max-width: 100%; overflow-x: clip; }
+    .main { min-width: 0; max-width: 100%; overflow-x: clip; }
+    .content, .page { min-width: 0; max-width: 100%; }
+    .stats-grid, .tp-grid, .stat-card, .card { min-width: 0; }
+    .stat-value { overflow-wrap: anywhere; }
+
     /* ── Timeline (Temporada) ── */
     .tl-item { position: relative; padding: 0 0 18px 26px; }
     .tl-item::before { content: ''; position: absolute; left: 5px; top: 4px; bottom: -4px; width: 2px; background: var(--border); }
