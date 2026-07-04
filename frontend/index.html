@@ -2101,9 +2101,10 @@
         </div>
         <div style="font-weight:700;font-size:13px;margin:18px 0 10px;">Pesos do IGD <span style="font-weight:400;color:var(--muted);font-size:12px;">— total é normalizado automaticamente</span></div>
         <div id="clb-igd-weights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;"></div>
-        <div style="margin-top:20px;display:flex;gap:10px;">
+        <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="saveClube()">Salvar configurações</button>
           <button class="btn btn-secondary" onclick="resetIgdWeights()">Restaurar pesos padrão</button>
+          <button class="btn btn-secondary" onclick="openMetodologia()">📚 Metodologia & Referências</button>
         </div>
       </div>
     </div>
@@ -3297,6 +3298,14 @@
           </select>
         </div>
         <div class="form-group">
+          <label class="form-label">Naipe</label>
+          <select class="form-select" id="gk-naipe">
+            <option value="">Selecionar…</option>
+            <option value="feminino">Feminino</option>
+            <option value="masculino">Masculino</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label class="form-label">Pé dominante</label>
           <select class="form-select" id="gk-pe">
             <option value="">Selecionar…</option>
@@ -3844,6 +3853,71 @@ function saveClube() {
   toast('Configurações salvas!', 'success');
 }
 function resetIgdWeights() { localStorage.removeItem('gkhub_igd_weights'); renderClube(); toast('Pesos do IGD restaurados.', 'info'); }
+
+// Metodologia — transparência das notas e referências por naipe (editável)
+function openMetodologia() {
+  const b = gkBench();
+  let modal = document.getElementById('metodo-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'metodo-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
+  const num = (v) => (v != null ? v : '');
+  modal.innerHTML = `
+    <div class="modal" style="max-width:640px;">
+      <div class="modal-header"><span class="modal-title">📚 Metodologia & Referências</span><button class="modal-close" onclick="closeModal('metodo-modal')">&times;</button></div>
+      <div class="modal-body" style="font-size:13px;line-height:1.6;">
+        <p><b>Modalidade:</b> Futsal (5&nbsp;×&nbsp;5). As notas automáticas combinam três eixos, com pesos ajustados à realidade do futsal:</p>
+        <ul style="margin:8px 0 8px 18px;">
+          <li><b>Defesa</b> — eficiência defensiva (% de defesa = defesas ÷ (defesas + gols)), incluindo altas, baixas, central, 1×1 e esquadros.</li>
+          <li><b>Distribuição</b> — precisão da reposição (curta + longa). No futsal de elite, ações com bola/progressão são ~41% das ações do goleiro, então a distribuição pesa mais que no futebol de campo.</li>
+          <li><b>Tático</b> — interceptações e saídas (comando de área).</li>
+        </ul>
+        <p><b>Ajuste por naipe:</b> a literatura aponta diferenças <i>qualitativas</i> (no feminino, menor velocidade de chute → mais defesas possíveis e ênfase em precisão/posicionamento). Não há normas numéricas fechadas por naipe, então os valores abaixo são <b>referências calibráveis</b> (o nível que corresponde à nota “Boa” = 7,0), não normas absolutas.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:12px 0;">
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;">Feminino</div>
+            <label class="form-label">% defesa ref.</label><input type="number" step="0.01" min="0" max="1" class="form-input" id="mt-f-save" value="${num(b.feminino.saveRate)}">
+            <label class="form-label" style="margin-top:6px;">precisão distrib. ref.</label><input type="number" step="0.01" min="0" max="1" class="form-input" id="mt-f-dist" value="${num(b.feminino.dist)}">
+          </div>
+          <div>
+            <div style="font-weight:700;margin-bottom:6px;">Masculino</div>
+            <label class="form-label">% defesa ref.</label><input type="number" step="0.01" min="0" max="1" class="form-input" id="mt-m-save" value="${num(b.masculino.saveRate)}">
+            <label class="form-label" style="margin-top:6px;">precisão distrib. ref.</label><input type="number" step="0.01" min="0" max="1" class="form-input" id="mt-m-dist" value="${num(b.masculino.dist)}">
+          </div>
+        </div>
+        <div style="font-weight:700;margin:6px 0;">Pesos (futsal)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+          <div><label class="form-label">Defesa</label><input type="number" step="0.05" min="0" max="1" class="form-input" id="mt-w-def" value="${num(b.weights.defesa)}"></div>
+          <div><label class="form-label">Distribuição</label><input type="number" step="0.05" min="0" max="1" class="form-input" id="mt-w-dist" value="${num(b.weights.dist)}"></div>
+          <div><label class="form-label">Tático</label><input type="number" step="0.05" min="0" max="1" class="form-input" id="mt-w-tat" value="${num(b.weights.tatico)}"></div>
+        </div>
+        <details style="margin-top:14px;"><summary style="cursor:pointer;font-weight:600;">Fontes</summary>
+          <div style="font-size:12px;color:var(--muted);margin-top:8px;">
+            • Indicadores de desempenho de goleiro (% de defesa, gols sofridos, distribuição, comando de área, decisão) — Apunts Sports Medicine (2023); análises de clustering de goleiros (arXiv 2025).<br>
+            • Eficiência e condutas do goleiro de futsal de elite; ações ofensivas ~58% vs defensivas ~42% — pesquisas de futsal (ResearchGate).<br>
+            • Diferenças por naipe (força/velocidade de chute, estratégia de finalização; altura pouco preditiva do xGOT) — De-la-Cruz-Torres et al. (2025); Frontiers in Psychology (2019).<br>
+            <i>As notas manuais informadas no scout sempre têm prioridade sobre a nota automática.</i>
+          </div>
+        </details>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="localStorage.removeItem('gkhub_bench');closeModal('metodo-modal');toast('Referências restauradas.','info');">Restaurar padrão</button>
+        <button class="btn btn-primary" onclick="saveMetodologia()">Salvar referências</button>
+      </div>
+    </div>`;
+  openModal('metodo-modal');
+}
+function saveMetodologia() {
+  const num = (id) => parseFloat(document.getElementById(id)?.value);
+  const bench = {
+    feminino:  { saveRate: num('mt-f-save'), dist: num('mt-f-dist') },
+    masculino: { saveRate: num('mt-m-save'), dist: num('mt-m-dist') },
+    weights:   { defesa: num('mt-w-def'), dist: num('mt-w-dist'), tatico: num('mt-w-tat') },
+  };
+  localStorage.setItem('gkhub_bench', JSON.stringify(bench));
+  logAudit('Clube', 'Ajustou a metodologia de notas (referências por naipe)');
+  closeModal('metodo-modal');
+  toast('Referências salvas. As notas automáticas usarão os novos valores.', 'success');
+  if (typeof refreshDashboard === 'function') refreshDashboard();
+}
 function applyClubBranding() {
   const c = clubSettings();
   if (c.cor1) { document.documentElement.style.setProperty('--primary', c.cor1); document.documentElement.style.setProperty('--primary-d', c.cor1); }
@@ -4208,19 +4282,54 @@ function switchTab(btn, tabId) {
 // ═══════════════════════════════════════════════════════════
 // PERFORMANCE CALC
 // ═══════════════════════════════════════════════════════════
-function calcPerformanceAuto(scout) {
+/* ── Modelo de nota — FUTSAL, ajustado por naipe ───────────────────────────
+   Baseado no arcabouço consolidado de indicadores de goleiro(a) (% de defesa,
+   gols sofridos, 1x1, precisão de distribuição, saídas/comando de área) e na
+   especificidade do futsal, onde a distribuição/progressão de bola é ~41% das
+   ações do goleiro em nível de elite — por isso pesa mais que no futebol de
+   campo. As referências por naipe são calibráveis (Config. do Clube →
+   Metodologia) e são DEFAULTS documentados, não normas fechadas: a literatura
+   aponta diferenças qualitativas (mulheres: menor velocidade de chute → mais
+   defesas possíveis e ênfase em precisão/posicionamento). */
+const GKHUB_BENCH_DEFAULT = {
+  feminino:  { saveRate: 0.66, dist: 0.72 }, // valor que corresponde à nota "Boa" (7.0)
+  masculino: { saveRate: 0.62, dist: 0.75 },
+  weights: { defesa: 0.65, dist: 0.25, tatico: 0.10 }, // pesos do futsal (somam 1.0)
+};
+function gkBench() {
+  try { const s = JSON.parse(localStorage.getItem('gkhub_bench') || '{}');
+    return { feminino: { ...GKHUB_BENCH_DEFAULT.feminino, ...(s.feminino||{}) },
+             masculino: { ...GKHUB_BENCH_DEFAULT.masculino, ...(s.masculino||{}) },
+             weights: { ...GKHUB_BENCH_DEFAULT.weights, ...(s.weights||{}) } };
+  } catch (e) { return JSON.parse(JSON.stringify(GKHUB_BENCH_DEFAULT)); }
+}
+function _naipeOf(gkId) { const g = DB.goleiras.find(x => x.id === gkId); return (g && g.naipe === 'masculino') ? 'masculino' : 'feminino'; }
+function _anchorScore(v, ref) { // ref→7.0, 1.0→10, 0→0 (linear por trechos)
+  if (!(ref > 0) || ref >= 1) ref = 0.65;
+  if (v <= 0) return 0;
+  if (v >= 1) return 10;
+  return v <= ref ? (v / ref) * 7 : 7 + ((v - ref) / (1 - ref)) * 3;
+}
+function calcPerformanceAuto(scout, naipe) {
   const totalDef = (+scout.dad||0) + (+scout.dae||0) + (+scout.dbd||0) + (+scout.dbe||0) + (+scout.dc||0) + (+scout.d1x1||0) + (+scout.esq||0);
   const gols     = (+scout.gda||0) + (+scout.gfa||0) + (+scout.gpe||0) + (+scout.gfl||0);
   if (totalDef + gols === 0) return null;
-  // Base: taxa de defesa → até 8 pontos
-  const base = (totalDef / (totalDef + gols)) * 8;
-  // Bônus distribuição → até 1 ponto
+  const b = gkBench();
+  const ref = b[naipe || _naipeOf(scout.goalkeeperId)] || b.feminino;
+  const w = b.weights;
+  // Defesa — eficiência defensiva (% de defesa) vs referência do naipe
+  const defesaS = _anchorScore(totalDef / (totalDef + gols), ref.saveRate);
+  // Distribuição — precisão da reposição (curta + longa)
   const distCerto = (+scout.dpc||0) + (+scout.dmc||0);
   const distTotal = distCerto + (+scout.dpe||0) + (+scout.dme||0);
-  const distBonus = distTotal > 0 ? (distCerto / distTotal) : 0.5;
-  // Bônus tático (interceptações + saídas) → até 1 ponto
-  const tatBonus = Math.min(1, ((+scout.int||0) + (+scout.sai||0)) * 0.15);
-  return Math.min(10, Math.round((base + distBonus + tatBonus) * 10) / 10);
+  const distS = distTotal > 0 ? _anchorScore(distCerto / distTotal, ref.dist) : 7; // neutro sem dados
+  // Núcleo (defesa + distribuição) normalizado → nível de referência = "Boa" (7,0)
+  const coreDen = (w.defesa + w.dist) || 1;
+  const core = (defesaS * w.defesa + distS * w.dist) / coreDen;
+  // Tático (interceptações + saídas / comando de área) entra como BÔNUS, para
+  // não penalizar quem tem boa defesa/distribuição mas poucas ações táticas.
+  const tatBonus = Math.min(1, ((+scout.int||0) + (+scout.sai||0)) * 0.15) * (w.tatico * 5);
+  return Math.round(Math.min(10, core + tatBonus) * 10) / 10;
 }
 
 function calcPerformance(scout) {
@@ -4256,7 +4365,7 @@ function openNovaGoleira() {
   currentFotoBase64 = '';
   document.getElementById('modal-goleira-title').textContent = 'Nova Goleira';
   ['nome','nasc','num','altura','peso','equipe','obs'].forEach(f => document.getElementById('gk-'+f).value = '');
-  ['categoria','pe','mao'].forEach(f => document.getElementById('gk-'+f).value = '');
+  ['categoria','pe','mao','naipe'].forEach(f => document.getElementById('gk-'+f).value = '');
   clearFoto();
   openModal('modal-goleira');
 }
@@ -4276,6 +4385,7 @@ function salvarGoleira() {
     categoria: document.getElementById('gk-categoria').value,
     pe: document.getElementById('gk-pe').value,
     mao: document.getElementById('gk-mao').value,
+    naipe: document.getElementById('gk-naipe').value,
     obs: document.getElementById('gk-obs').value,
     foto: currentFotoBase64 || (existente ? existente.foto : ''),
     criadoEm: editingId.goleira ? undefined : new Date().toISOString(),
@@ -4308,6 +4418,7 @@ function editarGoleira(id) {
   document.getElementById('gk-peso').value = g.peso || '';
   document.getElementById('gk-equipe').value = g.equipe || '';
   document.getElementById('gk-categoria').value = g.categoria || '';
+  document.getElementById('gk-naipe').value = g.naipe || '';
   document.getElementById('gk-pe').value = g.pe || '';
   document.getElementById('gk-mao').value = g.mao || '';
   document.getElementById('gk-obs').value = g.obs || '';
@@ -5116,9 +5227,10 @@ function igdInsights(gkId, igd, summary) {
 
   // Comparação com equipe e categoria (base local, comparável)
   const me = DB.goleiras.find(g => g.id === gkId);
+  const sameNaipe = (g) => !me || !me.naipe || !g.naipe || g.naipe === me.naipe; // compara like-with-like
   const scoreOf = (g) => { const s = computeIGD(g.id).score; return s == null ? null : s; };
-  const teamScores = DB.goleiras.filter(g => g.equipe && me && g.equipe === me.equipe).map(scoreOf).filter(v => v != null);
-  const catScores = DB.goleiras.filter(g => g.categoria && me && g.categoria === me.categoria).map(scoreOf).filter(v => v != null);
+  const teamScores = DB.goleiras.filter(g => g.equipe && me && g.equipe === me.equipe && sameNaipe(g)).map(scoreOf).filter(v => v != null);
+  const catScores = DB.goleiras.filter(g => g.categoria && me && g.categoria === me.categoria && sameNaipe(g)).map(scoreOf).filter(v => v != null);
   const mean = (a) => Math.round(a.reduce((x, y) => x + y, 0) / a.length);
   if (teamScores.length >= 2) { const m = mean(teamScores); const d = igd.score - m; out.push({ level: d >= 0 ? 'good' : 'info', text: `Equipe: ${igd.score} vs média ${m} (${d >= 0 ? '+' : ''}${d}).` }); }
   if (catScores.length >= 2) { const m = mean(catScores); const d = igd.score - m; out.push({ level: d >= 0 ? 'good' : 'info', text: `Categoria: ${igd.score} vs média ${m} (${d >= 0 ? '+' : ''}${d}).` }); }
@@ -5521,7 +5633,7 @@ document.querySelector('[onclick="openModal(\'modal-goleira\')"]')?.addEventList
   editingId.goleira = null;
   document.getElementById('modal-goleira-title').textContent = 'Nova Goleira';
   ['nome','nasc','num','altura','peso','equipe','obs'].forEach(f => document.getElementById('gk-'+f).value='');
-  ['categoria','pe','mao'].forEach(f => document.getElementById('gk-'+f).value='');
+  ['categoria','pe','mao','naipe'].forEach(f => document.getElementById('gk-'+f).value='');
 });
 document.querySelector('[onclick="openModal(\'modal-partida\')"]')?.addEventListener('click', () => {
   editingId.partida = null;
@@ -5784,6 +5896,7 @@ function renderPerfil() {
     ['Peso', gk.peso ? gk.peso+' kg' : '—'],
     ['Pé dominante', gk.pe || '—'],
     ['Mão dominante', gk.mao || '—'],
+    ['Naipe', gk.naipe ? (gk.naipe === 'masculino' ? 'Masculino' : 'Feminino') : '—'],
     ['Nº camisa', gk.num || '—'],
     ['Equipe', gk.equipe || '—'],
   ];
@@ -6522,6 +6635,7 @@ function pdfIndividual() {
   const avg = avgPerformance(gkId); const { label } = classifyPerf(avg);
   doc.autoTable({ startY: 52, head: [['Dado','Valor']], body: [
     ['Nome', gk.nome],['Equipe', gk.equipe||'-'],['Categoria', gk.categoria||'-'],
+    ['Naipe', gk.naipe ? (gk.naipe==='masculino'?'Masculino':'Feminino') : '-'],
     ['Altura', gk.altura?gk.altura+' cm':'-'],['Peso', gk.peso?gk.peso+' kg':'-'],
     ['Pé dominante', gk.pe||'-'],['Performance média', avg!==null?avg+' ('+label+')':'sem dados'],
     ['IGD — Índice Global', (()=>{ const i=computeIGD(gk.id); return i.score!=null? i.score+' / 100' : 'sem dados'; })()],
