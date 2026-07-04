@@ -594,7 +594,7 @@
     /* ════════════════════════════════════════════════════════
        TOASTS
     ════════════════════════════════════════════════════════ */
-    .toast-container { position: fixed; bottom: 28px; right: 28px; z-index: 500; display: flex; flex-direction: column; gap: 8px; }
+    .toast-container { position: fixed; bottom: 96px; right: 28px; z-index: 600; display: flex; flex-direction: column; gap: 8px; }
     .toast {
       display: flex;
       align-items: center;
@@ -1541,7 +1541,10 @@
       width: 30px; height: 30px; border-radius: 50%; display: inline-flex;
       align-items: center; justify-content: center; background: rgba(59,130,246,.14); font-size: 15px;
     }
-    @media (max-width: 768px) { .fab-btn { bottom: 20px; right: 20px; } .fab-menu { bottom: 84px; right: 20px; } }
+    @media (max-width: 768px) { .fab-btn { bottom: 20px; right: 20px; } .fab-menu { bottom: 84px; right: 20px; } .toast-container { bottom: 88px; right: 16px; left: 16px; } }
+
+    /* Two-column helper grids must stack on small screens (was missing → overflow) */
+    @media (max-width: 900px) { .tp-grid { grid-template-columns: 1fr !important; } }
 
     /* ── Timeline (Temporada) ── */
     .tl-item { position: relative; padding: 0 0 18px 26px; }
