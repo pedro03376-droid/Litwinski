@@ -1,4 +1,4 @@
-const CACHE = 'gkhub-v30';
+const CACHE = 'gkhub-v31';
 
 const PRECACHE = [
   './',
@@ -57,6 +57,20 @@ self.addEventListener('fetch', event => {
         caches.open(CACHE).then(c => c.put(req, clone));
         return res;
       }).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Navigations / the HTML document: NETWORK-FIRST so a fresh build always
+  // reaches the user when online (fixes "stuck on an old cached version").
+  // Falls back to cache when offline, keeping the app usable without network.
+  if (req.mode === 'navigate' || req.destination === 'document' ||
+      (req.method === 'GET' && url.pathname.endsWith('/index.html'))) {
+    event.respondWith(
+      fetch(req).then(res => {
+        if (res && res.ok) { const clone = res.clone(); caches.open(CACHE).then(c => c.put(req, clone)); }
+        return res;
+      }).catch(() => caches.match(req).then(c => c || caches.match('./index.html')))
     );
     return;
   }
