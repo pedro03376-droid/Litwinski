@@ -1543,6 +1543,18 @@
     }
     @media (max-width: 768px) { .fab-btn { bottom: 20px; right: 20px; } .fab-menu { bottom: 84px; right: 20px; } .toast-container { bottom: 88px; right: 16px; left: 16px; } }
 
+    /* Scroll helper button — left of the FAB */
+    #scroll-helper {
+      position: fixed; bottom: 28px; right: 96px; z-index: 480;
+      width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border-h);
+      background: var(--card); color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: var(--elev-2); transition: transform .18s, background .18s;
+    }
+    #scroll-helper:hover { transform: translateY(-2px); background: var(--card-2); color: var(--primary); }
+    #scroll-helper svg { transition: transform .2s; }
+    @media (max-width: 768px) { #scroll-helper { bottom: 20px; right: 84px; } }
+
     /* Two-column helper grids must stack on small screens (was missing → overflow) */
     @media (max-width: 900px) { .tp-grid { grid-template-columns: 1fr !important; } }
 
@@ -3242,6 +3254,11 @@
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="22" height="22"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 </button>
 
+<!-- ══ BOTÃO DE ROLAGEM ══ -->
+<button id="scroll-helper" onclick="scrollHelperClick()" aria-label="Rolar a página" title="Rolar" style="display:none;">
+  <svg id="scroll-helper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><polyline points="6 9 12 15 18 9"/></svg>
+</button>
+
 <!-- ══ MODAL: GOLEIRA ══ -->
 <div class="modal-backdrop" id="modal-goleira">
   <div class="modal">
@@ -4238,6 +4255,9 @@ function navigate(page) {
   if (page === 'clube') renderClube();
   if (page === 'lesoes') renderLesoes();
   if (page === 'pid') renderPID();
+  // Recompute scroll-helper visibility after the page renders (charts/data
+  // change the height); a couple of delayed passes catch async chart layout.
+  if (typeof _updateScrollHelper === 'function') { setTimeout(_updateScrollHelper, 120); setTimeout(_updateScrollHelper, 600); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4957,6 +4977,33 @@ function fabAction(kind) {
     case 'pdf':     navigate('relatorios'); break;
   }
 }
+/* ── Botão de rolagem — funciona seja o scroller a janela, .main ou .content ── */
+function _scroller() {
+  const cands = [document.scrollingElement, document.querySelector('.main'), document.querySelector('.content')];
+  for (const el of cands) { if (el && el.scrollHeight > el.clientHeight + 4) return el; }
+  return document.scrollingElement || document.documentElement;
+}
+function scrollHelperClick() {
+  const el = _scroller();
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+  if (atBottom) el.scrollTo({ top: 0, behavior: 'smooth' });
+  else el.scrollBy({ top: Math.round(el.clientHeight * 0.85), behavior: 'smooth' });
+}
+function _updateScrollHelper() {
+  const btn = document.getElementById('scroll-helper');
+  if (!btn) return;
+  const el = _scroller();
+  const scrollable = el.scrollHeight > el.clientHeight + 4;
+  btn.style.display = scrollable ? 'flex' : 'none';
+  if (!scrollable) return;
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+  const icon = document.getElementById('scroll-helper-icon');
+  if (icon) icon.style.transform = atBottom ? 'rotate(180deg)' : '';
+  btn.title = atBottom ? 'Voltar ao topo' : 'Rolar para baixo';
+}
+document.addEventListener('scroll', _updateScrollHelper, true);
+window.addEventListener('resize', _updateScrollHelper);
+
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') _closeFab(); });
 document.addEventListener('click', (e) => {
   if (!document.body.classList.contains('fab-open')) return;
@@ -10933,6 +10980,7 @@ updateGoleiraSelects();
 refreshDashboard();
 updateNotifBadge();
 try { netInit(); } catch (e) {}
+try { _updateScrollHelper(); setTimeout(_updateScrollHelper, 700); } catch (e) {}
 initFirebaseFromStorage();
 
 // ═══════════════════════════════════════════════════════════
