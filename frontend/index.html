@@ -164,7 +164,8 @@
     ════════════════════════════════════════════════════════ */
     .sidebar {
       width: var(--sidebar-w);
-      min-height: 100vh;
+      height: 100vh;
+      height: 100dvh;
       background: rgba(17,24,39,0.92);
       backdrop-filter: blur(24px);
       -webkit-backdrop-filter: blur(24px);
@@ -1543,6 +1544,18 @@
     }
     @media (max-width: 768px) { .fab-btn { bottom: 20px; right: 20px; } .fab-menu { bottom: 84px; right: 20px; } .toast-container { bottom: 88px; right: 16px; left: 16px; } }
 
+    /* Menu (sidebar) scroll button — reaches the lower menu options */
+    #menu-scroll {
+      position: absolute; right: 12px; bottom: 74px; z-index: 120;
+      width: 34px; height: 34px; border-radius: 50%;
+      background: var(--primary); color: #fff; border: 2px solid var(--surface);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: transform .18s, background .18s;
+    }
+    #menu-scroll:hover { transform: translateY(-2px); }
+    #menu-scroll svg { transition: transform .2s; }
+    body.sidebar-collapsed #menu-scroll { right: 50%; transform: translateX(50%); }
+
     /* Scroll helper button — left of the FAB */
     #scroll-helper {
       position: fixed; bottom: 28px; right: 96px; z-index: 480;
@@ -1792,6 +1805,9 @@
       <span class="nav-item-label">Nuvem (Firebase)</span>
     </div>
   </nav>
+  <button id="menu-scroll" onclick="menuScroll()" aria-label="Rolar o menu" title="Rolar o menu">
+    <svg id="menu-scroll-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>
+  </button>
   <div class="sidebar-footer">
     <div id="cloud-status" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
       <span id="cloud-dot" style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;"></span>
@@ -4257,7 +4273,7 @@ function navigate(page) {
   if (page === 'pid') renderPID();
   // Recompute scroll-helper visibility after the page renders (charts/data
   // change the height); a couple of delayed passes catch async chart layout.
-  if (typeof _updateScrollHelper === 'function') { setTimeout(_updateScrollHelper, 120); setTimeout(_updateScrollHelper, 600); }
+  if (typeof _updateScrollUI === 'function') { setTimeout(_updateScrollUI, 120); setTimeout(_updateScrollUI, 600); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4999,8 +5015,27 @@ function _updateScrollHelper() {
   if (icon) icon.style.transform = atBottom ? 'rotate(180deg)' : '';
   btn.title = atBottom ? 'Voltar ao topo' : 'Rolar para baixo';
 }
-document.addEventListener('scroll', _updateScrollHelper, true);
-window.addEventListener('resize', _updateScrollHelper);
+// Botão de rolagem do MENU lateral (alcança as opções de baixo)
+function _menuNav() { return document.querySelector('.sidebar-nav'); }
+function menuScroll() {
+  const el = _menuNav(); if (!el) return;
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 6;
+  if (atBottom) el.scrollTo({ top: 0, behavior: 'smooth' });
+  else el.scrollBy({ top: Math.round(el.clientHeight * 0.7), behavior: 'smooth' });
+}
+function _updateMenuScroll() {
+  const btn = document.getElementById('menu-scroll'); const el = _menuNav();
+  if (!btn || !el) return;
+  const scrollable = el.scrollHeight > el.clientHeight + 4;
+  btn.style.display = scrollable ? 'flex' : 'none';
+  if (!scrollable) return;
+  const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 6;
+  const icon = document.getElementById('menu-scroll-icon');
+  if (icon) icon.style.transform = atBottom ? 'rotate(180deg)' : '';
+}
+function _updateScrollUI() { _updateScrollHelper(); _updateMenuScroll(); }
+document.addEventListener('scroll', _updateScrollUI, true);
+window.addEventListener('resize', _updateScrollUI);
 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') _closeFab(); });
 document.addEventListener('click', (e) => {
@@ -10978,7 +11013,7 @@ updateGoleiraSelects();
 refreshDashboard();
 updateNotifBadge();
 try { netInit(); } catch (e) {}
-try { _updateScrollHelper(); setTimeout(_updateScrollHelper, 700); } catch (e) {}
+try { _updateScrollUI(); setTimeout(_updateScrollUI, 700); } catch (e) {}
 initFirebaseFromStorage();
 
 // ═══════════════════════════════════════════════════════════
