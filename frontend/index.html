@@ -3255,7 +3255,7 @@
 </button>
 
 <!-- ══ BOTÃO DE ROLAGEM ══ -->
-<button id="scroll-helper" onclick="scrollHelperClick()" aria-label="Rolar a página" title="Rolar" style="display:none;">
+<button id="scroll-helper" onclick="scrollHelperClick()" aria-label="Rolar a página" title="Rolar" style="display:flex;">
   <svg id="scroll-helper-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><polyline points="6 9 12 15 18 9"/></svg>
 </button>
 
@@ -4992,10 +4992,8 @@ function scrollHelperClick() {
 function _updateScrollHelper() {
   const btn = document.getElementById('scroll-helper');
   if (!btn) return;
+  btn.style.display = 'flex'; // sempre visível (independe da escala/tamanho da tela)
   const el = _scroller();
-  const scrollable = el.scrollHeight > el.clientHeight + 4;
-  btn.style.display = scrollable ? 'flex' : 'none';
-  if (!scrollable) return;
   const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
   const icon = document.getElementById('scroll-helper-icon');
   if (icon) icon.style.transform = atBottom ? 'rotate(180deg)' : '';
