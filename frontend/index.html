@@ -2158,6 +2158,21 @@
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:10px;">Importar/restaurar substitui os dados atuais. O backup não inclui sua sessão de login por segurança.</div>
       </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header"><span class="card-title">🔒 Privacidade e LGPD</span></div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Como o sistema trata dados de atletas (inclusive menores de idade). Marque o consentimento no cadastro da goleira. Aqui você exerce os direitos do titular:</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <select class="form-select" id="lgpd-gk" style="width:auto;min-width:200px;"></select>
+          <button class="btn btn-secondary btn-sm" onclick="exportAthleteData()">⬇️ Exportar dados da atleta</button>
+          <button class="btn btn-secondary btn-sm" style="color:#ef4444;" onclick="forgetAthlete()">🗑️ Apagar dados (direito ao esquecimento)</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6;">
+          • <b>Consentimento</b>: registrado por atleta no cadastro (data e responsável).<br>
+          • <b>Portabilidade</b>: exporte todos os dados da atleta em JSON.<br>
+          • <b>Eliminação</b>: apaga cadastro, scouts, lesões, PID e análises da atleta, localmente e na nuvem.<br>
+          • <b>Segurança</b>: sessão e 2FA nunca saem do dispositivo; ações ficam registradas na Auditoria.
+        </div>
+      </div>
     </div>
 
     <!-- ══ CONTROLE DE LESÕES ══ -->
@@ -3401,6 +3416,12 @@
           <label class="form-label">Observações</label>
           <textarea class="form-textarea" id="gk-obs" placeholder="Notas gerais sobre a goleira…"></textarea>
         </div>
+        <div class="form-group full" style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+            <input type="checkbox" id="gk-consent"> Consentimento LGPD para tratamento de dados (do responsável, se menor de idade)
+          </label>
+          <input class="form-input" id="gk-consent-resp" placeholder="Nome do responsável (se menor)" style="margin-top:8px;">
+        </div>
       </div>
     </div>
     <div class="modal-footer">
@@ -4320,7 +4341,7 @@ function navigate(page) {
   if (page === 'notificacoes') renderNotificacoes();
   if (page === 'central-relatorios') renderCentralRelatorios();
   if (page === 'auditoria') renderAuditoria();
-  if (page === 'clube') renderClube();
+  if (page === 'clube') { renderClube(); _lgpdPopulate(); }
   if (page === 'lesoes') renderLesoes();
   if (page === 'pid') renderPID();
   // Recompute scroll-helper visibility after the page renders (charts/data
@@ -4460,6 +4481,8 @@ function openNovaGoleira() {
   document.getElementById('modal-goleira-title').textContent = 'Nova Goleira';
   ['nome','nasc','num','altura','peso','equipe','obs'].forEach(f => document.getElementById('gk-'+f).value = '');
   ['categoria','pe','mao','naipe'].forEach(f => document.getElementById('gk-'+f).value = '');
+  const _c = document.getElementById('gk-consent'); if (_c) _c.checked = false;
+  const _cr = document.getElementById('gk-consent-resp'); if (_cr) _cr.value = '';
   clearFoto();
   openModal('modal-goleira');
 }
@@ -4481,6 +4504,9 @@ function salvarGoleira() {
     mao: document.getElementById('gk-mao').value,
     naipe: document.getElementById('gk-naipe').value,
     obs: document.getElementById('gk-obs').value,
+    consent: document.getElementById('gk-consent').checked,
+    consentResp: document.getElementById('gk-consent-resp').value,
+    consentData: document.getElementById('gk-consent').checked ? (existente && existente.consentData ? existente.consentData : new Date().toISOString().slice(0, 10)) : '',
     foto: currentFotoBase64 || (existente ? existente.foto : ''),
     criadoEm: editingId.goleira ? undefined : new Date().toISOString(),
   };
@@ -4516,6 +4542,8 @@ function editarGoleira(id) {
   document.getElementById('gk-pe').value = g.pe || '';
   document.getElementById('gk-mao').value = g.mao || '';
   document.getElementById('gk-obs').value = g.obs || '';
+  document.getElementById('gk-consent').checked = !!g.consent;
+  document.getElementById('gk-consent-resp').value = g.consentResp || '';
   currentFotoBase64 = g.foto || '';
   updateFotoPreview(currentFotoBase64);
   openModal('modal-goleira');
@@ -10732,6 +10760,56 @@ async function cloudRestore() {
   try { const snap = await rtdbGet('/backups/latest'); if (!snap) { toast('Nenhum backup na nuvem ainda.', 'info'); return; } _gkRestore(snap); toast('Restaurado da nuvem! Recarregando…', 'success'); setTimeout(() => location.reload(), 900); }
   catch (e) { toast('Não foi possível restaurar da nuvem.', 'error'); }
 }
+/* ── Privacidade / LGPD — export e exclusão por atleta ─────── */
+function _athleteData(gkId) {
+  const gk = DB.goleiras.find(g => g.id === gkId) || {};
+  const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  const pIds = new Set(scouts.map(s => s.partidaId));
+  return {
+    _meta: { app: 'GK Hub', tipo: 'dados_da_atleta_LGPD', exportadoEm: new Date().toISOString() },
+    goleira: gk,
+    partidas: DB.partidas.filter(p => p.goalkeeperId === gkId || pIds.has(p.id)),
+    scouts, lesoes: DB.lesoes.filter(l => l.gkId === gkId),
+    pid: DB.pid.filter(o => o.gkId === gkId),
+    analisesIA: DB.aianalyses.filter(a => a.gkId === gkId),
+  };
+}
+function exportAthleteData() {
+  const gkId = document.getElementById('lgpd-gk')?.value;
+  if (!gkId) { toast('Selecione a atleta.', 'info'); return; }
+  const gk = DB.goleiras.find(g => g.id === gkId);
+  const blob = new Blob([JSON.stringify(_athleteData(gkId), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'dados_' + (gk ? gk.nome.replace(/\s+/g, '_') : gkId) + '.json'; a.click();
+  URL.revokeObjectURL(url);
+  logAudit('LGPD', 'Exportou os dados da atleta ' + (gk ? gk.nome : gkId));
+  toast('Dados da atleta exportados.', 'success');
+}
+function forgetAthlete() {
+  const gkId = document.getElementById('lgpd-gk')?.value;
+  if (!gkId) { toast('Selecione a atleta.', 'info'); return; }
+  const gk = DB.goleiras.find(g => g.id === gkId);
+  const nome = gk ? gk.nome : gkId;
+  if (!confirm('DIREITO AO ESQUECIMENTO\n\nIsto apaga PERMANENTEMENTE todos os dados de "' + nome + '" (cadastro, scouts, lesões, PID, análises de IA) deste dispositivo e da nuvem. Recomenda-se exportar antes. Continuar?')) return;
+  if (!confirm('Tem certeza? Esta ação não pode ser desfeita.')) return;
+  const scouts = DB.scouts.filter(s => s.goalkeeperId === gkId);
+  DB.saveScouts(DB.scouts.filter(s => s.goalkeeperId !== gkId));
+  DB.saveGoleiras(DB.goleiras.filter(g => g.id !== gkId));
+  DB.saveLesoes(DB.lesoes.filter(l => l.gkId !== gkId));
+  DB.savePID(DB.pid.filter(o => o.gkId !== gkId));
+  DB.saveAianalyses(DB.aianalyses.filter(a => a.gkId !== gkId));
+  try { cloudDelete('goleiras', gkId); scouts.forEach(s => cloudDelete('scouts', s.id)); } catch (e) {}
+  logAudit('LGPD', 'Exclusão total (direito ao esquecimento) de ' + nome);
+  toast('Dados de ' + nome + ' apagados.', 'success');
+  updateGoleiraSelects();
+  _lgpdPopulate();
+}
+function _lgpdPopulate() {
+  const sel = document.getElementById('lgpd-gk');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Selecionar atleta…</option>' + DB.goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}${g.consent ? ' ✓' : ''}</option>`).join('');
+}
+
 function loadSampleData() {
   if (DB.goleiras.length && !confirm('Já existem dados. Adicionar goleiras de exemplo mesmo assim?')) return;
   const mk = (n) => 'x' + Date.now().toString(36) + n + Math.floor(Math.random() * 1e5).toString(36);
