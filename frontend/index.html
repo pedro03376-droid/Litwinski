@@ -2145,6 +2145,18 @@
           <button class="btn btn-secondary" onclick="openMetodologia()">📚 Metodologia & Referências</button>
         </div>
       </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header"><span class="card-title">💾 Backup e Dados</span></div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">Os dados ficam salvos neste navegador. Faça backup para não perder nada ao trocar de aparelho ou limpar o cache.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;">
+          <button class="btn btn-primary btn-sm" onclick="exportBackup()">⬇️ Exportar backup (.json)</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">⬆️ Importar backup<input type="file" accept="application/json,.json" style="display:none;" onchange="importBackupFile(this)"></label>
+          <button class="btn btn-secondary btn-sm" onclick="cloudBackup()">☁️ Backup na nuvem</button>
+          <button class="btn btn-secondary btn-sm" onclick="cloudRestore()">☁️ Restaurar da nuvem</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadSampleData()">✨ Carregar dados de exemplo</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;">Importar/restaurar substitui os dados atuais. O backup não inclui sua sessão de login por segurança.</div>
+      </div>
     </div>
 
     <!-- ══ CONTROLE DE LESÕES ══ -->
@@ -10445,6 +10457,78 @@ async function rtdbPut(path, data) {
 async function rtdbDelete(path) {
   const res = await fetch(rtdbPath(path), { method: 'DELETE' });
   if (!res.ok) throw new Error('rtdbDelete HTTP ' + res.status);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BACKUP & DADOS — exportar/importar arquivo + nuvem + exemplos
+   Proteção contra perda de dados (tudo local vira 1 snapshot).
+   ═══════════════════════════════════════════════════════════ */
+// Chaves efêmeras/de dispositivo que NÃO devem ir no backup
+const _BACKUP_SKIP = ['gkhub_session', 'gkhub_google_redirect', 'gkhub_fcm_token', 'gkhub_push_sub', 'gkhub_2fa_ok'];
+function _gkSnapshot() {
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('gkhub_') && !_BACKUP_SKIP.includes(k)) data[k] = localStorage.getItem(k);
+  }
+  return { _meta: { app: 'GK Hub', v: 38, exportedAt: new Date().toISOString() }, data };
+}
+function _gkRestore(snapshot) {
+  const data = (snapshot && snapshot.data) ? snapshot.data : snapshot;
+  if (!data || typeof data !== 'object') throw new Error('formato inválido');
+  Object.keys(data).forEach(k => { if (k.startsWith('gkhub_') && !_BACKUP_SKIP.includes(k)) localStorage.setItem(k, data[k]); });
+}
+function exportBackup() {
+  const blob = new Blob([JSON.stringify(_gkSnapshot(), null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = 'gkhub_backup_' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+  URL.revokeObjectURL(url);
+  try { logAudit('Dados', 'Exportou backup completo'); } catch (e) {}
+  toast('Backup exportado. Guarde o arquivo em local seguro.', 'success');
+}
+function importBackupFile(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  if (!confirm('Importar vai SOBRESCREVER os dados atuais deste navegador com o backup. Deseja continuar?')) { input.value = ''; return; }
+  const r = new FileReader();
+  r.onload = () => {
+    try { _gkRestore(JSON.parse(r.result)); try { logAudit('Dados', 'Importou backup'); } catch (e) {} toast('Backup restaurado! Recarregando…', 'success'); setTimeout(() => location.reload(), 900); }
+    catch (e) { toast('Arquivo de backup inválido.', 'error'); }
+  };
+  r.readAsText(f);
+}
+async function cloudBackup() {
+  if (!rtdbUrl) { toast('Conecte o Firebase (aba Nuvem) para usar backup na nuvem.', 'info'); return; }
+  try { netSetStatus('syncing'); await rtdbPut('/backups/latest', _gkSnapshot()); netMarkSynced(); try { logAudit('Dados', 'Enviou backup para a nuvem'); } catch (e) {} toast('Backup salvo na nuvem.', 'success'); }
+  catch (e) { toast('Não foi possível enviar o backup.', 'error'); netSetStatus(navigator.onLine ? 'online' : 'offline'); }
+}
+async function cloudRestore() {
+  if (!rtdbUrl) { toast('Conecte o Firebase (aba Nuvem) primeiro.', 'info'); return; }
+  if (!confirm('Restaurar da nuvem vai SOBRESCREVER os dados locais. Continuar?')) return;
+  try { const snap = await rtdbGet('/backups/latest'); if (!snap) { toast('Nenhum backup na nuvem ainda.', 'info'); return; } _gkRestore(snap); toast('Restaurado da nuvem! Recarregando…', 'success'); setTimeout(() => location.reload(), 900); }
+  catch (e) { toast('Não foi possível restaurar da nuvem.', 'error'); }
+}
+function loadSampleData() {
+  if (DB.goleiras.length && !confirm('Já existem dados. Adicionar goleiras de exemplo mesmo assim?')) return;
+  const mk = (n) => 'x' + Date.now().toString(36) + n + Math.floor(Math.random() * 1e5).toString(36);
+  const g1 = mk('a'), g2 = mk('b');
+  const gks = DB.goleiras.concat([
+    { id: g1, nome: 'Ana (exemplo)', equipe: 'Time Exemplo', categoria: 'Sub-17', naipe: 'feminino', pe: 'Direito', mao: 'Direita', criadoEm: new Date().toISOString() },
+    { id: g2, nome: 'Bia (exemplo)', equipe: 'Time Exemplo', categoria: 'Adulto', naipe: 'feminino', pe: 'Esquerdo', mao: 'Esquerda', criadoEm: new Date().toISOString() },
+  ]);
+  DB.saveGoleiras(gks);
+  const pts = DB.partidas.slice(), scs = DB.scouts.slice();
+  const base = new Date();
+  for (let i = 0; i < 6; i++) {
+    const pid = mk('p' + i); const gid = i % 2 ? g2 : g1;
+    const d = new Date(base); d.setDate(d.getDate() - (i * 7));
+    const gf = 2 + (i % 3), gc = i % 3;
+    pts.push({ id: pid, adversario: 'Adversário ' + (i + 1), competicao: 'Liga Exemplo', data: d.toISOString().slice(0, 10), goalkeeperId: gid, gf, gc });
+    scs.push({ id: mk('s' + i), goalkeeperId: gid, partidaId: pid, dad: 3 + (i % 3), dae: 2, dbd: 2, dbe: 1, dc: 1, d1x1: 1, esq: 0, gda: gc, gfa: 0, gpe: 0, gfl: 0, dpc: 7 + i, dpe: 2, dmc: 3, dme: 1, int: 2, sai: 1 });
+  }
+  DB.savePartidas(pts); DB.saveScouts(scs);
+  try { logAudit('Dados', 'Carregou dados de exemplo'); } catch (e) {}
+  toast('Dados de exemplo carregados! Recarregando…', 'success');
+  setTimeout(() => location.reload(), 900);
 }
 
 function initFirebaseFromStorage() {
