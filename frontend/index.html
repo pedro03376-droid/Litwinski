@@ -1817,6 +1817,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" width="13" height="13"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
       <span id="auth-sidebar-user" style="font-size:12px;font-weight:600;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
     </div>
+    <button class="btn btn-ghost btn-sm" onclick="openTwoFactorSetup()" style="width:100%;justify-content:center;color:var(--muted);font-size:11px;margin-bottom:6px;" title="Autenticação de 2 fatores">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      Segurança (2FA)
+    </button>
     <div style="display:flex;gap:6px;margin-bottom:6px;">
       <button class="btn btn-ghost btn-sm" onclick="showClubSelector()" style="flex:1;justify-content:center;color:var(--muted);font-size:11px;" title="Trocar clube">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
@@ -8682,6 +8686,159 @@ function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
+/* ═══════════════════════════════════════════════════════════
+   AUTENTICAÇÃO DE 2 FATORES (TOTP — app autenticador)
+   Verificação por app (Google Authenticator/Authy) na abertura.
+   Segundo fator no dispositivo (segredo no navegador) + códigos
+   de recuperação. Padrão TOTP RFC 6238, verificado localmente.
+   ═══════════════════════════════════════════════════════════ */
+function gk2fa() { try { return JSON.parse(localStorage.getItem('gkhub_2fa') || '{}'); } catch (e) { return {}; } }
+function gk2faEnabled() { return !!gk2fa().enabled; }
+const _B32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+function _b32encode(bytes) { let bits = 0, val = 0, out = ''; for (const b of bytes) { val = (val << 8) | b; bits += 8; while (bits >= 5) { out += _B32[(val >>> (bits - 5)) & 31]; bits -= 5; } } if (bits > 0) out += _B32[(val << (5 - bits)) & 31]; return out; }
+function _b32decode(s) { s = (s || '').toUpperCase().replace(/[^A-Z2-7]/g, ''); let bits = 0, val = 0; const out = []; for (const c of s) { const i = _B32.indexOf(c); if (i < 0) continue; val = (val << 5) | i; bits += 5; if (bits >= 8) { out.push((val >>> (bits - 8)) & 0xff); bits -= 8; } } return new Uint8Array(out); }
+async function _hotp(keyBytes, counter) {
+  const buf = new ArrayBuffer(8), dv = new DataView(buf);
+  dv.setUint32(0, Math.floor(counter / 0x100000000)); dv.setUint32(4, counter >>> 0);
+  const key = await crypto.subtle.importKey('raw', keyBytes, { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('HMAC', key, buf));
+  const off = sig[19] & 0xf;
+  const code = ((sig[off] & 0x7f) << 24) | (sig[off + 1] << 16) | (sig[off + 2] << 8) | sig[off + 3];
+  return (code % 1000000).toString().padStart(6, '0');
+}
+async function _totpNow(secretB32, skew) { return _hotp(_b32decode(secretB32), Math.floor(Date.now() / 30000) + (skew || 0)); }
+async function _totpVerify(secretB32, code) {
+  code = (code || '').replace(/\D/g, '');
+  if (code.length !== 6) return false;
+  for (const s of [-1, 0, 1]) { if (await _totpNow(secretB32, s) === code) return true; }
+  return false;
+}
+function _gen2FASecret() { const b = new Uint8Array(20); crypto.getRandomValues(b); return _b32encode(b); }
+function _genRecovery() { const out = []; for (let i = 0; i < 5; i++) { const b = new Uint8Array(5); crypto.getRandomValues(b); out.push(_b32encode(b).slice(0, 8)); } return out; }
+
+let _pending2FASecret = null;
+function openTwoFactorSetup() {
+  let modal = document.getElementById('twofa-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'twofa-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
+  if (gk2faEnabled()) {
+    modal.innerHTML = `
+      <div class="modal" style="max-width:440px;">
+        <div class="modal-header"><span class="modal-title">🔒 2FA ativado</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
+        <div class="modal-body" style="font-size:13px;line-height:1.6;">
+          <p>A verificação em duas etapas está <b style="color:var(--success);">ativa</b>. Ao abrir o app, será pedido o código do seu app autenticador.</p>
+          <p style="color:var(--muted);margin-top:8px;">Para desativar, informe um código atual:</p>
+          <input id="twofa-off-code" class="form-input" inputmode="numeric" maxlength="6" placeholder="Código de 6 dígitos" style="margin-top:6px;">
+          <div id="twofa-off-err" style="color:var(--error);font-size:12px;margin-top:6px;"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('twofa-modal')">Fechar</button><button class="btn btn-danger" onclick="disable2FA()">Desativar 2FA</button></div>
+      </div>`;
+    openModal('twofa-modal');
+    return;
+  }
+  _pending2FASecret = _gen2FASecret();
+  const user = (typeof _loggedUser === 'string' && _loggedUser) || 'goleiro';
+  const otpauth = `otpauth://totp/GK%20Hub:${encodeURIComponent(user)}?secret=${_pending2FASecret}&issuer=GK%20Hub&period=30&digits=6`;
+  modal.innerHTML = `
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-header"><span class="modal-title">🔒 Ativar 2FA</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
+      <div class="modal-body" style="font-size:13px;line-height:1.6;">
+        <p>1. Abra seu app autenticador (Google Authenticator, Authy, Microsoft Authenticator…) e adicione uma conta com <b>"inserir chave de configuração"</b>.</p>
+        <p style="margin-top:8px;">2. Nome: <b>GK Hub</b> · Tipo: <b>Baseado em tempo</b> · Chave:</p>
+        <div style="display:flex;gap:8px;align-items:center;margin:8px 0;">
+          <code style="flex:1;background:var(--bg);padding:10px;border-radius:8px;font-size:15px;letter-spacing:2px;word-break:break-all;">${_pending2FASecret}</code>
+          <button class="btn btn-secondary btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText('${_pending2FASecret}');toast('Chave copiada.','success')">Copiar</button>
+        </div>
+        <details style="margin:6px 0;"><summary style="cursor:pointer;color:var(--muted);font-size:12px;">Link otpauth (avançado)</summary><code style="font-size:11px;word-break:break-all;color:var(--muted);">${_esc(otpauth)}</code></details>
+        <p style="margin-top:10px;">3. Digite o código de 6 dígitos que aparecer no app para confirmar:</p>
+        <input id="twofa-confirm" class="form-input" inputmode="numeric" maxlength="6" placeholder="000000" style="margin-top:6px;font-size:18px;letter-spacing:4px;text-align:center;">
+        <div id="twofa-confirm-err" style="color:var(--error);font-size:12px;margin-top:6px;"></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('twofa-modal')">Cancelar</button><button class="btn btn-primary" onclick="confirm2FA()">Ativar</button></div>
+    </div>`;
+  openModal('twofa-modal');
+}
+async function confirm2FA() {
+  const code = (document.getElementById('twofa-confirm')?.value || '').trim();
+  const err = document.getElementById('twofa-confirm-err');
+  if (!_pending2FASecret) return;
+  if (!(await _totpVerify(_pending2FASecret, code))) { if (err) err.textContent = 'Código incorreto. Verifique a hora do celular e tente de novo.'; return; }
+  const recovery = _genRecovery();
+  localStorage.setItem('gkhub_2fa', JSON.stringify({ enabled: true, secret: _pending2FASecret, recovery }));
+  sessionStorage.setItem('gkhub_2fa_ok', '1');
+  _pending2FASecret = null;
+  logAudit('Segurança', 'Ativou a autenticação de 2 fatores');
+  const modal = document.getElementById('twofa-modal');
+  modal.innerHTML = `
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header"><span class="modal-title">✅ 2FA ativado</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
+      <div class="modal-body" style="font-size:13px;line-height:1.6;">
+        <p style="color:var(--warning);"><b>Guarde estes códigos de recuperação</b> em local seguro. Cada um funciona uma vez, caso você perca o celular:</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;">
+          ${recovery.map(c => `<code style="background:var(--bg);padding:8px;border-radius:6px;text-align:center;letter-spacing:2px;">${c}</code>`).join('')}
+        </div>
+        <p style="color:var(--muted);font-size:12px;">A partir de agora, ao abrir o app será pedido o código do autenticador.</p>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary" onclick="closeModal('twofa-modal')">Concluir</button></div>
+    </div>`;
+}
+async function disable2FA() {
+  const code = (document.getElementById('twofa-off-code')?.value || '').trim();
+  const err = document.getElementById('twofa-off-err');
+  const cfg = gk2fa();
+  const ok = await _totpVerify(cfg.secret, code) || (cfg.recovery || []).includes(code.toUpperCase());
+  if (!ok) { if (err) err.textContent = 'Código inválido.'; return; }
+  localStorage.removeItem('gkhub_2fa'); sessionStorage.removeItem('gkhub_2fa_ok');
+  logAudit('Segurança', 'Desativou a autenticação de 2 fatores');
+  closeModal('twofa-modal'); toast('2FA desativado.', 'info');
+}
+
+// Bloqueio na abertura — mostrado quando o app é revelado (via observer)
+function _maybeShow2FA() {
+  if (!gk2faEnabled() || sessionStorage.getItem('gkhub_2fa_ok')) return;
+  if (document.getElementById('twofa-lock')) return;
+  const lock = document.createElement('div');
+  lock.id = 'twofa-lock';
+  lock.style.cssText = 'position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;';
+  lock.innerHTML = `
+    <div style="max-width:340px;width:100%;text-align:center;">
+      <div style="font-size:40px;">🔒</div>
+      <h2 style="font-size:20px;font-weight:800;margin:10px 0 4px;">Verificação em 2 etapas</h2>
+      <p style="color:var(--muted);font-size:13px;margin-bottom:18px;">Digite o código do seu app autenticador.</p>
+      <input id="twofa-code" class="form-input" inputmode="numeric" maxlength="6" placeholder="000000" style="font-size:22px;letter-spacing:6px;text-align:center;" onkeydown="if(event.key==='Enter')_verify2FALogin()">
+      <div id="twofa-err" style="color:var(--error);font-size:12px;margin-top:8px;min-height:16px;"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:10px;" onclick="_verify2FALogin()">Verificar</button>
+      <div style="margin-top:14px;"><a onclick="_use2FARecovery()" style="color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;">Usar código de recuperação</a></div>
+      <div style="margin-top:8px;"><a onclick="authLogout()" style="color:var(--muted);font-size:12px;cursor:pointer;">Sair</a></div>
+    </div>`;
+  document.body.appendChild(lock);
+  setTimeout(() => document.getElementById('twofa-code')?.focus(), 60);
+}
+function _use2FARecovery() {
+  const p = document.getElementById('twofa-code');
+  if (p) { p.maxLength = 8; p.placeholder = 'Código de recuperação'; p.style.letterSpacing = '2px'; p.value = ''; p.focus(); }
+  const e = document.getElementById('twofa-err'); if (e) e.textContent = '';
+}
+async function _verify2FALogin() {
+  const code = (document.getElementById('twofa-code')?.value || '').trim();
+  const cfg = gk2fa();
+  let ok = false;
+  if (/^\d{6}$/.test(code)) ok = await _totpVerify(cfg.secret, code);
+  if (!ok && (cfg.recovery || []).includes(code.toUpperCase())) {
+    ok = true; cfg.recovery = cfg.recovery.filter(c => c !== code.toUpperCase());
+    localStorage.setItem('gkhub_2fa', JSON.stringify(cfg));
+    toast('Código de recuperação usado. Restam ' + cfg.recovery.length + '.', 'info');
+  }
+  if (ok) { sessionStorage.setItem('gkhub_2fa_ok', '1'); document.getElementById('twofa-lock')?.remove(); }
+  else { const e = document.getElementById('twofa-err'); if (e) e.textContent = 'Código inválido. Tente novamente.'; }
+}
+function _init2FA() {
+  const ov = document.getElementById('auth-overlay');
+  if (ov && 'MutationObserver' in window) {
+    new MutationObserver(() => { if (ov.classList.contains('hidden')) _maybeShow2FA(); }).observe(ov, { attributes: true, attributeFilter: ['class'] });
+  }
+  if (ov && ov.classList.contains('hidden')) _maybeShow2FA();
+}
+
 function initAuth() {
   // Verifica sessão IMEDIATAMENTE (síncrono) — não bloqueia a UI
   try {
@@ -11006,6 +11163,7 @@ function setDashCustomPeriod() {
 }
 
 // INIT
+try { _init2FA(); } catch (e) {}
 initAuth();
 applyPreferences();
 try { applyClubBranding(); } catch (e) {}
