@@ -2811,10 +2811,17 @@
           <h2 style="margin:0;font-size:20px;font-weight:800;">Dashboard de Treinos</h2>
           <p style="margin:2px 0 0;color:var(--muted);font-size:13px;">Planejamento, presença, carga e avaliações</p>
         </div>
-        <div style="display:flex;gap:8px;">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" id="tp-ai-btn" onclick="tpAnaliseIA()">🤖 Sugestão de treino (IA)</button>
           <button class="btn btn-secondary btn-sm" onclick="tpExportPdf()">📄 Relatório PDF</button>
           <button class="btn btn-primary btn-sm" onclick="openTpSessionForm()">+ Nova sessão</button>
         </div>
+      </div>
+
+      <!-- Sugestão de treino por IA -->
+      <div class="card" id="tp-ai-wrap" style="display:none;margin-bottom:20px;border:1px solid rgba(59,130,246,.25);">
+        <div class="card-header"><span class="card-title">🤖 Sugestão de treino por IA</span></div>
+        <div id="tp-ai-body"></div>
       </div>
 
       <!-- Indicators -->
@@ -3655,6 +3662,7 @@
         <div id="mc-rel-subtitle" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn btn-ghost btn-sm" id="mc-ai-btn" onclick="mcAnaliseIA()">🤖 Análise IA</button>
         <button class="btn btn-ghost btn-sm" onclick="mcExportarRelatorioPDF()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Exportar PDF
@@ -3663,7 +3671,13 @@
         <button class="modal-close" onclick="closeModal('modal-mc-relatorio')">&times;</button>
       </div>
     </div>
-    <div class="modal-body" id="mc-rel-body" style="padding:24px;"></div>
+    <div class="modal-body" style="padding:24px;">
+      <div id="mc-rel-body"></div>
+      <div id="mc-ai-wrap" style="display:none;margin-top:18px;border-top:1px solid var(--border);padding-top:16px;">
+        <div style="font-weight:700;font-size:14px;margin-bottom:10px;">🤖 Análise da partida por IA</div>
+        <div id="mc-ai-body"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5192,6 +5206,80 @@ function renderPerfilTimeline(gkId) {
 }
 
 /* ── Análise por IA (Gemini via backend) ───────────────────── */
+async function _aiPost(context) {
+  try { const r = await api.post('/ai-analysis/insights', { context }); const d = r && (r.data !== undefined ? r.data : r); return (d && d.analysis) || null; }
+  catch (e) { return null; }
+}
+function _aiRenderResult(a, bodyEl, scoreLabel) {
+  const list = (arr) => (arr && arr.length) ? arr.map(x => `<li style="margin-bottom:4px;">${_esc(x)}</li>`).join('') : '<li style="color:var(--muted);">—</li>';
+  const sec = (icon, title, arr, color) => `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:${color};margin-bottom:4px;">${icon} ${title}</div><ul style="margin:0 0 0 18px;font-size:13px;line-height:1.5;">${list(arr)}</ul></div>`;
+  bodyEl.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--muted);">${scoreLabel || 'Nota geral da IA'}</div>
+      <div style="font-size:22px;font-weight:800;color:${igdColor((a.overallScore || 0) * 10)};">${a.overallScore ?? '—'}<span style="font-size:13px;color:var(--muted);">/10</span></div>
+    </div>
+    ${sec('💪', 'Pontos fortes', a.strengths, 'var(--success)')}
+    ${sec('🎯', 'Pontos de atenção', a.attentionPoints, 'var(--warning)')}
+    ${(a.evolutionNotes && a.evolutionNotes.length) ? sec('📈', 'Evolução', a.evolutionNotes, 'var(--primary)') : ''}
+    ${sec('🏋️', 'Sugestões de treino', a.trainingSuggestions, 'var(--text)')}
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">Gerado por IA (Gemini). Use como apoio à decisão técnica.</div>`;
+}
+
+// Match Center — análise da partida ao vivo
+async function mcAnaliseIA() {
+  const wrap = document.getElementById('mc-ai-wrap');
+  const bodyEl = document.getElementById('mc-ai-body');
+  const btn = document.getElementById('mc-ai-btn');
+  if (!wrap || !bodyEl) return;
+  wrap.style.display = 'block';
+  bodyEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">🤖 Analisando a partida com IA…</div>';
+  if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
+  const p = (typeof mcPendingPId !== 'undefined' && mcPendingPId) ? DB.partidas.find(x => x.id === mcPendingPId) : null;
+  const gk = p ? DB.goleiras.find(g => g.id === p.goalkeeperId) : null;
+  const ctx = {
+    contexto: 'analise_de_partida_de_futsal',
+    naipe: (gk && gk.naipe) || 'feminino',
+    adversario: p ? p.adversario : undefined,
+    placar: { nos: mcPlacar.nos, adversario: mcPlacar.adv },
+    notaAoVivoFinal: mcNotaAtual, maiorNota: mcMaxNota, menorNota: mcMinNota,
+    maiorSequenciaSemSofrerGol_segundos: mcMaxSemGolSec,
+    scoutDaPartida: mcData,
+  };
+  const a = await _aiPost(ctx);
+  if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
+  if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;">⚠️ IA indisponível (servidor sem chave, sem conexão ou sem login no backend). Tente novamente após entrar com email/Google.</div>'; return; }
+  _aiRenderResult(a, bodyEl, 'Nota da partida (IA)');
+  try { logAudit('IA', 'Gerou análise IA da partida' + (p ? ' vs ' + p.adversario : '')); } catch (e) {}
+}
+
+// Treinos — sugestão de próximo treino
+async function tpAnaliseIA() {
+  const wrap = document.getElementById('tp-ai-wrap');
+  const bodyEl = document.getElementById('tp-ai-body');
+  const btn = document.getElementById('tp-ai-btn');
+  if (!wrap || !bodyEl) return;
+  wrap.style.display = 'block';
+  bodyEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">🤖 Gerando sugestão de treino com IA…</div>';
+  if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
+  const dash = _tpDashCache || {};
+  // fraquezas agregadas do elenco (dimensões IGD mais baixas)
+  const dimSums = {}, dimN = {};
+  DB.goleiras.forEach(g => { const d = computeIGD(g.id).dims; Object.keys(d).forEach(k => { if (d[k] != null) { dimSums[k] = (dimSums[k] || 0) + d[k]; dimN[k] = (dimN[k] || 0) + 1; } }); });
+  const mediasDim = {}; Object.keys(dimSums).forEach(k => mediasDim[k] = Math.round(dimSums[k] / dimN[k]));
+  const ctx = {
+    contexto: 'planejamento_do_proximo_treino_de_futsal',
+    objetivo: 'Sugerir o foco e exercícios do próximo treino com base nos indicadores da equipe.',
+    totalSessoes: dash.totalSessions, presencaMediaPct: dash.attendanceRate,
+    avaliacaoMedia: dash.avgEvaluation, pseMedia: dash.avgRpe, cargaSemanal: dash.weeklyWorkload,
+    mediasPorDimensaoIGD: mediasDim, atletas: DB.goleiras.length,
+  };
+  const a = await _aiPost(ctx);
+  if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
+  if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;">⚠️ IA indisponível (servidor sem chave, sem conexão ou sem login no backend).</div>'; return; }
+  _aiRenderResult(a, bodyEl, 'Prontidão da equipe (IA)');
+  try { logAudit('IA', 'Gerou sugestão de treino por IA'); } catch (e) {}
+}
+
 function _gkAIContext(gkId) {
   const g = DB.goleiras.find(x => x.id === gkId) || {};
   const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
@@ -7951,6 +8039,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
   html+='</div>';
   const bodyEl=document.getElementById('mc-rel-body');
   if(bodyEl) bodyEl.innerHTML=html;
+  const _aiw = document.getElementById('mc-ai-wrap'); if (_aiw) _aiw.style.display = 'none';
   openModal('modal-mc-relatorio');
 }
 
