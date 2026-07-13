@@ -2079,7 +2079,7 @@
           <select class="form-select" id="rep-filter" style="width:auto;padding:8px 12px;" onchange="renderCentralRelatorios()">
             <option value="">Todos os tipos</option><option value="individual">Individual</option>
             <option value="geral">Geral</option><option value="partidas">Partidas</option>
-            <option value="competicao">Competição</option><option value="analise">Análise IA</option><option value="treinos">Treinos</option>
+            <option value="competicao">Competição</option><option value="analise">Análise IA</option><option value="ia">Insights IA</option><option value="treinos">Treinos</option>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="repShowFav=!repShowFav;renderCentralRelatorios()" id="rep-fav-btn">★ Favoritos</button>
           <button class="btn btn-primary btn-sm" onclick="navigate('relatorios')">Gerar novo</button>
@@ -3699,6 +3699,8 @@ const DB = {
   get reports()       { return this.load('reports'); },
   get lesoes()        { return this.load('lesoes'); },
   get pid()           { return this.load('pid'); },
+  get aianalyses()    { return this.load('aianalyses'); },
+  saveAianalyses(d)   { this.save('aianalyses', d); },
   saveNotifications(d){ this.save('notifications', d); },
   saveAuditlog(d)     { this.save('auditlog', d); },
   saveReports(d)      { this.save('reports', d); },
@@ -3833,7 +3835,7 @@ function renderCentralRelatorios() {
   if (repShowFav) list = list.filter(r => r.favorite);
   if (q) list = list.filter(r => (r.title || '').toLowerCase().includes(q) || (r.athlete || '').toLowerCase().includes(q) || (r.competition || '').toLowerCase().includes(q));
   if (!list.length) { el.innerHTML = '<div class="empty-state"><p>Nenhum relatório na biblioteca. Gere um PDF para começar.</p></div>'; return; }
-  const typeLabel = { individual: 'Individual', geral: 'Geral', partidas: 'Partidas', competicao: 'Competição', analise: 'Análise IA', treinos: 'Treinos' };
+  const typeLabel = { individual: 'Individual', geral: 'Geral', partidas: 'Partidas', competicao: 'Competição', analise: 'Análise IA', ia: 'Insights IA', treinos: 'Treinos' };
   el.innerHTML = list.map(r => `
     <div style="display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--border);">
       <span style="font-size:18px;">📄</span>
@@ -5206,13 +5208,38 @@ function renderPerfilTimeline(gkId) {
 }
 
 /* ── Análise por IA (Gemini via backend) ───────────────────── */
+// Mostra a última análise salva (se houver) ao abrir o perfil
+function renderPerfilIA(gkId) {
+  const body = document.getElementById('perfil-ia-body');
+  if (!body) return;
+  const last = _latestAIAnalysis(gkId, ['perfil', 'partida']);
+  if (last && last.analysis) {
+    _aiRenderResult(last.analysis, body, 'Nota geral da IA', { gkId, savedAt: formatDate(new Date(last.ts).toISOString().slice(0, 10)) });
+  } else {
+    body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Clique em "Gerar análise" para uma avaliação técnica automática desta goleira com base em todos os dados registrados.</div>';
+  }
+}
 async function _aiPost(context) {
   try { const r = await api.post('/ai-analysis/insights', { context }); const d = r && (r.data !== undefined ? r.data : r); return (d && d.analysis) || null; }
   catch (e) { return null; }
 }
-function _aiRenderResult(a, bodyEl, scoreLabel) {
+function _aiRenderResult(a, bodyEl, scoreLabel, opts) {
+  opts = opts || {};
+  const gkId = opts.gkId;
   const list = (arr) => (arr && arr.length) ? arr.map(x => `<li style="margin-bottom:4px;">${_esc(x)}</li>`).join('') : '<li style="color:var(--muted);">—</li>';
   const sec = (icon, title, arr, color) => `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:${color};margin-bottom:4px;">${icon} ${title}</div><ul style="margin:0 0 0 18px;font-size:13px;line-height:1.5;">${list(arr)}</ul></div>`;
+  // Sugestões de treino com botão "+ PID" quando há uma goleira associada
+  let trainHtml;
+  if (gkId && a.trainingSuggestions && a.trainingSuggestions.length) {
+    _AI_SUGG_CACHE = a.trainingSuggestions.slice();
+    trainHtml = `<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <div style="font-weight:700;font-size:13px;">🏋️ Sugestões de treino</div>
+        <button class="btn btn-secondary btn-sm" onclick="pidFromAI('${_esc(gkId)}')">➕ Adicionar todas ao PID</button></div>
+      <div>${a.trainingSuggestions.map((x, i) => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
+        <span>${_esc(x)}</span><button class="btn btn-ghost btn-sm" style="flex-shrink:0;padding:2px 8px;" onclick="pidFromAIOne('${_esc(gkId)}',${i})">+ PID</button></div>`).join('')}</div></div>`;
+  } else {
+    trainHtml = sec('🏋️', 'Sugestões de treino', a.trainingSuggestions, 'var(--text)');
+  }
   bodyEl.innerHTML = `
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
       <div style="font-size:12px;color:var(--muted);">${scoreLabel || 'Nota geral da IA'}</div>
@@ -5221,8 +5248,54 @@ function _aiRenderResult(a, bodyEl, scoreLabel) {
     ${sec('💪', 'Pontos fortes', a.strengths, 'var(--success)')}
     ${sec('🎯', 'Pontos de atenção', a.attentionPoints, 'var(--warning)')}
     ${(a.evolutionNotes && a.evolutionNotes.length) ? sec('📈', 'Evolução', a.evolutionNotes, 'var(--primary)') : ''}
-    ${sec('🏋️', 'Sugestões de treino', a.trainingSuggestions, 'var(--text)')}
-    <div style="font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">Gerado por IA (Gemini). Use como apoio à decisão técnica.</div>`;
+    ${trainHtml}
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">${opts.savedAt ? 'Gerado em ' + opts.savedAt + ' · ' : ''}IA (Gemini). Use como apoio à decisão técnica.</div>`;
+}
+let _AI_SUGG_CACHE = [];
+// Histórico de análises IA (local + Central de Relatórios)
+function _saveAIAnalysis(scope, gkId, analysis, label) {
+  try {
+    const list = DB.aianalyses;
+    list.unshift({ id: _uid(), ts: Date.now(), scope, gkId: gkId || null, label: label || scope, analysis });
+    DB.saveAianalyses(list.slice(0, 100));
+    const gk = gkId ? DB.goleiras.find(g => g.id === gkId) : null;
+    logReport({ type: 'ia', title: 'Análise IA — ' + (label || scope), athlete: gk ? gk.nome : undefined, athleteId: gkId || undefined });
+  } catch (e) {}
+}
+function _latestAIAnalysis(gkId, scopes) {
+  return DB.aianalyses.find(x => x.gkId === gkId && (!scopes || scopes.includes(x.scope))) || null;
+}
+// PID a partir das sugestões da IA
+const _PID_AREA_KEYWORDS = {
+  tecnica: ['aér', 'aer', 'reflex', 'posicion', '1x1', '1 x 1', 'distribu', 'reposi', 'saída', 'saida', 'esquadro', 'defes', 'chute', 'finaliz'],
+  fisica: ['agilidade', 'explos', 'resist', 'velocidad', 'força', 'forca', 'físic', 'fisic', 'condicion', 'potênc', 'potenc'],
+  mental: ['comunica', 'lideran', 'confian', 'concentr', 'menta', 'psicol', 'decis'],
+};
+function _pidAreaFor(text) {
+  const t = (text || '').toLowerCase();
+  for (const area of ['fisica', 'mental', 'tecnica']) { if (_PID_AREA_KEYWORDS[area].some(k => t.includes(k))) return area; }
+  return 'tecnica';
+}
+function _addPidObjective(gkId, text) {
+  const list = DB.pid;
+  list.unshift({ id: _uid(), gkId, area: _pidAreaFor(text), topic: '', descricao: text, responsavel: 'IA', prioridade: 'Média', inicio: '', prazo: '', criterio: 'Sugestão gerada por IA', status: 'andamento', progresso: 0, criadoEm: Date.now() });
+  DB.savePID(list);
+}
+function pidFromAIOne(gkId, idx) {
+  const text = _AI_SUGG_CACHE[idx];
+  if (!text) return;
+  _addPidObjective(gkId, text);
+  const gk = DB.goleiras.find(g => g.id === gkId);
+  logAudit('PID', 'Objetivo criado por IA para ' + (gk ? gk.nome : gkId));
+  toast('Objetivo adicionado ao PID.', 'success');
+}
+function pidFromAI(gkId) {
+  if (!_AI_SUGG_CACHE.length) return;
+  _AI_SUGG_CACHE.forEach(t => _addPidObjective(gkId, t));
+  const gk = DB.goleiras.find(g => g.id === gkId);
+  logAudit('PID', _AI_SUGG_CACHE.length + ' objetivos criados por IA para ' + (gk ? gk.nome : gkId));
+  toast(_AI_SUGG_CACHE.length + ' objetivos adicionados ao PID.', 'success');
+  if (typeof renderPerfilPID === 'function') renderPerfilPID(gkId);
 }
 
 // Match Center — análise da partida ao vivo
@@ -5248,7 +5321,8 @@ async function mcAnaliseIA() {
   const a = await _aiPost(ctx);
   if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
   if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;">⚠️ IA indisponível (servidor sem chave, sem conexão ou sem login no backend). Tente novamente após entrar com email/Google.</div>'; return; }
-  _aiRenderResult(a, bodyEl, 'Nota da partida (IA)');
+  if (gk) _saveAIAnalysis('partida', gk.id, a, (gk.nome || '') + (p ? ' vs ' + p.adversario : ''));
+  _aiRenderResult(a, bodyEl, 'Nota da partida (IA)', { gkId: gk ? gk.id : null });
   try { logAudit('IA', 'Gerou análise IA da partida' + (p ? ' vs ' + p.adversario : '')); } catch (e) {}
 }
 
@@ -5276,6 +5350,7 @@ async function tpAnaliseIA() {
   const a = await _aiPost(ctx);
   if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
   if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;">⚠️ IA indisponível (servidor sem chave, sem conexão ou sem login no backend).</div>'; return; }
+  _saveAIAnalysis('treino', null, a, 'Equipe');
   _aiRenderResult(a, bodyEl, 'Prontidão da equipe (IA)');
   try { logAudit('IA', 'Gerou sugestão de treino por IA'); } catch (e) {}
 }
@@ -5321,18 +5396,8 @@ async function gerarAnaliseIA() {
       + (local.length ? local.map(i => `<div style="font-size:13px;padding:4px 0;">${i.icon} ${_esc(i.text)}</div>`).join('') : '<div style="color:var(--muted);font-size:13px;">Sem insights suficientes.</div>');
     return;
   }
-  const list = (arr) => (arr && arr.length) ? arr.map(x => `<li style="margin-bottom:4px;">${_esc(x)}</li>`).join('') : '<li style="color:var(--muted);">—</li>';
-  const sec = (icon, title, arr, color) => `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:${color};margin-bottom:4px;">${icon} ${title}</div><ul style="margin:0 0 0 18px;font-size:13px;line-height:1.5;">${list(arr)}</ul></div>`;
-  body.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
-      <div style="font-size:12px;color:var(--muted);">Nota geral da IA</div>
-      <div style="font-size:22px;font-weight:800;color:${igdColor((a.overallScore || 0) * 10)};">${a.overallScore ?? '—'}<span style="font-size:13px;color:var(--muted);">/10</span></div>
-    </div>
-    ${sec('💪', 'Pontos fortes', a.strengths, 'var(--success)')}
-    ${sec('🎯', 'Pontos de atenção', a.attentionPoints, 'var(--warning)')}
-    ${(a.evolutionNotes && a.evolutionNotes.length) ? sec('📈', 'Evolução', a.evolutionNotes, 'var(--primary)') : ''}
-    ${sec('🏋️', 'Sugestões de treino', a.trainingSuggestions, 'var(--text)')}
-    <div style="font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">Gerado por IA (Gemini) a partir dos dados registrados. Use como apoio à decisão técnica.</div>`;
+  _saveAIAnalysis('perfil', gkId, a, ctx.nome || 'Goleira');
+  _aiRenderResult(a, body, 'Nota geral da IA', { gkId });
   try { logAudit('IA', 'Gerou análise por IA de ' + (ctx.nome || gkId)); } catch (e) {}
 }
 
@@ -6132,6 +6197,7 @@ function renderPerfil() {
   renderPerfilInsights(gkId);
   renderPerfilTimeline(gkId);
   renderPerfilPID(gkId);
+  renderPerfilIA(gkId);
 
   // Foto + nome
   const fotoEl = document.getElementById('perfil-foto');
