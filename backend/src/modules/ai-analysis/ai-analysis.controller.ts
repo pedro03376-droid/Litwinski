@@ -3,6 +3,11 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiProperty } from '@nestjs/swagg
 import { IsString, IsOptional, IsObject } from 'class-validator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AiAnalysisService } from './ai-analysis.service';
+import { LlmAnalysisService } from './llm-analysis.service';
+
+class GenerateInsightsDto {
+  @ApiProperty() @IsObject() context: any;
+}
 
 class GenerateMatchAnalysisDto {
   @ApiProperty() @IsString() goalkeeperId: string;
@@ -22,7 +27,17 @@ class GenerateTrainingAnalysisDto {
 @UseGuards(JwtAuthGuard)
 @Controller('ai-analysis')
 export class AiAnalysisController {
-  constructor(private readonly aiAnalysisService: AiAnalysisService) {}
+  constructor(
+    private readonly aiAnalysisService: AiAnalysisService,
+    private readonly llm: LlmAnalysisService,
+  ) {}
+
+  @Post('insights')
+  @ApiOperation({ summary: 'Stateless AI insights for a goalkeeper (no DB write)' })
+  async insights(@Body() dto: GenerateInsightsDto) {
+    const analysis = await this.llm.analyzeGoalkeeper(dto.context || {});
+    return { enabled: this.llm.isEnabled() && analysis !== null, analysis };
+  }
 
   @Post('generate/match')
   @ApiOperation({ summary: 'Generate AI analysis for a match' })

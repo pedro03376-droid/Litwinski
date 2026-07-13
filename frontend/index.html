@@ -2697,6 +2697,14 @@
           <div class="card-header"><span class="card-title">⚡ Índice Global de Desenvolvimento</span><span style="font-size:11px;color:var(--muted);">0–100</span></div>
           <div id="perfil-igd"></div>
         </div>
+        <!-- Análise por IA (Gemini) -->
+        <div class="card" id="perfil-ia-card" style="margin-bottom:20px;">
+          <div class="card-header">
+            <span class="card-title">🤖 Análise por IA</span>
+            <button class="btn btn-primary btn-sm" id="perfil-ia-btn" onclick="gerarAnaliseIA()">Gerar análise</button>
+          </div>
+          <div id="perfil-ia-body"><div style="color:var(--muted);font-size:13px;">Clique em "Gerar análise" para uma avaliação técnica automática desta goleira com base em todos os dados registrados.</div></div>
+        </div>
         <!-- Evolução técnica -->
         <div class="card" style="margin-bottom:20px;">
           <div class="card-header"><span class="card-title">Evolução Técnica</span><span id="perfil-evol-label" style="font-size:12px;color:var(--muted);"></span></div>
@@ -5181,6 +5189,63 @@ function renderPerfilTimeline(gkId) {
         <span style="margin-left:auto;font-size:11px;color:var(--muted);">${ev.date ? formatDate(ev.date) : '—'}</span></div>
       <div style="font-size:12px;color:var(--muted);margin-top:2px;">${_esc(ev.detail)}</div>
     </div>`).join('');
+}
+
+/* ── Análise por IA (Gemini via backend) ───────────────────── */
+function _gkAIContext(gkId) {
+  const g = DB.goleiras.find(x => x.id === gkId) || {};
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
+  const sum = (k) => scouts.reduce((a, s) => a + (+s[k] || 0), 0);
+  const def = sum('dad') + sum('dae') + sum('dbd') + sum('dbe') + sum('dc') + sum('d1x1') + sum('esq');
+  const gols = sum('gda') + sum('gfa') + sum('gpe') + sum('gfl');
+  const distC = sum('dpc') + sum('dmc'), distT = distC + sum('dpe') + sum('dme');
+  const igd = computeIGD(gkId);
+  const line = _gkMatchTimeline(gkId, DB.partidas, DB.scouts);
+  return {
+    nome: g.nome, naipe: g.naipe || 'feminino', categoria: g.categoria || null, equipe: g.equipe || null,
+    partidasAnalisadas: scouts.length,
+    igd: igd.score, dimensoesIGD: igd.dims,
+    performanceMedia: avgPerformance(gkId),
+    taxaDefesaPct: (def + gols) ? +(def / (def + gols) * 100).toFixed(1) : null,
+    precisaoDistribuicaoPct: distT ? +(distC / distT * 100).toFixed(1) : null,
+    totalDefesas: def, golsSofridos: gols, interceptacoes: sum('int'), saidasDoGol: sum('sai'),
+    ultimasNotas: line.slice(-6).map(r => r.nota),
+  };
+}
+async function gerarAnaliseIA() {
+  const gkId = _perfilGkId;
+  const body = document.getElementById('perfil-ia-body');
+  const btn = document.getElementById('perfil-ia-btn');
+  if (!gkId || !body) return;
+  const ctx = _gkAIContext(gkId);
+  if (!ctx.partidasAnalisadas) { body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Registre ao menos um scout desta goleira para gerar a análise.</div>'; return; }
+  body.innerHTML = '<div style="color:var(--muted);font-size:13px;">🤖 Analisando com IA…</div>';
+  if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
+  let res = null;
+  try { res = await api.post('/ai-analysis/insights', { context: ctx }); } catch (e) { res = null; }
+  if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
+  const data = res && (res.data !== undefined ? res.data : res);
+  const a = data && data.analysis;
+  if (!a) {
+    // Fallback: insights locais (heurística) quando a IA não está disponível
+    const local = gkIntelligence(gkId, DB.partidas, DB.scouts);
+    body.innerHTML = `<div style="font-size:12px;color:var(--warning);margin-bottom:10px;">⚠️ IA indisponível (servidor sem chave ou sem conexão). Mostrando insights automáticos locais:</div>`
+      + (local.length ? local.map(i => `<div style="font-size:13px;padding:4px 0;">${i.icon} ${_esc(i.text)}</div>`).join('') : '<div style="color:var(--muted);font-size:13px;">Sem insights suficientes.</div>');
+    return;
+  }
+  const list = (arr) => (arr && arr.length) ? arr.map(x => `<li style="margin-bottom:4px;">${_esc(x)}</li>`).join('') : '<li style="color:var(--muted);">—</li>';
+  const sec = (icon, title, arr, color) => `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:${color};margin-bottom:4px;">${icon} ${title}</div><ul style="margin:0 0 0 18px;font-size:13px;line-height:1.5;">${list(arr)}</ul></div>`;
+  body.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--muted);">Nota geral da IA</div>
+      <div style="font-size:22px;font-weight:800;color:${igdColor((a.overallScore || 0) * 10)};">${a.overallScore ?? '—'}<span style="font-size:13px;color:var(--muted);">/10</span></div>
+    </div>
+    ${sec('💪', 'Pontos fortes', a.strengths, 'var(--success)')}
+    ${sec('🎯', 'Pontos de atenção', a.attentionPoints, 'var(--warning)')}
+    ${(a.evolutionNotes && a.evolutionNotes.length) ? sec('📈', 'Evolução', a.evolutionNotes, 'var(--primary)') : ''}
+    ${sec('🏋️', 'Sugestões de treino', a.trainingSuggestions, 'var(--text)')}
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">Gerado por IA (Gemini) a partir dos dados registrados. Use como apoio à decisão técnica.</div>`;
+  try { logAudit('IA', 'Gerou análise por IA de ' + (ctx.nome || gkId)); } catch (e) {}
 }
 
 function renderPerfilInsights(gkId) {

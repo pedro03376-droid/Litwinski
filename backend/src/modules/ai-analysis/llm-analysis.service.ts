@@ -81,6 +81,32 @@ export class LlmAnalysisService {
     return this._run(prompt);
   }
 
+  /**
+   * Stateless goalkeeper analysis from an arbitrary context object (stats,
+   * IGD, recent form, distribution, weaknesses). Used by the web app, whose
+   * data lives client-side. Returns null when disabled/on error so the caller
+   * can fall back to its own heuristic insights.
+   */
+  async analyzeGoalkeeper(context: any): Promise<AnalysisResult | null> {
+    const prompt = [
+      'Você é um analista de desempenho especializado em GOLEIRAS/GOLEIROS de FUTSAL.',
+      'Analise os dados abaixo e produza uma avaliação técnica objetiva em português do Brasil,',
+      'considerando a especificidade do futsal (quadra reduzida, muitos chutes de curta distância,',
+      'importância da distribuição/saída de bola, jogo de 1x1) e o naipe informado.',
+      '',
+      'Dados da atleta (agregados do sistema):',
+      JSON.stringify(context, null, 2),
+      '',
+      'Gere, com base nos NÚMEROS fornecidos (seja específico e cite valores):',
+      '- strengths: pontos fortes.',
+      '- attentionPoints: pontos a desenvolver.',
+      '- evolutionNotes: tendências de evolução (vazio se não houver base de comparação).',
+      '- trainingSuggestions: sugestões de treino práticas e específicas para futsal.',
+      '- overallScore: nota geral de 0 a 10.',
+    ].join('\n');
+    return this._run(prompt);
+  }
+
   private async _run(prompt: string): Promise<AnalysisResult | null> {
     try {
       if (this.provider === 'anthropic') return await this._runAnthropic(prompt);
