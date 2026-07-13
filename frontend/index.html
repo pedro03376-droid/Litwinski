@@ -2151,6 +2151,7 @@
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <button class="btn btn-primary btn-sm" onclick="exportBackup()">⬇️ Exportar backup (.json)</button>
           <label class="btn btn-secondary btn-sm" style="cursor:pointer;">⬆️ Importar backup<input type="file" accept="application/json,.json" style="display:none;" onchange="importBackupFile(this)"></label>
+          <button class="btn btn-secondary btn-sm" onclick="cloudSyncNow()">🔄 Sincronizar agora</button>
           <button class="btn btn-secondary btn-sm" onclick="cloudBackup()">☁️ Backup na nuvem</button>
           <button class="btn btn-secondary btn-sm" onclick="cloudRestore()">☁️ Restaurar da nuvem</button>
           <button class="btn btn-ghost btn-sm" onclick="loadSampleData()">✨ Carregar dados de exemplo</button>
@@ -3687,7 +3688,11 @@
 // ═══════════════════════════════════════════════════════════
 const DB = {
   load(key) { try { return JSON.parse(localStorage.getItem('gkhub_'+key) || '[]'); } catch { return []; } },
-  save(key, data) { localStorage.setItem('gkhub_'+key, JSON.stringify(data)); },
+  save(key, data) {
+    localStorage.setItem('gkhub_'+key, JSON.stringify(data));
+    // Auto-sync the newer collections to the cloud (see _NEW_SYNC below)
+    if (!DB._suppressSync && typeof _schedulePush === 'function' && typeof _NEW_SYNC !== 'undefined' && _NEW_SYNC.includes(key)) _schedulePush(key, data);
+  },
   get goleiras()  { return this.load('goleiras'); },
   get partidas()  { return this.load('partidas'); },
   get scouts()    { return this.load('scouts'); },
@@ -10809,6 +10814,59 @@ function cloudDelete(col, id) {
 }
 
 /* ═══════════════════════════════════════════════════════════
+   SYNC EM NUVEM das coleções novas (lesões, PID, análises IA,
+   notificações). Push automático ao salvar (debounced) + pull
+   com mesclagem ao abrir. Último a escrever vence por coleção.
+   Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
+   ═══════════════════════════════════════════════════════════ */
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications'];
+const _syncTimers = {};
+function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
+function _schedulePush(col, arr) {
+  if (!rtdbUrl) return;
+  clearTimeout(_syncTimers[col]);
+  _syncTimers[col] = setTimeout(() => {
+    netSetStatus('syncing');
+    rtdbPut('/' + col, _mapById(arr)).then(() => netMarkSynced()).catch(() => netSetStatus(navigator.onLine ? 'online' : 'offline'));
+  }, 700);
+}
+async function cloudPullNew(silent) {
+  if (!rtdbUrl) return 0;
+  let changed = 0;
+  for (const col of _NEW_SYNC) {
+    try {
+      const remote = await rtdbGet('/' + col);
+      if (remote && typeof remote === 'object') {
+        const byId = {};
+        DB.load(col).forEach(l => { if (l && l.id) byId[String(l.id)] = l; });
+        Object.entries(remote).forEach(([id, val]) => { byId[String(id)] = { id, ...(val || {}) }; }); // remoto vence
+        DB._suppressSync = true; // evita re-push durante o pull
+        DB.save(col, Object.values(byId));
+        DB._suppressSync = false;
+        changed++;
+      }
+    } catch (e) { /* ignora coleção ausente/erro */ }
+  }
+  if (changed && !silent) { try { updateNotifBadge(); } catch (e) {} }
+  return changed;
+}
+async function cloudSyncNow() {
+  if (!rtdbUrl) { toast('Nuvem não conectada.', 'info'); return; }
+  toast('Sincronizando…', 'info');
+  try {
+    await cloudPullNew(true);               // baixa o que há na nuvem (mescla)
+    for (const col of _NEW_SYNC) { if (rtdbUrl) await rtdbPut('/' + col, _mapById(DB.load(col))); } // envia o estado local
+    netMarkSynced();
+    toast('Tudo sincronizado com a nuvem.', 'success');
+    const active = document.querySelector('.page.active')?.id?.replace('page-', '');
+    if (active === 'lesoes') renderLesoes();
+    if (active === 'pid') renderPID();
+    if (active === 'notificacoes') renderNotificacoes();
+    updateNotifBadge();
+  } catch (e) { toast('Falha na sincronização.', 'error'); }
+}
+
+/* ═══════════════════════════════════════════════════════════
    MODO OFFLINE — indicador de conectividade + última sincronização
    Dados locais persistem em localStorage e funcionam offline; este
    bloco mostra o estado e o horário da última sincronização.
@@ -11495,6 +11553,8 @@ updateNotifBadge();
 try { netInit(); } catch (e) {}
 try { _updateScrollUI(); setTimeout(_updateScrollUI, 700); } catch (e) {}
 initFirebaseFromStorage();
+// Puxa (mescla) as coleções novas da nuvem ao abrir
+try { cloudPullNew(true).then(c => { if (c) { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a === 'dashboard') refreshDashboard(); updateNotifBadge(); } }); } catch (e) {}
 
 // ═══════════════════════════════════════════════════════════
 // PWA — SERVICE WORKER + OFFLINE + AUTO-SYNC
