@@ -3184,8 +3184,15 @@
                 </div>
               </div>
               <div style="padding:14px;background:var(--bg);border-radius:10px;">
-                <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Autenticação em dois fatores</div>
-                <span style="font-size:11px;background:rgba(245,158,11,.12);color:var(--warning);padding:4px 10px;border-radius:20px;font-weight:700;">Em breve</span>
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;">
+                  <div style="font-size:12px;color:var(--muted);">Autenticação em dois fatores (2FA)</div>
+                  <span id="sec-2fa-status" style="font-size:11px;padding:4px 10px;border-radius:20px;font-weight:700;"></span>
+                </div>
+                <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Exige um código do app autenticador ao abrir o GK Hub.</div>
+                <button class="btn btn-primary btn-sm" onclick="openTwoFactorSetup()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span id="sec-2fa-btn-label">Ativar 2FA</span>
+                </button>
               </div>
             </div>
           </div>
@@ -11134,6 +11141,17 @@ function switchUserTab(tab) {
     c.classList.toggle('active', match);
   });
   if (tab === 'preferencias') applyPreferences();
+  if (tab === 'seguranca') _render2FAStatus();
+}
+function _render2FAStatus() {
+  const badge = document.getElementById('sec-2fa-status');
+  const label = document.getElementById('sec-2fa-btn-label');
+  if (!badge) return;
+  const on = gk2faEnabled();
+  badge.textContent = on ? 'Ativado' : 'Desativado';
+  badge.style.background = on ? 'rgba(16,185,129,.12)' : 'rgba(148,163,184,.14)';
+  badge.style.color = on ? 'var(--success)' : 'var(--muted)';
+  if (label) label.textContent = on ? 'Gerenciar 2FA' : 'Ativar 2FA';
 }
 
 function setDashPeriod(key) {
