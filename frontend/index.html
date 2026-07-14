@@ -1544,6 +1544,14 @@
     }
     @media (max-width: 768px) { .fab-btn { bottom: 20px; right: 20px; } .fab-menu { bottom: 84px; right: 20px; } .toast-container { bottom: 88px; right: 16px; left: 16px; } }
 
+    /* Accessibility: skip to main content (visible only on keyboard focus) */
+    .skip-link {
+      position: fixed; top: 8px; left: 8px; z-index: 9999;
+      background: var(--primary); color: #fff; padding: 10px 16px; border-radius: 8px;
+      font-size: 13px; font-weight: 600; transform: translateY(-160%); transition: transform .15s;
+    }
+    .skip-link:focus { transform: translateY(0); outline: 2px solid #fff; outline-offset: 2px; }
+
     /* Menu (sidebar) scroll button — reaches the lower menu options */
     #menu-scroll {
       position: absolute; right: 12px; bottom: 74px; z-index: 120;
@@ -1605,6 +1613,7 @@
   </style>
 </head>
 <body>
+<a href="#gk-main" class="skip-link">Pular para o conteúdo</a>
 
 <!-- ══ CLUB REGISTRATION OVERLAY ══ -->
 <div id="register-overlay" class="hidden">
@@ -1909,7 +1918,7 @@
     </div>
   </header>
 
-  <div class="content">
+  <div class="content" id="gk-main">
 
     <!-- ══ DASHBOARD ══ -->
     <div id="page-dashboard" class="page active">
