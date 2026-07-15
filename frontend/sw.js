@@ -1,8 +1,10 @@
-const CACHE = 'gkhub-v45';
+const CACHE = 'gkhub-v46';
 
 const PRECACHE = [
   './',
   './index.html',
+  './styles.css',
+  './app.js',
   './icon.svg',
   './manifest.json',
   './icons/icon-192.png',
@@ -65,7 +67,8 @@ self.addEventListener('fetch', event => {
   // reaches the user when online (fixes "stuck on an old cached version").
   // Falls back to cache when offline, keeping the app usable without network.
   if (req.mode === 'navigate' || req.destination === 'document' ||
-      (req.method === 'GET' && url.pathname.endsWith('/index.html'))) {
+      (req.method === 'GET' && (url.pathname.endsWith('/index.html') ||
+        url.pathname.endsWith('/app.js') || url.pathname.endsWith('/styles.css')))) {
     event.respondWith(
       fetch(req).then(res => {
         if (res && res.ok) { const clone = res.clone(); caches.open(CACHE).then(c => c.put(req, clone)); }
