@@ -1200,6 +1200,22 @@ function preencherNotaAuto() {
   toast(`Nota calculada: ${nota}`, 'success');
 }
 
+// Rótulos das defesas/distribuição no scout por modalidade (mesmos campos)
+const SCOUT_LABELS = {
+  futsal: { dad:'Defesas Altas Dir.', dae:'Defesas Altas Esq.', dbd:'Defesas Baixas Dir.', dbe:'Defesas Baixas Esq.', dc:'Defesa Central', d1x1:'Defesa 1×1', esq:'Esquadros', dmc:'Distribuição Mão Certa', dme:'Distribuição Mão Errada' },
+  beach:  { dad:'Defesas Aéreas Dir.', dae:'Defesas Aéreas Esq.', dbd:'Defesas Rasteiras Dir.', dbe:'Defesas Rasteiras Esq.', dc:'Defesa Aérea Central', d1x1:'Defesa 1×1', esq:'Voleio / Bicicleta', dmc:'Arremesso (mão) Certo', dme:'Arremesso (mão) Errado' },
+};
+function scoutApplyModalidade() {
+  const mod = document.getElementById('s-modalidade')?.value === 'beach' ? 'beach' : 'futsal';
+  const map = SCOUT_LABELS[mod];
+  Object.keys(map).forEach(f => { const el = document.getElementById('lbl-' + f); if (el) el.textContent = map[f]; });
+}
+function scoutSyncModalidadeFromGk() {
+  const gkId = document.getElementById('scout-goleira')?.value;
+  const g = gkId && DB.goleiras.find(x => x.id === gkId);
+  const sel = document.getElementById('s-modalidade');
+  if (sel) { sel.value = (g && g.modalidade === 'beach') ? 'beach' : 'futsal'; scoutApplyModalidade(); }
+}
 function atualizarNotaPreview() {
   const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   const s = {};
@@ -3559,6 +3575,42 @@ function pdfCompeticao() {
 // MATCH CENTER — Central de Análise Profissional
 // ═══════════════════════════════════════════════════════════
 const MC_FIELDS = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+
+// Botões de defesa/distribuição/outros por MODALIDADE. Mesmos CAMPOS de dados
+// (para não quebrar notas/heatmap) — muda só rótulo/ordem/ênfase. Beach: jogo
+// aéreo/voleio e distribuição por arremesso (mão) primeiro.
+let _mcMod = 'futsal';
+const MC_BUTTONS = {
+  futsal: {
+    def: [['dad','Alta<br>Direita','Alta Dir.'],['dae','Alta<br>Esquerda','Alta Esq.'],['dc','Central','Central'],['dbd','Baixa<br>Direita','Baixa Dir.'],['dbe','Baixa<br>Esquerda','Baixa Esq.'],['esq','Esquadro','Esquadro']],
+    dist: [['dpc','Pé<br>Certo','Pé Certo'],['dpe','Pé<br>Errado','Pé Errado'],['dmc','Mão<br>Certa','Mão Certa'],['dme','Mão<br>Errada','Mão Errada']],
+    out: [['int','Interceptação','Interceptação'],['sai','Saída<br>do Gol','Saída'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.']],
+    distTitle: '🟡 Distribuição',
+  },
+  beach: {
+    def: [['dad','Aérea<br>Direita','Aérea Dir.'],['dae','Aérea<br>Esquerda','Aérea Esq.'],['dc','Aérea<br>Central','Aérea Central'],['dbd','Rasteira<br>Direita','Rasteira Dir.'],['dbe','Rasteira<br>Esquerda','Rasteira Esq.'],['esq','Voleio/<br>Bicicleta','Voleio/Bicicleta']],
+    dist: [['dmc','Arremesso<br>Certo','Arremesso Certo'],['dme','Arremesso<br>Errado','Arremesso Errado'],['dpc','Pé<br>Certo','Pé Certo'],['dpe','Pé<br>Errado','Pé Errado']],
+    out: [['int','Interceptação','Interceptação'],['sai','Saída/<br>Soco','Saída/Soco'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.']],
+    distTitle: '🟡 Distribuição (arremesso)',
+  },
+};
+function _mcEsc(s) { return String(s).replace(/'/g, "\\'"); }
+function mcRenderButtons() {
+  const cfg = MC_BUTTONS[_mcMod] || MC_BUTTONS.futsal;
+  const build = (arr, cls) => arr.map(([f, html, label]) => `<button class="mc-btn ${cls}" onclick="mcEvento('${f}','${_mcEsc(label)}','${cls === 'mc-btn-def' ? 'def' : cls === 'mc-btn-dist' ? 'dist' : 'out'}')">${html}</button>`).join('');
+  const dg = document.getElementById('mc-def-grid'); if (dg) dg.innerHTML = build(cfg.def, 'mc-btn-def');
+  const sg = document.getElementById('mc-dist-grid'); if (sg) sg.innerHTML = build(cfg.dist, 'mc-btn-dist');
+  const og = document.getElementById('mc-out-grid'); if (og) og.innerHTML = build(cfg.out, 'mc-btn-out');
+  const dt = document.getElementById('mc-dist-title'); if (dt) dt.textContent = cfg.distTitle;
+  const fb = document.getElementById('mc-mod-futsal'), bb = document.getElementById('mc-mod-beach');
+  if (fb && bb) {
+    const on = 'var(--card)', onc = 'var(--text)';
+    fb.style.background = _mcMod === 'futsal' ? on : 'none'; fb.style.color = _mcMod === 'futsal' ? onc : 'var(--muted)';
+    bb.style.background = _mcMod === 'beach' ? on : 'none'; bb.style.color = _mcMod === 'beach' ? onc : 'var(--muted)';
+  }
+}
+function mcSetModalidade(m) { _mcMod = (m === 'beach') ? 'beach' : 'futsal'; mcRenderButtons(); }
+
 let mcData = {};
 let mcLog = [];
 let mcTimerInterval = null;
@@ -3653,6 +3705,14 @@ function mcPopulateSelects() {
   if (pEl) pEl.innerHTML = `<option value="">Selecionar…</option>` +
     [...partidas].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(p =>
       `<option value="${p.id}">${_esc(p.adversario)}${p.data?' ('+formatDate(p.data)+')':''}</option>`).join('');
+  mcSyncModalidadeFromGk();
+}
+// Segue a modalidade da goleira selecionada no Match Center
+function mcSyncModalidadeFromGk() {
+  const gkId = document.getElementById('mc-goleira')?.value;
+  const g = gkId && DB.goleiras.find(x => x.id === gkId);
+  _mcMod = (g && g.modalidade === 'beach') ? 'beach' : 'futsal';
+  mcRenderButtons();
 }
 
 function mcOnPartidaChange() {
@@ -3666,6 +3726,7 @@ function mcOnPartidaChange() {
     if (el('mc-score-nos')) el('mc-score-nos').textContent = mcPlacar.nos;
     if (el('mc-score-adv')) el('mc-score-adv').textContent = mcPlacar.adv;
     if (p.goalkeeperId) { const sel=document.getElementById('mc-goleira'); if(sel) sel.value=p.goalkeeperId; }
+    mcSyncModalidadeFromGk();
   } else { if (advLbl) advLbl.textContent = 'Adversário'; }
 }
 

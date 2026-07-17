@@ -681,7 +681,7 @@
           </div>
           <div class="form-group" style="margin:0;">
             <label class="form-label">Goleira em Campo</label>
-            <select class="form-select" id="mc-goleira"><option value="">Selecionar…</option></select>
+            <select class="form-select" id="mc-goleira" onchange="mcSyncModalidadeFromGk()"><option value="">Selecionar…</option></select>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-end;">
             <button class="btn btn-success" id="mc-btn-timer" onclick="mcToggleTimer()" style="white-space:nowrap;">▶ Iniciar</button>
@@ -785,17 +785,18 @@
 
         <!-- LEFT: Event buttons + Event Map -->
         <div>
+          <!-- Modalidade -->
+          <div class="card" style="margin-bottom:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;">
+            <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Modalidade</span>
+            <div style="display:flex;gap:2px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:var(--radius);padding:3px;">
+              <button id="mc-mod-futsal" class="btn btn-sm" style="padding:5px 12px;border-radius:7px;font-size:11px;" onclick="mcSetModalidade('futsal')">Futsal</button>
+              <button id="mc-mod-beach" class="btn btn-sm" style="padding:5px 12px;border-radius:7px;font-size:11px;background:none;color:var(--muted);" onclick="mcSetModalidade('beach')">Beach Soccer</button>
+            </div>
+          </div>
           <!-- Defesas -->
           <div class="card" style="margin-bottom:10px;">
             <div style="font-size:11px;font-weight:700;color:#93C5FD;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟦 Defesas</div>
-            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">
-              <button class="mc-btn mc-btn-def" onclick="mcEvento('dad','Alta Dir.','def')">Alta<br>Direita</button>
-              <button class="mc-btn mc-btn-def" onclick="mcEvento('dae','Alta Esq.','def')">Alta<br>Esquerda</button>
-              <button class="mc-btn mc-btn-def" onclick="mcEvento('dc','Central','def')">Central</button>
-              <button class="mc-btn mc-btn-def" onclick="mcEvento('dbd','Baixa Dir.','def')">Baixa<br>Direita</button>
-              <button class="mc-btn mc-btn-def" onclick="mcEvento('dbe','Baixa Esq.','def')">Baixa<br>Esquerda</button>
-              <button class="mc-btn mc-btn-def" onclick="mcEvento('esq','Esquadro','def')">Esquadro</button>
-            </div>
+            <div id="mc-def-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
           </div>
           <!-- Gols -->
           <div class="card" style="margin-bottom:10px;">
@@ -809,23 +810,13 @@
           </div>
           <!-- Distribuição -->
           <div class="card" style="margin-bottom:10px;">
-            <div style="font-size:11px;font-weight:700;color:#FCD34D;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟡 Distribuição</div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-              <button class="mc-btn mc-btn-dist" onclick="mcEvento('dpc','Pé Certo','dist')">Pé<br>Certo</button>
-              <button class="mc-btn mc-btn-dist" onclick="mcEvento('dpe','Pé Errado','dist')">Pé<br>Errado</button>
-              <button class="mc-btn mc-btn-dist" onclick="mcEvento('dmc','Mão Certa','dist')">Mão<br>Certa</button>
-              <button class="mc-btn mc-btn-dist" onclick="mcEvento('dme','Mão Errada','dist')">Mão<br>Errada</button>
-            </div>
+            <div id="mc-dist-title" style="font-size:11px;font-weight:700;color:#FCD34D;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟡 Distribuição</div>
+            <div id="mc-dist-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;"></div>
           </div>
           <!-- Outros -->
           <div class="card" style="margin-bottom:10px;">
             <div style="font-size:11px;font-weight:700;color:#6EE7B7;letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟢 Outros</div>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-              <button class="mc-btn mc-btn-out" onclick="mcEvento('int','Interceptação','out')">Interceptação</button>
-              <button class="mc-btn mc-btn-out" onclick="mcEvento('sai','Saída','out')">Saída<br>do Gol</button>
-              <button class="mc-btn mc-btn-out" onclick="mcEvento('pose','Pos. Esq.','out')">Posic.<br>Esq.</button>
-              <button class="mc-btn mc-btn-out" onclick="mcEvento('posd','Pos. Dir.','out')">Posic.<br>Dir.</button>
-            </div>
+            <div id="mc-out-grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;"></div>
           </div>
           <!-- Mapa de Eventos -->
           <div class="card">
@@ -1971,7 +1962,7 @@
       <div class="form-grid" style="margin-bottom:12px;gap:10px;">
         <div class="form-group">
           <label class="form-label">Goleira *</label>
-          <select class="form-select" id="scout-goleira">
+          <select class="form-select" id="scout-goleira" onchange="scoutSyncModalidadeFromGk()">
             <option value="">Selecionar…</option>
           </select>
         </div>
@@ -1989,14 +1980,21 @@
         <button class="tab-btn" onclick="switchTab(this,'tab-outros')">Outros</button>
       </div>
       <div id="tab-defesas" class="tab-content active scout-tabs">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap;">
+          <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Modalidade</span>
+          <select class="form-select" id="s-modalidade" style="width:auto;padding:6px 10px;font-size:12px;" onchange="scoutApplyModalidade()">
+            <option value="futsal">Futsal</option>
+            <option value="beach">Beach Soccer</option>
+          </select>
+        </div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Defesas Altas Dir.</label><input class="form-input" id="s-dad" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Defesas Altas Esq.</label><input class="form-input" id="s-dae" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Defesas Baixas Dir.</label><input class="form-input" id="s-dbd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Defesas Baixas Esq.</label><input class="form-input" id="s-dbe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Defesa Central</label><input class="form-input" id="s-dc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Defesa 1×1</label><input class="form-input" id="s-d1x1" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dad">Defesas Altas Dir.</label><input class="form-input" id="s-dad" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dae">Defesas Altas Esq.</label><input class="form-input" id="s-dae" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dbd">Defesas Baixas Dir.</label><input class="form-input" id="s-dbd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dbe">Defesas Baixas Esq.</label><input class="form-input" id="s-dbe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dc">Defesa Central</label><input class="form-input" id="s-dc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-d1x1">Defesa 1×1</label><input class="form-input" id="s-d1x1" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-esq">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
       <div id="tab-gols" class="tab-content scout-tabs">
@@ -2018,8 +2016,8 @@
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Distribuição Pé Certo</label><input class="form-input" id="s-dpc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group"><label class="form-label">Distribuição Pé Errado</label><input class="form-input" id="s-dpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Distribuição Mão Certa</label><input class="form-input" id="s-dmc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Distribuição Mão Errada</label><input class="form-input" id="s-dme" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dmc">Distribuição Mão Certa</label><input class="form-input" id="s-dmc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dme">Distribuição Mão Errada</label><input class="form-input" id="s-dme" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
       <div id="tab-outros" class="tab-content scout-tabs">
