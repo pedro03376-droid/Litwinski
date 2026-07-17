@@ -688,7 +688,7 @@ function navigate(page) {
   if (page === 'notificacoes') renderNotificacoes();
   if (page === 'central-relatorios') renderCentralRelatorios();
   if (page === 'auditoria') renderAuditoria();
-  if (page === 'clube') { renderClube(); _lgpdPopulate(); }
+  if (page === 'clube') { renderClube(); _lgpdPopulate(); _renderClubKey(); }
   if (page === 'lesoes') renderLesoes();
   if (page === 'pid') renderPID();
   // Recompute scroll-helper visibility after the page renders (charts/data
@@ -6146,6 +6146,35 @@ function setCloudStatus(connected, label) {
   if (lbl) lbl.textContent = 'Nuvem: ' + (label || (connected ? 'conectada' : 'offline'));
 }
 
+/* ═══════════════════════════════════════════════════════════
+   ISOLAMENTO POR CLUBE na nuvem. Cada clube tem seu próprio
+   espaço (/clubs/<código>/...), então dados de clubes diferentes
+   NUNCA se misturam. Membros do mesmo clube usam o MESMO código.
+   ═══════════════════════════════════════════════════════════ */
+function _cloudClubKey() {
+  let k = localStorage.getItem('gkhub_club_key');
+  if (!k) {
+    k = (typeof _activeWorkspaceId !== 'undefined' && _activeWorkspaceId)
+      ? ('ws_' + _activeWorkspaceId)
+      : ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+    localStorage.setItem('gkhub_club_key', k);
+  }
+  return k;
+}
+function _cloudNS() { return 'clubs/' + String(_cloudClubKey()).replace(/[.#$/\[\]]/g, '_'); }
+function _cp(sub) { return '/' + _cloudNS() + sub; } // caminho na nuvem com o namespace do clube
+function _renderClubKey() { const el = document.getElementById('club-key-display'); if (el) el.textContent = _cloudClubKey(); }
+function copyClubKey() { const k = _cloudClubKey(); if (navigator.clipboard) navigator.clipboard.writeText(k); toast('Código copiado. Compartilhe só com a sua comissão.', 'success'); }
+function joinClubKey() {
+  const k = (prompt('Cole o código do clube com quem deseja sincronizar.\n\nATENÇÃO: isso troca o clube da nuvem DESTE aparelho.') || '').trim();
+  if (!k) return;
+  if (!confirm('Trocar o código da nuvem deste aparelho para:\n\n' + k + '\n\nAo sincronizar, seus dados locais passam a se juntar aos desse clube. Faça um backup antes se tiver dúvida. Continuar?')) return;
+  localStorage.setItem('gkhub_club_key', k);
+  try { logAudit('Nuvem', 'Entrou no código de clube ' + k); } catch (e) {}
+  toast('Código atualizado. Recarregando para sincronizar…', 'success');
+  setTimeout(() => location.reload(), 900);
+}
+
 function rtdbPath(path) {
   return rtdbUrl + path + '.json';
 }
@@ -7240,13 +7269,13 @@ function importBackupFile(input) {
 }
 async function cloudBackup() {
   if (!rtdbUrl) { toast('Conecte o Firebase (aba Nuvem) para usar backup na nuvem.', 'info'); return; }
-  try { netSetStatus('syncing'); await rtdbPut('/backups/latest', _gkSnapshot()); netMarkSynced(); try { logAudit('Dados', 'Enviou backup para a nuvem'); } catch (e) {} toast('Backup salvo na nuvem.', 'success'); }
+  try { netSetStatus('syncing'); await rtdbPut(_cp('/backups/latest'), _gkSnapshot()); netMarkSynced(); try { logAudit('Dados', 'Enviou backup para a nuvem'); } catch (e) {} toast('Backup salvo na nuvem.', 'success'); }
   catch (e) { toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : 'Não foi possível enviar o backup.', 'error'); netSetStatus(navigator.onLine ? 'online' : 'offline'); }
 }
 async function cloudRestore() {
   if (!rtdbUrl) { toast('Conecte o Firebase (aba Nuvem) primeiro.', 'info'); return; }
   if (!confirm('Restaurar da nuvem vai SOBRESCREVER os dados locais. Continuar?')) return;
-  try { const snap = await rtdbGet('/backups/latest'); if (!snap) { toast('Nenhum backup na nuvem ainda.', 'info'); return; } _gkRestore(snap); toast('Restaurado da nuvem! Recarregando…', 'success'); setTimeout(() => location.reload(), 900); }
+  try { const snap = await rtdbGet(_cp('/backups/latest')); if (!snap) { toast('Nenhum backup na nuvem ainda.', 'info'); return; } _gkRestore(snap); toast('Restaurado da nuvem! Recarregando…', 'success'); setTimeout(() => location.reload(), 900); }
   catch (e) { toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : 'Não foi possível restaurar da nuvem.', 'error'); }
 }
 /* ── Privacidade / LGPD — export e exclusão por atleta ─────── */
@@ -7336,7 +7365,7 @@ async function sincronizarNuvem() {
   try {
     // Baixa dados da nuvem e mescla com local, depois envia tudo
     for (const col of ['goleiras', 'partidas', 'scouts']) {
-      const remote = await rtdbGet('/' + col);
+      const remote = await rtdbGet(_cp('/' + col));
       if (remote && typeof remote === 'object') {
         const remoteItems = Object.entries(remote).map(([id, val]) => ({ id: isNaN(id) ? id : Number(id), ...val }));
         const local = DB.load(col);
@@ -7350,7 +7379,7 @@ async function sincronizarNuvem() {
       const items = DB.load(col);
       for (const item of items) {
         const { id, ...rest } = item;
-        await rtdbPut('/' + col + '/' + id, rest);
+        await rtdbPut(_cp('/' + col + '/' + id), rest);
       }
     }
     updateGoleiraSelects();
@@ -7371,13 +7400,13 @@ function cloudSet(col, item) {
   if (!rtdbUrl) return;
   const { id, ...rest } = item;
   netSetStatus('syncing');
-  rtdbPut('/' + col + '/' + id, rest).then(() => netMarkSynced()).catch(e => { console.warn('cloudSet', e); netSetStatus(navigator.onLine ? 'online' : 'offline'); });
+  rtdbPut(_cp('/' + col + '/' + id), rest).then(() => netMarkSynced()).catch(e => { console.warn('cloudSet', e); netSetStatus(navigator.onLine ? 'online' : 'offline'); });
 }
 
 function cloudDelete(col, id) {
   if (!rtdbUrl) return;
   netSetStatus('syncing');
-  rtdbDelete('/' + col + '/' + id).then(() => netMarkSynced()).catch(e => { console.warn('cloudDelete', e); netSetStatus(navigator.onLine ? 'online' : 'offline'); });
+  rtdbDelete(_cp('/' + col + '/' + id)).then(() => netMarkSynced()).catch(e => { console.warn('cloudDelete', e); netSetStatus(navigator.onLine ? 'online' : 'offline'); });
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -7394,7 +7423,7 @@ function _schedulePush(col, arr) {
   clearTimeout(_syncTimers[col]);
   _syncTimers[col] = setTimeout(() => {
     netSetStatus('syncing');
-    rtdbPut('/' + col, _mapById(arr)).then(() => netMarkSynced()).catch(() => netSetStatus(navigator.onLine ? 'online' : 'offline'));
+    rtdbPut(_cp('/' + col), _mapById(arr)).then(() => netMarkSynced()).catch(() => netSetStatus(navigator.onLine ? 'online' : 'offline'));
   }, 700);
 }
 async function cloudPullNew(silent) {
@@ -7402,7 +7431,7 @@ async function cloudPullNew(silent) {
   let changed = 0;
   for (const col of _NEW_SYNC) {
     try {
-      const remote = await rtdbGet('/' + col);
+      const remote = await rtdbGet(_cp('/' + col));
       if (remote && typeof remote === 'object') {
         const byId = {};
         DB.load(col).forEach(l => { if (l && l.id) byId[String(l.id)] = l; });
@@ -7425,7 +7454,7 @@ async function cloudPullCore(silent) {
   let changed = 0;
   for (const col of ['goleiras', 'partidas', 'scouts']) {
     try {
-      const remote = await rtdbGet('/' + col);
+      const remote = await rtdbGet(_cp('/' + col));
       if (remote && typeof remote === 'object') {
         const byId = {};
         DB.load(col).forEach(l => { if (l && l.id != null) byId[String(l.id)] = l; });
@@ -7450,8 +7479,12 @@ async function cloudSyncNow() {
   if (!rtdbUrl) { toast('Nuvem não conectada.', 'info'); return; }
   toast('Sincronizando…', 'info');
   try {
-    await cloudPullNew(true);               // baixa o que há na nuvem (mescla)
-    for (const col of _NEW_SYNC) { if (rtdbUrl) await rtdbPut('/' + col, _mapById(DB.load(col))); } // envia o estado local
+    await cloudPullCore(true);              // baixa dados principais da nuvem (mescla)
+    await cloudPullNew(true);               // baixa coleções novas (mescla)
+    // envia o estado local completo para o espaço do clube
+    for (const col of ['goleiras', 'partidas', 'scouts']) { if (rtdbUrl) await rtdbPut(_cp('/' + col), _mapById(DB.load(col))); }
+    for (const col of _NEW_SYNC) { if (rtdbUrl) await rtdbPut(_cp('/' + col), _mapById(DB.load(col))); }
+    updateGoleiraSelects(); refreshDashboard();
     netMarkSynced();
     toast('Tudo sincronizado com a nuvem.', 'success');
     const active = document.querySelector('.page.active')?.id?.replace('page-', '');
