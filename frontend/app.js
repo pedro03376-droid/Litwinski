@@ -342,8 +342,8 @@ function openMetodologia() {
             • Indicadores de desempenho de goleiro (% de defesa, gols sofridos, distribuição, comando de área) — Apunts Sports Medicine (2023).<br>
             • Futsal de elite: ações ofensivas ~58% vs defensivas ~42% — pesquisas de futsal (ResearchGate).<br>
             • Beach soccer: goleiro como "primeira linha de ataque", participa de ~60% dos gols; distribuição por arremesso longo é indicador-chave — FIFA Training Centre (2025); Beach Soccer Worldwide; PLOS One (2019, indicadores técnico-táticos).<br>
-            • Diferenças por naipe (força/velocidade de chute, estratégia de finalização) — De-la-Cruz-Torres et al. (2025).<br>
-            <i>As notas manuais informadas no scout sempre têm prioridade sobre a nota automática.</i>
+            • Diferenças por naipe: no <b>masculino</b>, maior <b>velocidade/potência de chute</b> → referência de % de defesa mais exigente (menor) que a feminina para a mesma qualidade; no <b>feminino</b>, ênfase em precisão/posicionamento — De-la-Cruz-Torres et al. (2025); indicadores de goleiro (Apunts, 2023); save% de elite ~70–75% no campo, menor no futsal (referências gerais de goleiro).<br>
+            <i>Referências por naipe são defaults calibráveis (não normas fechadas); as notas manuais do scout sempre têm prioridade sobre a automática.</i>
           </div>
         </details>
       </div>
