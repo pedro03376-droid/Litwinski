@@ -1003,10 +1003,18 @@
           <span class="card-title" style="flex-shrink:0;">Heatmap Inteligente</span>
           <!-- Grupo de filtros -->
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <!-- Modalidade -->
+            <div style="display:flex;flex-direction:column;gap:4px;">
+              <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Modalidade</span>
+              <select class="form-select" id="hm-modalidade" style="min-width:130px;" onchange="hmModalidadeChange()">
+                <option value="futsal">Futsal</option>
+                <option value="beach">Beach Soccer</option>
+              </select>
+            </div>
             <!-- Goleira -->
             <div style="display:flex;flex-direction:column;gap:4px;">
               <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Goleira</span>
-              <select class="form-select" id="heatmap-gk" style="min-width:160px;" onchange="hmFilterChange()">
+              <select class="form-select" id="heatmap-gk" style="min-width:160px;" onchange="hmGkChange()">
                 <option value="">Todas</option>
               </select>
             </div>

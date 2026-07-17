@@ -3225,6 +3225,13 @@ function aggScoutsHeatmap() {
 
 function renderHeatmap() {
   populateHmFilters();
+  // Segue a modalidade da goleira selecionada (a menos que o usuário escolha manualmente)
+  const _gkId = document.getElementById('heatmap-gk')?.value;
+  const _sel = document.getElementById('hm-modalidade');
+  if (_sel && _gkId && !_hmModManual) {
+    const _g = DB.goleiras.find(x => x.id === _gkId);
+    if (_g) _sel.value = (_g.modalidade === 'beach') ? 'beach' : 'futsal';
+  }
   const scouts = aggScoutsHeatmap();
   const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
 
@@ -3301,9 +3308,14 @@ function renderDistribChart(scouts) {
     </div>`;
   }).join('<hr style="border-color:var(--border);margin:4px 0 16px;">');
 }
+function _hmModalidade() { return document.getElementById('hm-modalidade')?.value === 'beach' ? 'beach' : 'futsal'; }
+let _hmModManual = false;
+function hmModalidadeChange() { _hmModManual = true; renderHeatmap(); }
+function hmGkChange() { _hmModManual = false; hmFilterChange(); } // ao trocar de goleira, volta a seguir a modalidade dela
 function drawCourt(id, grid, rgb) {
   const court = document.getElementById(id);
   if (!court) return;
+  court.classList.toggle('hm-beach', _hmModalidade() === 'beach');
   const max = Math.max(1, ...grid.flat());
   let html = `<div class="hm-goal left"></div><div class="hm-goal right"></div><div class="hm-grid">`;
   for (let r=0;r<3;r++) for (let c=0;c<3;c++) {
