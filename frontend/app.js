@@ -3248,25 +3248,47 @@ function renderHeatmap() {
   // Chutes recebidos = defesas + gols por zona
   const chutesGrid = defGrid.map((row,r) => row.map((v,c) => v + golGrid[r][c]));
 
-  drawCourt('court-chutes', chutesGrid, '139,92,246');
-  drawCourt('court-defesas', defGrid, '59,130,246');
-  drawCourt('court-gols', golGrid, '239,68,68');
+  const beach = _hmModalidade() === 'beach';
+  const bands = beach ? ['Aéreo / voleio', 'Meia altura', 'Rasteiro'] : ['Alto', 'Médio', 'Rasteiro'];
+  drawCourt('court-chutes', chutesGrid, '139,92,246', bands);
+  drawCourt('court-defesas', defGrid, '59,130,246', bands);
+  drawCourt('court-gols', golGrid, '239,68,68', bands);
   renderDistribChart(scouts);
 
-  const stats = [
-    ['Chutes Recebidos', sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('gda')+sum('gfa')+sum('gpe')+sum('gfl')],
-    ['Defesas Altas', sum('dad')+sum('dae')],
-    ['Defesas Baixas', sum('dbd')+sum('dbe')],
-    ['Defesa Central', sum('dc')],
-    ['Interceptações', sum('int')],
-    ['Esquadros', sum('esq')],
-    ['Gols Dentro da Área', sum('gda')],
-    ['Gols Fora da Área', sum('gfa')],
-    ['Gols de Pênalti', sum('gpe')],
-    ['Distribuições corretas', sum('dpc')+sum('dmc')],
-    ['Distribuições erradas', sum('dpe')+sum('dme')],
-  ];
-  document.getElementById('heatmap-summary').innerHTML = `<table><thead><tr><th>Métrica</th><th>Total</th></tr></thead><tbody>${stats.map(([k,v])=>`<tr><td>${k}</td><td><strong>${v}</strong></td></tr>`).join('')}</tbody></table>`;
+  // Resumo — especializado por modalidade
+  const chutes = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+  const aereas = sum('dad')+sum('dae'), maoC = sum('dmc'), maoT = maoC+sum('dme'), peC = sum('dpc'), peT = peC+sum('dpe');
+  const pct = (n,d) => d>0 ? Math.round(n/d*100)+'%' : '—';
+  let stats;
+  if (beach) {
+    // Beach: jogo aéreo + o goleiro é a "primeira linha de ataque" (arremesso/mão)
+    stats = [
+      ['Chutes recebidos', chutes],
+      ['Defesas aéreas (topo)', aereas],
+      ['% chutes na faixa aérea', pct(aereas + sum('gfa'), chutes)],
+      ['Gols de fora / longa distância', sum('gfa')],
+      ['Distribuição por ARREMESSO (mão) — volume', maoT],
+      ['Distribuição por arremesso — precisão', pct(maoC, maoT)],
+      ['Distribuição por pé — precisão', pct(peC, peT)],
+      ['Interceptações / saídas', sum('int')+sum('sai')],
+    ];
+  } else {
+    stats = [
+      ['Chutes Recebidos', chutes],
+      ['Defesas Altas', aereas],
+      ['Defesas Baixas', sum('dbd')+sum('dbe')],
+      ['Defesa Central', sum('dc')],
+      ['Interceptações', sum('int')],
+      ['Esquadros', sum('esq')],
+      ['Gols Dentro da Área', sum('gda')],
+      ['Gols Fora da Área', sum('gfa')],
+      ['Distribuição por pé — precisão', pct(peC, peT)],
+      ['Distribuição por mão — precisão', pct(maoC, maoT)],
+    ];
+  }
+  document.getElementById('heatmap-summary').innerHTML =
+    (beach ? '<div style="font-size:11px;color:var(--warning);margin-bottom:8px;">🏖️ Beach soccer: destaque para o jogo aéreo/voleio e a distribuição por arremesso (o goleiro é a 1ª linha de ataque).</div>' : '')
+    + `<table><thead><tr><th>Métrica</th><th>Total</th></tr></thead><tbody>${stats.map(([k,v])=>`<tr><td>${k}</td><td><strong>${v}</strong></td></tr>`).join('')}</tbody></table>`;
 }
 
 function renderDistribChart(scouts) {
@@ -3280,11 +3302,13 @@ function renderDistribChart(scouts) {
     detail.innerHTML = '<p style="color:var(--muted);font-size:13px;padding:8px 0;">Sem dados de distribuição.</p>';
     return;
   }
-  const sections = [
-    { title:'Pé', certo:dpc, errado:dpe, total:totalPe },
-    { title:'Mão', certo:dmc, errado:dme, total:totalMao },
-  ];
-  detail.innerHTML = sections.map(s => {
+  const beach = _hmModalidade() === 'beach';
+  const pe = { title:'Pé', certo:dpc, errado:dpe, total:totalPe };
+  const mao = { title: beach ? 'Mão (arremesso)' : 'Mão', certo:dmc, errado:dme, total:totalMao };
+  // Beach soccer: o arremesso (mão) é a principal arma de ataque → vem primeiro
+  const sections = beach ? [mao, pe] : [pe, mao];
+  const note = beach ? '<div style="font-size:11px;color:var(--warning);margin-bottom:12px;">🏖️ No beach soccer o arremesso longo (mão) é a principal forma de iniciar o ataque — priorize alcance e precisão.</div>' : '';
+  detail.innerHTML = note + sections.map(s => {
     const acc = s.total > 0 ? Math.round(s.certo/s.total*100) : 0;
     const color = acc >= 70 ? 'var(--success)' : acc >= 50 ? 'var(--warning)' : 'var(--error)';
     return `<div style="margin-bottom:20px;">
@@ -3312,17 +3336,21 @@ function _hmModalidade() { return document.getElementById('hm-modalidade')?.valu
 let _hmModManual = false;
 function hmModalidadeChange() { _hmModManual = true; renderHeatmap(); }
 function hmGkChange() { _hmModManual = false; hmFilterChange(); } // ao trocar de goleira, volta a seguir a modalidade dela
-function drawCourt(id, grid, rgb) {
+function drawCourt(id, grid, rgb, bands) {
   const court = document.getElementById(id);
   if (!court) return;
-  court.classList.toggle('hm-beach', _hmModalidade() === 'beach');
+  const beach = _hmModalidade() === 'beach';
+  court.classList.toggle('hm-beach', beach);
   const max = Math.max(1, ...grid.flat());
   let html = `<div class="hm-goal left"></div><div class="hm-goal right"></div><div class="hm-grid">`;
   for (let r=0;r<3;r++) for (let c=0;c<3;c++) {
     const v = grid[r][c];
     const intensity = v/max;
-    const bg = v>0 ? `rgba(${rgb},${0.15+intensity*0.7})` : 'transparent';
-    html += `<div class="hm-cell" style="background:${bg};">${v>0?v:''}</div>`;
+    let bg = v>0 ? `rgba(${rgb},${0.15+intensity*0.7})` : 'transparent';
+    // Beach soccer: realça a faixa aérea (topo), onde vive o voleio/bicicleta
+    if (beach && r === 0 && v === 0) bg = 'rgba(245,200,110,.07)';
+    const lbl = (bands && c === 1) ? `<span class="lbl">${bands[r]}</span>` : '';
+    html += `<div class="hm-cell" style="background:${bg};">${v>0?v:''}${lbl}</div>`;
   }
   html += `</div>`;
   court.innerHTML = html;
