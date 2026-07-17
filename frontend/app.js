@@ -5339,6 +5339,8 @@ async function _googleLoginSuccess(user) {
     } else {
       navigate('dashboard');
     }
+    // Auth confirmada → token do Firebase disponível: baixa os dados do clube
+    try { cloudPullCore(false); cloudPullNew(true); } catch (e) {}
   } catch(e) {
     console.error('[GKHub] _googleLoginSuccess error:', e);
     // Force navigation even if something fails
@@ -7415,6 +7417,35 @@ async function cloudPullNew(silent) {
   if (changed && !silent) { try { updateNotifBadge(); } catch (e) {} }
   return changed;
 }
+// Baixa (mescla) os dados PRINCIPAIS (goleiras/partidas/scouts) ao abrir, para
+// que quem entra pela 1ª vez já veja os dados do clube (não só ao clicar em
+// Sincronizar). Remoto vence por registro; mantém itens locais ainda não enviados.
+async function cloudPullCore(silent) {
+  if (!rtdbUrl) return 0;
+  let changed = 0;
+  for (const col of ['goleiras', 'partidas', 'scouts']) {
+    try {
+      const remote = await rtdbGet('/' + col);
+      if (remote && typeof remote === 'object') {
+        const byId = {};
+        DB.load(col).forEach(l => { if (l && l.id != null) byId[String(l.id)] = l; });
+        Object.entries(remote).forEach(([id, val]) => { byId[String(id)] = { id, ...(val || {}) }; });
+        DB.save(col, Object.values(byId));
+        changed++;
+      }
+    } catch (e) { /* coleção ausente/permite offline */ }
+  }
+  if (changed && !silent) {
+    try {
+      updateGoleiraSelects(); refreshDashboard();
+      const a = document.querySelector('.page.active')?.id?.replace('page-', '');
+      if (a === 'goleiras') renderGoleiras();
+      if (a === 'partidas') renderPartidas();
+      if (a === 'scout') renderScouts();
+    } catch (e) {}
+  }
+  return changed;
+}
 async function cloudSyncNow() {
   if (!rtdbUrl) { toast('Nuvem não conectada.', 'info'); return; }
   toast('Sincronizando…', 'info');
@@ -8118,7 +8149,8 @@ updateNotifBadge();
 try { netInit(); } catch (e) {}
 try { _updateScrollUI(); setTimeout(_updateScrollUI, 700); } catch (e) {}
 initFirebaseFromStorage();
-// Puxa (mescla) as coleções novas da nuvem ao abrir
+// Baixa (mescla) os dados da nuvem ao abrir — quem entra pela 1ª vez já vê o clube
+try { cloudPullCore(false); } catch (e) {}
 try { cloudPullNew(true).then(c => { if (c) { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a === 'dashboard') refreshDashboard(); updateNotifBadge(); } }); } catch (e) {}
 
 // ═══════════════════════════════════════════════════════════
