@@ -2382,6 +2382,8 @@ document.querySelector('[onclick="openModal(\'modal-goleira\')"]')?.addEventList
   ['nome','nasc','num','altura','peso','equipe','obs'].forEach(f => document.getElementById('gk-'+f).value='');
   ['categoria','pe','mao','naipe'].forEach(f => document.getElementById('gk-'+f).value='');
   var _m=document.getElementById('gk-modalidade'); if(_m) _m.value='futsal';
+  var _c=document.getElementById('gk-consent'); if(_c) _c.checked=false;
+  var _cr=document.getElementById('gk-consent-resp'); if(_cr) _cr.value='';
 });
 document.querySelector('[onclick="openModal(\'modal-partida\')"]')?.addEventListener('click', () => {
   editingId.partida = null;
