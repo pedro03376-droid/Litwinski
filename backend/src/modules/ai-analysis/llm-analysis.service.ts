@@ -89,10 +89,13 @@ export class LlmAnalysisService {
    */
   async analyzeGoalkeeper(context: any): Promise<AnalysisResult | null> {
     const prompt = [
-      'Você é um analista de desempenho especializado em GOLEIRAS/GOLEIROS de FUTSAL.',
+      'Você é um analista de desempenho especializado em GOLEIRAS/GOLEIROS.',
       'Analise os dados abaixo e produza uma avaliação técnica objetiva em português do Brasil,',
-      'considerando a especificidade do futsal (quadra reduzida, muitos chutes de curta distância,',
-      'importância da distribuição/saída de bola, jogo de 1x1) e o naipe informado.',
+      'considerando a MODALIDADE informada no campo "modalidade" e o naipe:',
+      '- Futsal: quadra reduzida, muitos chutes de curta distância, distribuição/saída de bola e 1x1.',
+      '- Beach soccer: jogado na areia, alto placar, muitos voleios/bicicletas; o goleiro é a "primeira',
+      '  linha de ataque" (participa de ~60% dos gols) e a distribuição por arremesso longo é decisiva;',
+      '  por isso a % de defesa esperada é menor e a distribuição pesa mais.',
       '',
       'Dados da atleta (agregados do sistema):',
       JSON.stringify(context, null, 2),
