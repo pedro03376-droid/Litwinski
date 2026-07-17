@@ -400,7 +400,7 @@ function openLesaoForm() {
       <div class="modal-header"><span class="modal-title">Registrar lesão</span><button class="modal-close" onclick="closeModal('lesao-modal')">&times;</button></div>
       <div class="modal-body">
         <div class="form-grid">
-          <div class="form-group full"><label class="form-label">Goleira *</label><select class="form-select" id="les-gk"><option value="">Selecionar…</option>${gkOpts}</select></div>
+          <div class="form-group full"><label class="form-label">Goleiro(a) *</label><select class="form-select" id="les-gk"><option value="">Selecionar…</option>${gkOpts}</select></div>
           <div class="form-group"><label class="form-label">Tipo</label><input class="form-input" id="les-tipo" placeholder="Ex.: Entorse, Estiramento"></div>
           <div class="form-group"><label class="form-label">Região</label><select class="form-select" id="les-regiao">${LESAO_REGIOES.map(r => `<option>${r}</option>`).join('')}</select></div>
           <div class="form-group"><label class="form-label">Data *</label><input type="date" class="form-input" id="les-data"></div>
@@ -417,7 +417,7 @@ function openLesaoForm() {
 function saveLesao() {
   const val = (id) => (document.getElementById(id)?.value || '').trim();
   const gkId = val('les-gk'), data = val('les-data');
-  if (!gkId) { toast('Selecione a goleira.', 'error'); return; }
+  if (!gkId) { toast('Selecione o(a) goleiro(a).', 'error'); return; }
   if (!data) { toast('Informe a data.', 'error'); return; }
   const list = DB.lesoes;
   list.unshift({ id: _uid(), gkId, tipo: val('les-tipo'), regiao: val('les-regiao'), data,
@@ -434,7 +434,7 @@ function saveLesao() {
 function updateLesaoStatus(id, status) {
   const list = DB.lesoes; const l = list.find(x => x.id === id); if (!l) return;
   l.status = status; DB.saveLesoes(list);
-  if (status === 'liberada_jogo') pushNotif('goal', 'Retorno liberado', 'Goleira liberada para jogos.');
+  if (status === 'liberada_jogo') pushNotif('goal', 'Retorno liberado', 'Goleiro(a) liberada para jogos.');
   renderLesoes();
 }
 function deleteLesao(id) { if (!confirm('Excluir este registro de lesão?')) return; DB.saveLesoes(DB.lesoes.filter(x => x.id !== id)); logAudit('Lesões', 'Excluiu um registro de lesão'); renderLesoes(); }
@@ -483,7 +483,7 @@ function renderLesoes() {
   if (q) rows = rows.filter(l => gkName(l.gkId).toLowerCase().includes(q) || (l.tipo || '').toLowerCase().includes(q) || (l.regiao || '').toLowerCase().includes(q));
   const el = document.getElementById('lesao-list');
   if (el) el.innerHTML = rows.length ? `<div class="table-wrap"><table>
-    <thead><tr><th>Goleira</th><th>Região</th><th>Tipo</th><th>Data</th><th>Gravidade</th><th>Situação</th><th>Ações</th></tr></thead>
+    <thead><tr><th>Goleiro(a)</th><th>Região</th><th>Tipo</th><th>Data</th><th>Gravidade</th><th>Situação</th><th>Ações</th></tr></thead>
     <tbody>${rows.map(l => `<tr>
       <td><strong>${_esc(gkName(l.gkId))}</strong></td><td>${_esc(l.regiao || '—')}</td><td>${_esc(l.tipo || '—')}</td>
       <td>${formatDate(l.data)}</td><td>${_esc(l.gravidade || '—')}</td>
@@ -512,7 +512,7 @@ function _pidPopulateSelect() {
 }
 function openPidForm() {
   const gkId = document.getElementById('pid-gk-select')?.value;
-  if (!gkId) { toast('Selecione uma goleira primeiro.', 'info'); return; }
+  if (!gkId) { toast('Selecione um(a) goleiro(a) primeiro.', 'info'); return; }
   let modal = document.getElementById('pid-modal');
   if (!modal) { modal = document.createElement('div'); modal.id = 'pid-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
   const areaOpts = Object.keys(PID_AREAS).map(k => `<option value="${k}">${PID_AREAS[k].label}</option>`).join('');
@@ -571,7 +571,7 @@ function renderPID() {
   _pidGkId = gkId;
   const kEl = document.getElementById('pid-kpis');
   const cEl = document.getElementById('pid-content');
-  if (!gkId) { if (kEl) kEl.innerHTML = ''; if (cEl) cEl.innerHTML = '<div class="empty-state"><p>Selecione uma goleira para ver o plano.</p></div>'; return; }
+  if (!gkId) { if (kEl) kEl.innerHTML = ''; if (cEl) cEl.innerHTML = '<div class="empty-state"><p>Selecione um(a) goleiro(a) para ver o plano.</p></div>'; return; }
   const objs = DB.pid.filter(o => o.gkId === gkId);
   const done = objs.filter(o => o.status === 'concluido').length;
   const prog = objs.length ? Math.round(objs.reduce((s, o) => s + (o.progresso || 0), 0) / objs.length) : 0;
@@ -652,8 +652,8 @@ function animateCount(el, target, suffix = '') {
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════
 const pageTitles = {
-  dashboard: 'Dashboard', executivo: 'Dashboard Executivo', goleiras: 'Goleiras',
-  perfil: 'Perfil da Goleira', comparacao: 'Comparação Entre Goleiras',
+  dashboard: 'Dashboard', executivo: 'Dashboard Executivo', goleiras: 'Goleiros(as)',
+  perfil: 'Perfil do(a) Goleiro(a)', comparacao: 'Comparação Entre Goleiros(as)',
   matchcenter: 'Match Center — Ao Vivo',
   partidas: 'Partidas', scout: 'Scout de Jogo',
   performance: 'Performance',
@@ -846,7 +846,7 @@ function uid() { return Date.now() + Math.random().toString(36).slice(2, 7); }
 function openNovaGoleira() {
   editingId.goleira = null;
   currentFotoBase64 = '';
-  document.getElementById('modal-goleira-title').textContent = 'Nova Goleira';
+  document.getElementById('modal-goleira-title').textContent = 'Novo(a) Goleiro(a)';
   ['nome','nasc','num','altura','peso','equipe','obs'].forEach(f => document.getElementById('gk-'+f).value = '');
   ['categoria','pe','mao','naipe'].forEach(f => document.getElementById('gk-'+f).value = '');
   var _m=document.getElementById('gk-modalidade'); if(_m) _m.value='futsal';
@@ -858,7 +858,7 @@ function openNovaGoleira() {
 
 function salvarGoleira() {
   const nome = document.getElementById('gk-nome').value.trim();
-  if (!nome) { toast('Informe o nome da goleira', 'error'); return; }
+  if (!nome) { toast('Informe o nome do(a) goleiro(a)', 'error'); return; }
   const goleiras = DB.goleiras;
   const existente = editingId.goleira ? goleiras.find(g=>g.id===editingId.goleira) : null;
   const obj = {
@@ -888,19 +888,19 @@ function salvarGoleira() {
   }
   DB.saveGoleiras(goleiras);
   cloudSet('goleiras', editingId.goleira ? goleiras.find(g=>g.id===editingId.goleira) : obj);
-  logAudit('Goleiras', (editingId.goleira ? 'Atualizou' : 'Cadastrou') + ' a goleira ' + nome);
-  if (!editingId.goleira) pushNotif('info', 'Nova goleira', nome + ' foi cadastrada.');
+  logAudit('Goleiros(as)', (editingId.goleira ? 'Atualizou' : 'Cadastrou') + ' o(a) goleiro(a) ' + nome);
+  if (!editingId.goleira) pushNotif('info', 'Novo(a) goleiro(a)', nome + ' foi cadastrada.');
   closeModal('modal-goleira');
   renderGoleiras();
   updateGoleiraSelects();
-  toast(editingId.goleira ? 'Goleira atualizada!' : 'Goleira cadastrada!', 'success');
+  toast(editingId.goleira ? 'Goleiro(a) atualizada!' : 'Goleiro(a) cadastrada!', 'success');
 }
 
 function editarGoleira(id) {
   const g = DB.goleiras.find(x => x.id === id);
   if (!g) return;
   editingId.goleira = id;
-  document.getElementById('modal-goleira-title').textContent = 'Editar Goleira';
+  document.getElementById('modal-goleira-title').textContent = 'Editar Goleiro(a)';
   document.getElementById('gk-nome').value = g.nome || '';
   document.getElementById('gk-nasc').value = g.nasc || '';
   document.getElementById('gk-num').value = g.num || '';
@@ -921,15 +921,15 @@ function editarGoleira(id) {
 }
 
 function excluirGoleira(id) {
-  if (!confirm('Excluir esta goleira? Os scouts e dados associados também serão removidos.')) return;
+  if (!confirm('Excluir este(a) goleiro(a)? Os scouts e dados associados também serão removidos.')) return;
   const _gk = DB.goleiras.find(g => g.id === id);
-  logAudit('Goleiras', 'Excluiu a goleira ' + (_gk ? _gk.nome : id));
+  logAudit('Goleiros(as)', 'Excluiu o(a) goleiro(a) ' + (_gk ? _gk.nome : id));
   DB.saveGoleiras(DB.goleiras.filter(g => g.id !== id));
   DB.saveScouts(DB.scouts.filter(s => s.goalkeeperId !== id));
   cloudDelete('goleiras', id);
   renderGoleiras();
   updateGoleiraSelects();
-  toast('Goleira excluída.', 'info');
+  toast('Goleiro(a) excluída.', 'info');
 }
 
 function renderGoleiras() {
@@ -975,8 +975,8 @@ function toggleSegundaGoleira(forcar) {
   const ativo = forcar !== undefined ? forcar : (sec.style.display === 'none');
   sec.style.display = ativo ? 'block' : 'none';
   grp.style.display = ativo ? 'block' : 'none';
-  lbl.textContent = ativo ? '1ª Goleira' : 'Goleira';
-  btn.textContent = ativo ? '✕ Remover 2ª goleira' : '+ 2ª Goleira';
+  lbl.textContent = ativo ? '1ª Goleiro(a)' : 'Goleiro(a)';
+  btn.textContent = ativo ? '✕ Remover 2º(ª) goleiro(a)' : '+ 2ª Goleiro(a)';
   btn.style.color = ativo ? 'var(--error)' : 'var(--muted)';
   if (!ativo) {
     document.getElementById('match-gk2').value = '';
@@ -991,7 +991,7 @@ function salvarPartida() {
   if (!adv) { toast('Informe o adversário', 'error'); return; }
   if (!data) { toast('Informe a data da partida', 'error'); return; }
   const gkIdCheck = document.getElementById('match-goleira').value;
-  if (!gkIdCheck) { toast('Selecione a goleira da partida', 'error'); return; }
+  if (!gkIdCheck) { toast('Selecione o(a) goleiro(a) da partida', 'error'); return; }
   const partidas = DB.partidas;
   const gk2Id = document.getElementById('match-gk2').value;
   const temGk2 = document.getElementById('secao-gk2').style.display !== 'none' && gk2Id;
@@ -1042,7 +1042,7 @@ function editarPartida(id) {
   document.getElementById('match-gf').value = p.gf ?? 0;
   document.getElementById('match-gc').value = p.gc ?? 0;
   document.getElementById('match-obs').value = p.obs || '';
-  // Restaura 2ª goleira
+  // Restaura 2º(ª) goleiro(a)
   toggleSegundaGoleira(false);
   if (p.gk2Id) {
     toggleSegundaGoleira(true);
@@ -1242,7 +1242,7 @@ function atualizarNotaPreview() {
 
 function salvarScout() {
   const goalkeeperId = document.getElementById('scout-goleira').value;
-  if (!goalkeeperId) { toast('Selecione a goleira', 'error'); return; }
+  if (!goalkeeperId) { toast('Selecione o(a) goleiro(a)', 'error'); return; }
   const scouts = DB.scouts;
   const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
   const obj = { id: editingId.scout || uid(), goalkeeperId,
@@ -1265,7 +1265,7 @@ function salvarScout() {
   renderScouts();
   toast('Scout salvo!', 'success');
   if (loadPreferences().notifScouts) {
-    const gkN = DB.goleiras.find(g=>g.id===document.getElementById('scout-goleira').value)?.nome || 'Goleira';
+    const gkN = DB.goleiras.find(g=>g.id===document.getElementById('scout-goleira').value)?.nome || 'Goleiro(a)';
     _sendNotif('Scout registrado', `Scout de ${gkN} salvo com sucesso`, 'scout');
   }
 }
@@ -1380,7 +1380,7 @@ function showPerfDetail(gkId) {
   const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
   const el = document.getElementById('perf-detail');
   if (!scouts.length) {
-    el.innerHTML = `<div class="card-title" style="margin-bottom:12px;">${_esc(gk.nome)}</div><div class="empty-state"><p>Nenhum scout registrado para esta goleira.</p></div>`;
+    el.innerHTML = `<div class="card-title" style="margin-bottom:12px;">${_esc(gk.nome)}</div><div class="empty-state"><p>Nenhum scout registrado para este(a) goleiro(a).</p></div>`;
     return;
   }
   const totalDef = scouts.reduce((a,s) => a+(+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0), 0);
@@ -1456,7 +1456,7 @@ function fabAction(kind) {
     case 'scout':   clickBtn('[onclick="openModal(\'modal-scout\')"]'); break;
     case 'treino':    navigate('treinos'); setTimeout(() => { if (typeof openTpSessionForm === 'function') openTpSessionForm(); }, 80); break;
     case 'exercicio': navigate('treinos'); setTimeout(() => { if (typeof openTpExerciseForm === 'function') openTpExerciseForm(); }, 80); break;
-    case 'meta':    navigate('perfil'); toast('Selecione a goleira e clique em “+ Meta”.', 'info'); break;
+    case 'meta':    navigate('perfil'); toast('Selecione o(a) goleiro(a) e clique em “+ Meta”.', 'info'); break;
     case 'pdf':     navigate('relatorios'); break;
   }
 }
@@ -1636,7 +1636,7 @@ function renderPerfilIA(gkId) {
   if (last && last.analysis) {
     _aiRenderResult(last.analysis, body, 'Nota geral da IA', { gkId, savedAt: formatDate(new Date(last.ts).toISOString().slice(0, 10)) });
   } else {
-    body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Clique em "Gerar análise" para uma avaliação técnica automática desta goleira com base em todos os dados registrados.</div>';
+    body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Clique em "Gerar análise" para uma avaliação técnica automática deste(a) goleiro(a) com base em todos os dados registrados.</div>';
   }
 }
 async function _aiPost(context) {
@@ -1801,7 +1801,7 @@ async function gerarAnaliseIA() {
   const btn = document.getElementById('perfil-ia-btn');
   if (!gkId || !body) return;
   const ctx = _gkAIContext(gkId);
-  if (!ctx.partidasAnalisadas) { body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Registre ao menos um scout desta goleira para gerar a análise.</div>'; return; }
+  if (!ctx.partidasAnalisadas) { body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Registre ao menos um scout deste(a) goleiro(a) para gerar a análise.</div>'; return; }
   body.innerHTML = '<div style="color:var(--muted);font-size:13px;">🤖 Analisando com IA…</div>';
   if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
   let res = null;
@@ -1816,7 +1816,7 @@ async function gerarAnaliseIA() {
       + (local.length ? local.map(i => `<div style="font-size:13px;padding:4px 0;">${i.icon} ${_esc(i.text)}</div>`).join('') : '<div style="color:var(--muted);font-size:13px;">Sem insights suficientes.</div>');
     return;
   }
-  _saveAIAnalysis('perfil', gkId, a, ctx.nome || 'Goleira');
+  _saveAIAnalysis('perfil', gkId, a, ctx.nome || 'Goleiro(a)');
   _aiRenderResult(a, body, 'Nota geral da IA', { gkId });
   try { logAudit('IA', 'Gerou análise por IA de ' + (ctx.nome || gkId)); } catch (e) {}
 }
@@ -2348,11 +2348,11 @@ function updateGoleiraSelects() {
     if (el) { const v = el.value; el.innerHTML = opts; el.value = v; }
   });
   const perfilEl = document.getElementById('perfil-gk-select');
-  if (perfilEl) { const v = perfilEl.value; perfilEl.innerHTML = `<option value="">Selecione a goleira…</option>` + goleiras.map(g=>`<option value="${g.id}">${_esc(g.nome)}</option>`).join(''); perfilEl.value = v; }
+  if (perfilEl) { const v = perfilEl.value; perfilEl.innerHTML = `<option value="">Selecione o(a) goleiro(a)…</option>` + goleiras.map(g=>`<option value="${g.id}">${_esc(g.nome)}</option>`).join(''); perfilEl.value = v; }
   const hmEl = document.getElementById('heatmap-gk');
   if (hmEl) { const v = hmEl.value; hmEl.innerHTML = `<option value="">Todas as goleiras</option>` + goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}</option>`).join(''); hmEl.value = v; }
   const pdfEl = document.getElementById('pdf-gk-select');
-  if (pdfEl) pdfEl.innerHTML = `<option value="">Selecione a goleira…</option>` + goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}</option>`).join('');
+  if (pdfEl) pdfEl.innerHTML = `<option value="">Selecione o(a) goleiro(a)…</option>` + goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}</option>`).join('');
   const partidas = DB.partidas;
   const popts = `<option value="">Selecionar…</option>` + partidas.map(p => `<option value="${p.id}">${_esc(p.adversario)}${p.data?' ('+formatDate(p.data)+')':''}</option>`).join('');
   const spt = document.getElementById('scout-partida');
@@ -2378,7 +2378,7 @@ function formatDate(d) {
 const origOpenModal = openModal;
 document.querySelector('[onclick="openModal(\'modal-goleira\')"]')?.addEventListener('click', () => {
   editingId.goleira = null;
-  document.getElementById('modal-goleira-title').textContent = 'Nova Goleira';
+  document.getElementById('modal-goleira-title').textContent = 'Novo(a) Goleiro(a)';
   ['nome','nasc','num','altura','peso','equipe','obs'].forEach(f => document.getElementById('gk-'+f).value='');
   ['categoria','pe','mao','naipe'].forEach(f => document.getElementById('gk-'+f).value='');
   var _m=document.getElementById('gk-modalidade'); if(_m) _m.value='futsal';
@@ -2567,7 +2567,7 @@ function handlePerfilFotoUpload(input) {
   const file = input.files[0];
   if (!file) return;
   const gkId = document.getElementById('perfil-select')?.value;
-  if (!gkId) { toast('Selecione uma goleira primeiro', 'error'); return; }
+  if (!gkId) { toast('Selecione um(a) goleiro(a) primeiro', 'error'); return; }
   const reader = new FileReader();
   reader.onload = e => openCropModal(e.target.result, 'perfil', gkId);
   reader.readAsDataURL(file);
@@ -2744,7 +2744,7 @@ let analiseGkId = null;
 function abrirAnalise() {
   const sel = document.getElementById('perfil-gk-select');
   const gkId = sel?.value || analiseGkId;
-  if (!gkId) { toast('Selecione uma goleira no Perfil primeiro', 'error'); return; }
+  if (!gkId) { toast('Selecione um(a) goleiro(a) no Perfil primeiro', 'error'); return; }
   gerarAnalise(gkId);
 }
 
@@ -3223,7 +3223,7 @@ function aggScoutsHeatmap() {
   const summary = document.getElementById('hm-filter-summary');
   if (summary) {
     const active = [];
-    if (gkId) { const g=DB.goleiras.find(g=>g.id===gkId); if(g) active.push(`Goleira: <strong>${_esc(g.nome)}</strong>`); }
+    if (gkId) { const g=DB.goleiras.find(g=>g.id===gkId); if(g) active.push(`Goleiro(a): <strong>${_esc(g.nome)}</strong>`); }
     if (temp) active.push(`Temporada: <strong>${_esc(temp)}</strong>`);
     if (comp) active.push(`Competição: <strong>${_esc(comp)}</strong>`);
     if (adv)  active.push(`Adversário: <strong>${_esc(adv)}</strong>`);
@@ -3402,7 +3402,7 @@ function pdfGeral() {
     const avg = avgPerformance(g.id); const { label } = classifyPerf(avg);
     return [g.nome, g.equipe||'-', g.categoria||'-', avg!==null?avg:'-', avg!==null?label:'-'];
   });
-  doc.autoTable({ startY: 52, head: [['Goleira','Equipe','Categoria','Nota','Classificação']], body: rows,
+  doc.autoTable({ startY: 52, head: [['Goleiro(a)','Equipe','Categoria','Nota','Classificação']], body: rows,
     headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
   doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
   doc.text('Resumo', 14, doc.lastAutoTable.finalY + 12);
@@ -3416,7 +3416,7 @@ function pdfGeral() {
 }
 function pdfIndividual() {
   const gkId = document.getElementById('pdf-gk-select').value;
-  if (!gkId) { toast('Selecione uma goleira','error'); return; }
+  if (!gkId) { toast('Selecione um(a) goleiro(a)','error'); return; }
   const gk = DB.goleiras.find(g=>g.id===gkId);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -3459,7 +3459,7 @@ function pdfPartidas() {
     const score = hasScore ? `${r} ${p.gf}×${p.gc}` : '—';
     return [p.data?formatDate(p.data):'-', p.adversario, p.competicao||'-', gkMap[p.goalkeeperId]||'-', score];
   });
-  doc.autoTable({ startY: 52, head: [['Data','Adversário','Competição','Goleira','Resultado']], body: rows,
+  doc.autoTable({ startY: 52, head: [['Data','Adversário','Competição','Goleiro(a)','Resultado']], body: rows,
     headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
   doc.save('gkhub_partidas.pdf');
   logReport({ type: 'partidas', title: 'Relatório de Partidas' });
@@ -3478,7 +3478,7 @@ function updateCompSelect() {
 function updatePdfSelects() {
   const el = document.getElementById('pdf-gk-select');
   if (!el) return;
-  el.innerHTML = '<option value="">Selecione a goleira…</option>' +
+  el.innerHTML = '<option value="">Selecione o(a) goleiro(a)…</option>' +
     DB.goleiras.map(g => `<option value="${g.id}">${_esc(g.nome)}</option>`).join('');
 }
 
@@ -3508,7 +3508,7 @@ function pdfCompeticao() {
   });
   doc.autoTable({
     startY: 56,
-    head: [['Data','Adversário','Goleira(s)','Resultado','Defesas','G. Sofr.']],
+    head: [['Data','Adversário','Goleiro(a)(s)','Resultado','Defesas','G. Sofr.']],
     body: rowsP,
     headStyles: { fillColor: [30,30,53], textColor: [0,212,255] },
     styles: { fontSize: 8 },
@@ -3536,10 +3536,10 @@ function pdfCompeticao() {
   if (rowsGK.length) {
     const y = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
-    doc.text('Performance das Goleiras nesta Competição', 14, y);
+    doc.text('Performance dos(as) Goleiros(as) nesta Competição', 14, y);
     doc.autoTable({
       startY: y + 4,
-      head: [['Goleira','Partidas','Scouts','Defesas','G. Sofr.','Nota Média','Classificação']],
+      head: [['Goleiro(a)','Partidas','Scouts','Defesas','G. Sofr.','Nota Média','Classificação']],
       body: rowsGK,
       headStyles: { fillColor: [30,30,53], textColor: [0,212,255] },
       styles: { fontSize: 8 }
@@ -4351,7 +4351,7 @@ function mcTempoTecnico() {
   }, 1000);
 }
 
-// ── Troca de Goleira ─────────────────────────────────────────
+// ── Troca de Goleiro(a) ─────────────────────────────────────────
 function mcSnapshotGkSegmento(periodoLabel) {
   const gkId=document.getElementById('mc-goleira')?.value;
   if (!gkId) return;
@@ -4397,14 +4397,14 @@ function mcConfirmarTroca() {
   mcUpdateLog();
   mcUpdatePeriodStats();
   document.getElementById('mc-trocar-painel').style.display='none';
-  toast(`Goleira alterada para ${novaGk?.nome||'—'}!`,'success');
+  toast(`Goleiro(a) alterada para ${novaGk?.nome||'—'}!`,'success');
 }
 
 // ── Encerrar Partida ─────────────────────────────────────────
 function mcEncerrar() {
   const gkId=document.getElementById('mc-goleira')?.value;
   const pId=document.getElementById('mc-partida')?.value;
-  if (!gkId){toast('Selecione a goleira antes de encerrar','error');return;}
+  if (!gkId){toast('Selecione o(a) goleiro(a) antes de encerrar','error');return;}
   if (!pId && !confirm('Nenhuma partida selecionada. Os scouts serão salvos sem vínculo com uma partida. Continuar?')) return;
   const finalSegmentos=[...mcGkSegmentos];
   const totalCurrentEvents=MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
@@ -4880,7 +4880,7 @@ function _mcExportarRelatorioPDFImpl() {
   sF(30,58,138);rr(15,13,9,4);
   doc.setFontSize(11);doc.setFont('helvetica','bold');sT(248,250,252);doc.text('GK HUB',27,20);
   doc.setFontSize(6.5);doc.setFont('helvetica','normal');sT(100,116,139);
-  doc.text('Plataforma de Análise de Goleiras de Futsal',27,25.5);
+  doc.text('Plataforma de Análise de Goleiros(as) de Futsal',27,25.5);
 
   // Report type tag
   sF(20,40,90);rr(15,32,90,8);
@@ -4899,7 +4899,7 @@ function _mcExportarRelatorioPDFImpl() {
 
   // GK Name — large hero text
   doc.setFontSize(34);doc.setFont('helvetica','bold');sT(248,250,252);
-  doc.text(gk?.nome||'Goleira',15,70,{maxWidth:135});
+  doc.text(gk?.nome||'Goleiro(a)',15,70,{maxWidth:135});
   sF(59,130,246);rr(15,74,55,1.5);
 
   // Classification badge
@@ -5253,7 +5253,7 @@ function _mcExportarRelatorioPDFImpl() {
     sF(10,15,32);rr(0,H-10,W,10);
     sD(30,50,100);doc.setLineWidth(0.3);doc.line(0,H-10,W,H-10);
     doc.setFontSize(6);doc.setFont('helvetica','normal');sT(100,116,139);
-    doc.text('GK Hub — Plataforma de Análise de Goleiras de Futsal',15,H-3);
+    doc.text('GK Hub — Plataforma de Análise de Goleiros(as) de Futsal',15,H-3);
     doc.text(`${pi} / ${pages}`,W-15,H-3,{align:'right'});
     doc.text(new Date().toLocaleDateString('pt-BR'),W/2,H-3,{align:'center'});
   }
@@ -6983,7 +6983,7 @@ async function renderPerfilTreinos(gkId) {
 }
 
 function openTpGoalForm() {
-  if (!_tpProfileGkId) { toast('Selecione uma goleira.', 'info'); return; }
+  if (!_tpProfileGkId) { toast('Selecione um(a) goleiro(a).', 'info'); return; }
   const title = (prompt('Título da meta (ex.: Melhorar reposição longa):') || '').trim();
   if (!title) return;
   const fundamental = (prompt('Fundamento relacionado (opcional):') || '').trim();
@@ -7619,7 +7619,7 @@ function topbarSearch(val) {
 
   let html = '';
   if (gks.length) {
-    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Goleiras</div>`;
+    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Goleiros(as)</div>`;
     html += gks.slice(0,5).map(g => `
       <div class="sr-item" onclick="clearTopbarSearch();navigate('goleiras');setTimeout(()=>{const i=document.getElementById('search-goleiras');if(i){i.value='${_esc(g.nome.replace(/'/g,"\\'"))}';i.dispatchEvent(new Event('input'));}},200)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>

@@ -76,7 +76,7 @@
 <div id="auth-overlay">
   <div class="auth-card">
     <div class="auth-logo-text">GK Hub</div>
-    <div class="auth-logo-sub">Plataforma de Performance para Goleiras de Futsal</div>
+    <div class="auth-logo-sub">Plataforma de Performance para Goleiros(as) de Futsal</div>
 
     <!-- Email + Senha (backend login — principal) -->
     <div style="margin-bottom:12px;">
@@ -157,9 +157,9 @@
       <span class="nav-item-label">Executivo</span>
     </div>
     <div class="nav-section-label">Gestão</div>
-    <div class="nav-item" data-page="goleiras" data-tooltip="Goleiras" onclick="navigate('goleiras')">
+    <div class="nav-item" data-page="goleiras" data-tooltip="Goleiros(as)" onclick="navigate('goleiras')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      <span class="nav-item-label">Goleiras</span>
+      <span class="nav-item-label">Goleiros(as)</span>
     </div>
     <div class="nav-item" data-page="perfil" data-tooltip="Perfil" onclick="navigate('perfil')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
@@ -274,7 +274,7 @@
     </div>
     <div class="topbar-search" style="position:relative;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" placeholder="Buscar goleira, partida…" id="topbar-search-input" oninput="topbarSearch(this.value)" onkeydown="if(event.key==='Escape')clearTopbarSearch()">
+      <input type="text" placeholder="Buscar goleiro(a), partida…" id="topbar-search-input" oninput="topbarSearch(this.value)" onkeydown="if(event.key==='Escape')clearTopbarSearch()">
       <div id="topbar-search-results" style="display:none;position:absolute;top:calc(100% + 6px);left:0;right:0;min-width:320px;background:rgba(17,24,39,.98);border:1px solid rgba(255,255,255,.1);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5);z-index:2000;overflow:hidden;max-height:420px;overflow-y:auto;"></div>
     </div>
     <div class="topbar-actions">
@@ -367,7 +367,7 @@
           <div class="stat-icon-wrap" style="background:rgba(59,130,246,.12);">
             <svg viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
-          <div class="stat-label">Total de Goleiras</div>
+          <div class="stat-label">Total de Goleiros(as)</div>
           <div class="stat-value stat-cyan" id="stat-total-gk">0</div>
           <div class="stat-sub">cadastradas no sistema</div>
         </div>
@@ -418,7 +418,7 @@
       <!-- Performance Chart — full width -->
       <div class="card" style="margin-bottom:24px;">
         <div class="card-header">
-          <span class="card-title">Performance por Goleira</span>
+          <span class="card-title">Performance por Goleiro(a)</span>
           <div style="display:flex;align-items:center;gap:8px;">
             <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);">
               <div style="width:10px;height:3px;background:#3B82F6;border-radius:2px;"></div> Performance
@@ -435,13 +435,13 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:4px;">
         <div class="card">
           <div class="card-header">
-            <span class="card-title">Goleiras Recentes</span>
+            <span class="card-title">Goleiros(as) Recentes</span>
             <button class="btn btn-ghost btn-sm" onclick="navigate('goleiras')">Ver todas</button>
           </div>
           <div id="dash-recent-gk">
             <div class="empty-state">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-              <p>Nenhuma goleira cadastrada</p>
+              <p>Nenhuma goleiro(a) cadastrada</p>
             </div>
           </div>
         </div>
@@ -596,7 +596,7 @@
       </div>
       <div class="card" style="margin-top:20px;">
         <div class="card-header"><span class="card-title">🔒 Privacidade e LGPD</span></div>
-        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Como o sistema trata dados de atletas (inclusive menores de idade). Marque o consentimento no cadastro da goleira. Aqui você exerce os direitos do titular:</p>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Como o sistema trata dados de atletas (inclusive menores de idade). Marque o consentimento no cadastro do(a) goleiro(a). Aqui você exerce os direitos do titular:</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
           <select class="form-select" id="lgpd-gk" style="width:auto;min-width:200px;"></select>
           <button class="btn btn-secondary btn-sm" onclick="exportAthleteData()">⬇️ Exportar dados da atleta</button>
@@ -616,7 +616,7 @@
       <div class="card-header" style="margin-bottom:16px;">
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-input" id="lesao-search" type="text" placeholder="Buscar por goleira, tipo, região…" oninput="renderLesoes()">
+          <input class="search-input" id="lesao-search" type="text" placeholder="Buscar por goleiro(a), tipo, região…" oninput="renderLesoes()">
         </div>
         <button class="btn btn-primary" onclick="openLesaoForm()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Registrar lesão</button>
       </div>
@@ -632,7 +632,7 @@
     <div id="page-pid" class="page">
       <div class="card-header" style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <label class="form-label" style="margin:0;">Goleira:</label>
+          <label class="form-label" style="margin:0;">Goleiro(a):</label>
           <select class="form-select" id="pid-gk-select" style="width:220px;" onchange="renderPID()"></select>
         </div>
         <button class="btn btn-primary" onclick="openPidForm()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo objetivo</button>
@@ -646,11 +646,11 @@
       <div class="card-header" style="margin-bottom:16px;">
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-input" id="search-goleiras" type="text" placeholder="Buscar goleira…" oninput="renderGoleiras()">
+          <input class="search-input" id="search-goleiras" type="text" placeholder="Buscar goleiro(a)…" oninput="renderGoleiras()">
         </div>
         <button class="btn btn-primary" onclick="openModal('modal-goleira')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Nova Goleira
+          Novo(a) Goleiro(a)
         </button>
       </div>
       <div class="card">
@@ -671,7 +671,7 @@
               </tr>
             </thead>
             <tbody id="tbody-goleiras">
-              <tr><td colspan="10"><div class="empty-state"><p>Nenhuma goleira cadastrada. Clique em "Nova Goleira" ou importe uma planilha.</p></div></td></tr>
+              <tr><td colspan="10"><div class="empty-state"><p>Nenhuma goleiro(a) cadastrada. Clique em "Novo(a) Goleiro(a)" ou importe uma planilha.</p></div></td></tr>
             </tbody>
           </table>
         </div>
@@ -689,7 +689,7 @@
             <select class="form-select" id="mc-partida" onchange="mcOnPartidaChange()"><option value="">Selecionar…</option></select>
           </div>
           <div class="form-group" style="margin:0;">
-            <label class="form-label">Goleira em Campo</label>
+            <label class="form-label">Goleiro(a) em Campo</label>
             <select class="form-select" id="mc-goleira" onchange="mcSyncModalidadeFromGk()"><option value="">Selecionar…</option></select>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-end;">
@@ -751,7 +751,7 @@
           <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
             <button class="btn btn-ghost btn-sm" onclick="mcTrocarGoleira()" style="color:var(--warning);border-color:rgba(245,158,11,.35);white-space:nowrap;">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
-              Trocar Goleira
+              Trocar Goleiro(a)
             </button>
             <button class="btn btn-ghost btn-sm" id="mc-btn-tt" onclick="mcTempoTecnico()" style="color:#a78bfa;border-color:rgba(167,139,250,.35);white-space:nowrap;">⏱ T. Técnico</button>
             <button class="btn btn-ghost btn-sm" onclick="mcDesfazer()" id="mc-btn-undo" style="opacity:.5;" disabled>↩ Desfazer</button>
@@ -760,7 +760,7 @@
 
         <!-- Painel Trocar Goleira -->
         <div id="mc-trocar-painel" style="display:none;margin-top:12px;padding:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.25);border-radius:10px;">
-          <div style="font-size:12px;font-weight:700;color:var(--warning);margin-bottom:8px;">🔄 Substituição de Goleira</div>
+          <div style="font-size:12px;font-weight:700;color:var(--warning);margin-bottom:8px;">🔄 Substituição de Goleiro(a)</div>
           <div style="display:flex;gap:8px;align-items:center;">
             <select class="form-select" id="mc-nova-goleira" style="flex:1;"></select>
             <button class="btn btn-sm" onclick="mcConfirmarTroca()" style="background:var(--warning);color:#000;font-weight:700;white-space:nowrap;">Confirmar Troca</button>
@@ -770,7 +770,7 @@
 
         <!-- Goleiras em jogo -->
         <div id="mc-gk-info" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);">
-          <span style="font-weight:600;color:var(--text);">Goleiras no jogo:</span> <span id="mc-gk-info-list"></span>
+          <span style="font-weight:600;color:var(--text);">Goleiros(as) no jogo:</span> <span id="mc-gk-info-list"></span>
         </div>
       </div>
 
@@ -919,7 +919,7 @@
                 <th>Data</th>
                 <th>Adversário</th>
                 <th>Competição</th>
-                <th>Goleira</th>
+                <th>Goleiro(a)</th>
                 <th>Resultado</th>
                 <th>Gols Sofridos</th>
                 <th>Defesas</th>
@@ -948,7 +948,7 @@
           <table>
             <thead>
               <tr>
-                <th>Goleira</th>
+                <th>Goleiro(a)</th>
                 <th>Partida</th>
                 <th>Def. Altas</th>
                 <th>Def. Baixas</th>
@@ -973,14 +973,14 @@
     <div id="page-performance" class="page">
       <div style="display:grid;grid-template-columns:300px 1fr;gap:20px;">
         <div class="card">
-          <div class="card-title" style="margin-bottom:16px;">Selecionar Goleira</div>
+          <div class="card-title" style="margin-bottom:16px;">Selecionar Goleiro(a)</div>
           <div id="perf-gk-list" style="display:flex;flex-direction:column;gap:8px;"></div>
         </div>
         <div>
           <div class="card" id="perf-detail" style="margin-bottom:16px;">
             <div class="empty-state">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-              <p>Selecione uma goleira para ver a performance</p>
+              <p>Selecione uma goleiro(a) para ver a performance</p>
             </div>
           </div>
           <div class="card">
@@ -1013,7 +1013,7 @@
             </div>
             <!-- Goleira -->
             <div style="display:flex;flex-direction:column;gap:4px;">
-              <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Goleira</span>
+              <span style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Goleiro(a)</span>
               <select class="form-select" id="heatmap-gk" style="min-width:160px;" onchange="hmGkChange()">
                 <option value="">Todas</option>
               </select>
@@ -1110,9 +1110,9 @@
     <div id="page-perfil" class="page">
       <div class="card" style="max-width:400px;margin-bottom:20px;">
         <div class="card-header" style="margin-bottom:0;">
-          <span class="card-title">Perfil da Goleira</span>
+          <span class="card-title">Perfil do(a) Goleiro(a)</span>
           <select class="form-select" id="perfil-gk-select" style="width:220px;" onchange="renderPerfil()">
-            <option value="">Selecione a goleira…</option>
+            <option value="">Selecione a goleiro(a)…</option>
           </select>
         </div>
       </div>
@@ -1154,7 +1154,7 @@
             <span class="card-title">🤖 Análise por IA</span>
             <button class="btn btn-primary btn-sm" id="perfil-ia-btn" onclick="gerarAnaliseIA()">Gerar análise</button>
           </div>
-          <div id="perfil-ia-body"><div style="color:var(--muted);font-size:13px;">Clique em "Gerar análise" para uma avaliação técnica automática desta goleira com base em todos os dados registrados.</div></div>
+          <div id="perfil-ia-body"><div style="color:var(--muted);font-size:13px;">Clique em "Gerar análise" para uma avaliação técnica automática desta goleiro(a) com base em todos os dados registrados.</div></div>
         </div>
         <!-- Evolução técnica -->
         <div class="card" style="margin-bottom:20px;">
@@ -1209,20 +1209,20 @@
           </button>
         </div>
       </div>
-      <div id="perfil-empty" style="color:var(--muted);font-size:14px;padding:40px 0;">Selecione uma goleira para ver o perfil completo.</div>
+      <div id="perfil-empty" style="color:var(--muted);font-size:14px;padding:40px 0;">Selecione uma goleiro(a) para ver o perfil completo.</div>
     </div>
 
     <!-- ══ COMPARAÇÃO ══ -->
     <div id="page-comparacao" class="page">
       <div class="card" style="max-width:600px;margin-bottom:20px;">
-        <div class="card-header"><span class="card-title">Comparação Entre Goleiras</span></div>
+        <div class="card-header"><span class="card-title">Comparação Entre Goleiros(as)</span></div>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label" style="color:var(--primary);">Goleira A</label>
+            <label class="form-label" style="color:var(--primary);">Goleiro(a) A</label>
             <select class="form-select" id="comp-gk1" onchange="renderComparacao()"><option value="">Selecionar…</option></select>
           </div>
           <div class="form-group">
-            <label class="form-label" style="color:var(--warning);">Goleira B</label>
+            <label class="form-label" style="color:var(--warning);">Goleiro(a) B</label>
             <select class="form-select" id="comp-gk2" onchange="renderComparacao()"><option value="">Selecionar…</option></select>
           </div>
         </div>
@@ -1252,7 +1252,7 @@
           <div class="table-wrap"><table id="comp-table-detail"></table></div>
         </div>
       </div>
-      <div id="comp-empty" style="color:var(--muted);font-size:14px;padding:40px 0;">Selecione duas goleiras para comparar.</div>
+      <div id="comp-empty" style="color:var(--muted);font-size:14px;padding:40px 0;">Selecione dois(as) goleiros(as) para comparar.</div>
     </div>
 
     <!-- ══ RELATÓRIOS PDF ══ -->
@@ -1294,7 +1294,7 @@
       <div style="display:grid;grid-template-columns:1.4fr 1fr;gap:16px;margin-bottom:20px;" class="tp-grid">
         <div class="stat-card" style="padding:16px;">
           <div style="font-weight:700;margin-bottom:4px;">Correlação treino × jogo</div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Carga de treino na semana anterior a cada partida × nota da goleira</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;">Carga de treino na semana anterior a cada partida × nota do(a) goleiro(a)</div>
           <canvas id="tp-chart-correlation" height="130"></canvas>
         </div>
         <div class="stat-card" style="padding:16px;">
@@ -1343,7 +1343,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
             <div>
               <div style="font-weight:600;font-size:14px;">Relatório Geral</div>
-              <div style="color:var(--muted);font-size:12px;">Todas as goleiras, partidas e ranking de performance</div>
+              <div style="color:var(--muted);font-size:12px;">Todas as goleiros(as), partidas e ranking de performance</div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="pdfGeral()">Gerar PDF</button>
           </div>
@@ -1352,7 +1352,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
             <div style="flex:1;">
               <div style="font-weight:600;font-size:14px;margin-bottom:8px;">Relatório Individual</div>
-              <select class="form-select" id="pdf-gk-select"><option value="">Selecione a goleira…</option></select>
+              <select class="form-select" id="pdf-gk-select"><option value="">Selecione a goleiro(a)…</option></select>
             </div>
             <button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="pdfIndividual()">Gerar PDF</button>
           </div>
@@ -1360,7 +1360,7 @@
           <!-- Por Competição -->
           <div style="padding:14px;border:1px solid var(--primary);border-radius:10px;background:rgba(0,212,255,.04);">
             <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Relatório por Competição</div>
-            <div style="color:var(--muted);font-size:12px;margin-bottom:12px;">Partidas, resultados e performance das goleiras em uma competição específica</div>
+            <div style="color:var(--muted);font-size:12px;margin-bottom:12px;">Partidas, resultados e performance dos(as) goleiros(as) em uma competição específica</div>
             <div style="display:flex;gap:10px;align-items:center;">
               <select class="form-select" id="pdf-comp-select" style="flex:1;"><option value="">Selecione a competição…</option></select>
               <button class="btn btn-primary btn-sm" onclick="pdfCompeticao()">Gerar PDF</button>
@@ -1449,7 +1449,7 @@
               </div>
               <div class="form-group">
                 <label class="form-label">Cargo / Função</label>
-                <input class="form-input" id="up-cargo" type="text" placeholder="Ex: Preparador de Goleiras">
+                <input class="form-input" id="up-cargo" type="text" placeholder="Ex: Preparador de Goleiros(as)">
               </div>
               <div class="form-group">
                 <label class="form-label">Clube</label>
@@ -1494,7 +1494,7 @@
                 <span id="up-info-matches" style="font-size:12px;font-weight:600;color:var(--success);">0</span>
               </div>
               <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg);border-radius:10px;">
-                <span style="font-size:12px;color:var(--muted);">Goleiras avaliadas</span>
+                <span style="font-size:12px;color:var(--muted);">Goleiros(as) avaliadas</span>
                 <span id="up-info-gks" style="font-size:12px;font-weight:600;color:var(--warning);">0</span>
               </div>
             </div>
@@ -1523,7 +1523,7 @@
             <div class="stat-icon-wrap" style="background:rgba(245,158,11,.12);">
               <svg viewBox="0 0 24 24" fill="none" stroke="#F59E0B" stroke-width="2" width="20" height="20"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
             </div>
-            <div class="stat-label">Goleiras</div>
+            <div class="stat-label">Goleiros(as)</div>
             <div class="stat-value stat-yellow" id="act-gks">0</div>
           </div>
           <div class="stat-card">
@@ -1553,7 +1553,7 @@
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
           <div class="card">
             <div class="card-header">
-              <span class="card-title">⭐ Goleiras Favoritas</span>
+              <span class="card-title">⭐ Goleiros(as) Favoritas</span>
             </div>
             <div id="fav-goleiras-list"></div>
           </div>
@@ -1596,7 +1596,7 @@
               <label class="form-label">Página inicial</label>
               <select class="form-select" id="pref-home" onchange="savePreferences()">
                 <option value="dashboard">Dashboard</option>
-                <option value="goleiras">Goleiras</option>
+                <option value="goleiras">Goleiros(as)</option>
                 <option value="matchcenter">Match Center</option>
                 <option value="partidas">Partidas</option>
                 <option value="performance">Performance</option>
@@ -1749,7 +1749,7 @@
 <div id="fab-menu" class="fab-menu">
   <button class="fab-item" onclick="fabAction('partida')"><span class="fab-item-label">Nova partida</span><span class="fab-item-ic">⚽</span></button>
   <button class="fab-item" onclick="fabAction('treino')"><span class="fab-item-label">Novo treino</span><span class="fab-item-ic">🏋️</span></button>
-  <button class="fab-item" onclick="fabAction('goleira')"><span class="fab-item-label">Nova goleira</span><span class="fab-item-ic">🧤</span></button>
+  <button class="fab-item" onclick="fabAction('goleira')"><span class="fab-item-label">Novo(a) goleiro(a)</span><span class="fab-item-ic">🧤</span></button>
   <button class="fab-item" onclick="fabAction('scout')"><span class="fab-item-label">Novo scout</span><span class="fab-item-ic">📊</span></button>
   <button class="fab-item" onclick="fabAction('exercicio')"><span class="fab-item-label">Novo exercício</span><span class="fab-item-ic">📋</span></button>
   <button class="fab-item" onclick="fabAction('meta')"><span class="fab-item-label">Nova meta</span><span class="fab-item-ic">🎯</span></button>
@@ -1768,13 +1768,13 @@
 <div class="modal-backdrop" id="modal-goleira">
   <div class="modal">
     <div class="modal-header">
-      <span class="modal-title" id="modal-goleira-title">Nova Goleira</span>
+      <span class="modal-title" id="modal-goleira-title">Novo(a) Goleiro(a)</span>
       <button class="modal-close" onclick="closeModal('modal-goleira')">&times;</button>
     </div>
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group full">
-          <label class="form-label">Foto da goleira</label>
+          <label class="form-label">Foto do(a) goleiro(a)</label>
           <div style="display:flex;align-items:center;gap:16px;">
             <div class="gk-avatar" id="gk-foto-preview" style="width:80px;height:80px;">
               <svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:36px;height:36px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
@@ -1856,7 +1856,7 @@
         </div>
         <div class="form-group full">
           <label class="form-label">Observações</label>
-          <textarea class="form-textarea" id="gk-obs" placeholder="Notas gerais sobre a goleira…"></textarea>
+          <textarea class="form-textarea" id="gk-obs" placeholder="Notas gerais sobre a goleiro(a)…"></textarea>
         </div>
         <div class="form-group full" style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px;">
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
@@ -1909,15 +1909,15 @@
         <!-- Goleiras -->
         <div class="form-group full" style="border:1px solid var(--border);border-radius:10px;padding:14px;background:var(--bg);">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-            <span class="form-label" style="margin:0;">Goleiras em jogo</span>
+            <span class="form-label" style="margin:0;">Goleiros(as) em jogo</span>
             <button type="button" onclick="toggleSegundaGoleira()" id="btn-add-gk2"
               style="font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:var(--card);color:var(--muted);cursor:pointer;">
-              + 2ª Goleira
+              + 2ª Goleiro(a)
             </button>
           </div>
           <div class="form-grid" style="margin-bottom:0;">
             <div class="form-group">
-              <label class="form-label" id="lbl-gk1">Goleira</label>
+              <label class="form-label" id="lbl-gk1">Goleiro(a)</label>
               <select class="form-select" id="match-goleira"><option value="">Selecionar…</option></select>
             </div>
             <div class="form-group" id="grupo-periodo1" style="display:none;">
@@ -1925,11 +1925,11 @@
               <input class="form-input" id="match-periodo1" type="text" placeholder="Ex: 1º Tempo" value="1º Tempo">
             </div>
           </div>
-          <!-- 2ª goleira (oculta por padrão) -->
+          <!-- 2º(ª) goleiro(a) (oculta por padrão) -->
           <div id="secao-gk2" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
             <div class="form-grid" style="margin-bottom:0;">
               <div class="form-group">
-                <label class="form-label">2ª Goleira</label>
+                <label class="form-label">2ª Goleiro(a)</label>
                 <select class="form-select" id="match-gk2"><option value="">Selecionar…</option></select>
               </div>
               <div class="form-group">
@@ -1970,7 +1970,7 @@
     <div class="modal-body" style="padding:16px 20px;">
       <div class="form-grid" style="margin-bottom:12px;gap:10px;">
         <div class="form-group">
-          <label class="form-label">Goleira *</label>
+          <label class="form-label">Goleiro(a) *</label>
           <select class="form-select" id="scout-goleira" onchange="scoutSyncModalidadeFromGk()">
             <option value="">Selecionar…</option>
           </select>

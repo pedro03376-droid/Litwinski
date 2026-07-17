@@ -1,6 +1,6 @@
 # GK Hub — Guia Rápido de Acesso
 
-Plataforma de análise e desenvolvimento de goleiras (Futsal e Beach Soccer).
+Plataforma de análise e desenvolvimento de goleiros(as) (Futsal e Beach Soccer).
 
 **Link:** https://pedro03376-droid.github.io/Litwinski/
 
@@ -24,7 +24,7 @@ Os dados de **clubes diferentes NUNCA se misturam**. Isso é garantido por um
 
 ### Se você é de OUTRO clube (primeiro acesso)
 - Ao entrar, você começa **do zero**, com um **código próprio** já gerado.
-- **Não** use o código de outra pessoa — cadastre suas próprias goleiras, partidas e scouts.
+- **Não** use o código de outra pessoa — cadastre suas próprias goleiros(as), partidas e scouts.
 - Seus dados ficam **separados** de qualquer outro clube.
 
 ### Se você é da MESMA comissão técnica (quer compartilhar os dados)
@@ -44,11 +44,11 @@ Os dados de **clubes diferentes NUNCA se misturam**. Isso é garantido por um
 
 ## 4. O que dá para fazer
 
-- **Goleiras**: cadastro, perfil 360°, evolução, IGD (índice de desenvolvimento).
+- **Goleiros(as)**: cadastro, perfil 360°, evolução, IGD (índice de desenvolvimento).
 - **Modalidade**: Futsal **ou Beach Soccer** — notas, heatmap e defesas se adaptam à modalidade.
 - **Match Center**: registro ao vivo da partida (defesas, gols, distribuição).
 - **Scout**, **Heatmap**, **Treinos**, **Lesões**, **Metas (PID)**.
-- **IA**: análise automática da goleira, da partida e sugestão de treino.
+- **IA**: análise automática da goleiro(a), da partida e sugestão de treino.
 - **Relatórios PDF** e **Central de Inteligência** (insights automáticos).
 
 ---
@@ -58,7 +58,7 @@ Os dados de **clubes diferentes NUNCA se misturam**. Isso é garantido por um
 - **Faça backup** de vez em quando: *Config. do Clube → 💾 Exportar backup*.
 - **Combine quem edita o quê** dentro da comissão — se duas pessoas editarem a
   mesma coisa ao mesmo tempo, uma pode sobrescrever a outra.
-- **Dados de menores**: registre o **consentimento** no cadastro da goleira
+- **Dados de menores**: registre o **consentimento** no cadastro da goleiro(a)
   (*Config. do Clube → 🔒 Privacidade e LGPD*).
 
 ---
