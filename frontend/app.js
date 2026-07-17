@@ -7066,24 +7066,36 @@ async function apiPing() {
   } catch { return false; }
 }
 
+// Anexa o token do Firebase (quando logado via Google) para que regras do
+// tipo "auth != null" aceitem as chamadas REST ao Realtime Database.
+async function _rtdbToken() {
+  try { const u = (typeof _firebaseAuth !== 'undefined' && _firebaseAuth) ? _firebaseAuth.currentUser : null; if (u) return await u.getIdToken(); } catch (e) {}
+  return null;
+}
+async function _rtdbUrl(path) {
+  const t = await _rtdbToken();
+  return rtdbUrl + path + '.json' + (t ? '?auth=' + encodeURIComponent(t) : '');
+}
+function _rtdbErr(status) {
+  // 401/403 = regras do banco negando (comum quando as regras de teste expiram)
+  return new Error((status === 401 || status === 403) ? 'PERMISSAO' : ('HTTP ' + status));
+}
 async function rtdbGet(path) {
-  const res = await fetch(rtdbPath(path));
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const res = await fetch(await _rtdbUrl(path));
+  if (!res.ok) throw _rtdbErr(res.status);
   return res.json();
 }
-
 async function rtdbPut(path, data) {
-  const res = await fetch(rtdbPath(path), {
+  const res = await fetch(await _rtdbUrl(path), {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
   });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
+  if (!res.ok) throw _rtdbErr(res.status);
 }
-
 async function rtdbDelete(path) {
-  const res = await fetch(rtdbPath(path), { method: 'DELETE' });
-  if (!res.ok) throw new Error('rtdbDelete HTTP ' + res.status);
+  const res = await fetch(await _rtdbUrl(path), { method: 'DELETE' });
+  if (!res.ok) throw _rtdbErr(res.status);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -7126,13 +7138,13 @@ function importBackupFile(input) {
 async function cloudBackup() {
   if (!rtdbUrl) { toast('Conecte o Firebase (aba Nuvem) para usar backup na nuvem.', 'info'); return; }
   try { netSetStatus('syncing'); await rtdbPut('/backups/latest', _gkSnapshot()); netMarkSynced(); try { logAudit('Dados', 'Enviou backup para a nuvem'); } catch (e) {} toast('Backup salvo na nuvem.', 'success'); }
-  catch (e) { toast('Não foi possível enviar o backup.', 'error'); netSetStatus(navigator.onLine ? 'online' : 'offline'); }
+  catch (e) { toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : 'Não foi possível enviar o backup.', 'error'); netSetStatus(navigator.onLine ? 'online' : 'offline'); }
 }
 async function cloudRestore() {
   if (!rtdbUrl) { toast('Conecte o Firebase (aba Nuvem) primeiro.', 'info'); return; }
   if (!confirm('Restaurar da nuvem vai SOBRESCREVER os dados locais. Continuar?')) return;
   try { const snap = await rtdbGet('/backups/latest'); if (!snap) { toast('Nenhum backup na nuvem ainda.', 'info'); return; } _gkRestore(snap); toast('Restaurado da nuvem! Recarregando…', 'success'); setTimeout(() => location.reload(), 900); }
-  catch (e) { toast('Não foi possível restaurar da nuvem.', 'error'); }
+  catch (e) { toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : 'Não foi possível restaurar da nuvem.', 'error'); }
 }
 /* ── Privacidade / LGPD — export e exclusão por atleta ─────── */
 function _athleteData(gkId) {
@@ -7249,7 +7261,7 @@ async function sincronizarNuvem() {
     const fbSt = document.getElementById('fb-status');
     if (fbSt) fbSt.innerHTML = '<span style="color:var(--success)">✓ Dados sincronizados com a nuvem!</span>';
     toast('Sincronizado!', 'success');
-  } catch(e) { toast('Erro na sincronização: ' + e.message, 'error'); }
+  } catch(e) { toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : ('Erro na sincronização: '+e.message), 'error'); }
 }
 
 function cloudSet(col, item) {
@@ -7315,7 +7327,7 @@ async function cloudSyncNow() {
     if (active === 'pid') renderPID();
     if (active === 'notificacoes') renderNotificacoes();
     updateNotifBadge();
-  } catch (e) { toast('Falha na sincronização.', 'error'); }
+  } catch (e) { toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : 'Falha na sincronização.', 'error'); }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -8249,7 +8261,7 @@ async function syncAllToCloud() {
     toast('Sincronização automática concluída!', 'success');
     renderConfigStatus();
   } catch(e) {
-    toast('Erro na sincronização: ' + e.message, 'error');
+    toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : ('Erro na sincronização: '+e.message), 'error');
   }
 }
 
