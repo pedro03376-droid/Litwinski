@@ -1248,8 +1248,12 @@ function salvarScout() {
   const obj = { id: editingId.scout || uid(), goalkeeperId,
     partidaId: document.getElementById('scout-partida').value };
   fields.forEach(f => { obj[f] = document.getElementById('s-'+f)?.value || 0; });
-  // Persiste nota calculada automaticamente se não houver nota manual
-  if (!parseFloat(obj.nota)) {
+  // A nota do campo é uma sobreposição MANUAL. Se o usuário não digitou nada,
+  // preenchemos com a nota calculada, mas marcamos que NÃO é manual — assim,
+  // ao editar, o cálculo volta a se atualizar quando as defesas/gols mudam.
+  const _notaManual = !!parseFloat(obj.nota);
+  obj.notaManual = _notaManual;
+  if (!_notaManual) {
     const autoNota = calcPerformanceAuto(obj);
     if (autoNota !== null) obj.nota = autoNota;
   }
@@ -1277,8 +1281,12 @@ function editarScout(id) {
   document.getElementById('modal-scout-title').textContent = 'Editar Scout';
   document.getElementById('scout-goleira').value = s.goalkeeperId || '';
   document.getElementById('scout-partida').value = s.partidaId || '';
-  const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai','nota'];
+  const fields = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','tchmed','tc1x1','tchala','tchst','dpc','dpe','dmc','dme','int','pose','posd','sai'];
   fields.forEach(f => { const el = document.getElementById('s-'+f); if(el) el.value = s[f] || 0; });
+  // A nota só volta ao campo (sobreposição manual) se foi realmente digitada à mão.
+  // Notas calculadas automaticamente ficam em branco para recalcular ao salvar.
+  const notaEl = document.getElementById('s-nota');
+  if (notaEl) notaEl.value = (s.notaManual === false) ? '' : (s.nota || '');
   openModal('modal-scout');
   atualizarNotaPreview();
 }
@@ -1329,7 +1337,7 @@ function renderScouts() {
     const pos = (+s.pose||0)+(+s.posd||0);
     const nota = calcPerformance(s);
     const { label, cls } = classifyPerf(nota);
-    const isManual = s.nota && !isNaN(parseFloat(s.nota));
+    const isManual = (s.notaManual !== undefined) ? s.notaManual : (s.nota && !isNaN(parseFloat(s.nota)));
     const notaHtml = nota !== null
       ? `<span class="badge ${cls}" title="${isManual ? 'Nota manual' : 'Calculada automaticamente'}">${nota} <small style="opacity:.7">${label}</small></span>`
       : '<span style="color:var(--muted)">—</span>';
@@ -2384,6 +2392,7 @@ document.querySelector('[onclick="openModal(\'modal-goleira\')"]')?.addEventList
   var _m=document.getElementById('gk-modalidade'); if(_m) _m.value='futsal';
   var _c=document.getElementById('gk-consent'); if(_c) _c.checked=false;
   var _cr=document.getElementById('gk-consent-resp'); if(_cr) _cr.value='';
+  if (typeof clearFoto === 'function') clearFoto();
 });
 document.querySelector('[onclick="openModal(\'modal-partida\')"]')?.addEventListener('click', () => {
   editingId.partida = null;
@@ -3611,7 +3620,14 @@ function mcRenderButtons() {
     bb.style.background = _mcMod === 'beach' ? on : 'none'; bb.style.color = _mcMod === 'beach' ? onc : 'var(--muted)';
   }
 }
-function mcSetModalidade(m) { _mcMod = (m === 'beach') ? 'beach' : 'futsal'; mcRenderButtons(); _mcRefreshPeriodUI(); }
+function mcSetModalidade(m) {
+  _mcMod = (m === 'beach') ? 'beach' : 'futsal';
+  // Evita exibir um período inexistente ao trocar de modalidade (ex.: 3º tempo no futsal).
+  const _n = _mcPeriods().n;
+  if (mcPeriodo > _n) mcPeriodo = _n;
+  mcRenderButtons();
+  _mcRefreshPeriodUI();
+}
 
 // Regras de tempo por modalidade: Futsal = 2 tempos de 20 min; Beach = 3 períodos de 12 min
 function _mcPeriods() { return _mcMod === 'beach' ? { n: 3, sec: 720, lbl: 'Período' } : { n: 2, sec: 1200, lbl: 'Tempo' }; }
@@ -8470,9 +8486,9 @@ async function syncAllToCloud() {
   toast('Sincronizando dados com a nuvem…', 'info');
   try {
     await Promise.all([
-      ...goleiras.map(g => { const {id,...r} = g; return rtdbPut('/goleiras/'+id, r); }),
-      ...partidas.map(p => { const {id,...r} = p; return rtdbPut('/partidas/'+id, r); }),
-      ...scouts.map(s  => { const {id,...r} = s; return rtdbPut('/scouts/'+id, r); }),
+      ...goleiras.map(g => { const {id,...r} = g; return rtdbPut(_cp('/goleiras/'+id), r); }),
+      ...partidas.map(p => { const {id,...r} = p; return rtdbPut(_cp('/partidas/'+id), r); }),
+      ...scouts.map(s  => { const {id,...r} = s; return rtdbPut(_cp('/scouts/'+id), r); }),
     ]);
     // Visual flash to signal success
     const flash = document.createElement('div');
