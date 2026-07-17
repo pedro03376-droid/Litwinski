@@ -3609,7 +3609,27 @@ function mcRenderButtons() {
     bb.style.background = _mcMod === 'beach' ? on : 'none'; bb.style.color = _mcMod === 'beach' ? onc : 'var(--muted)';
   }
 }
-function mcSetModalidade(m) { _mcMod = (m === 'beach') ? 'beach' : 'futsal'; mcRenderButtons(); }
+function mcSetModalidade(m) { _mcMod = (m === 'beach') ? 'beach' : 'futsal'; mcRenderButtons(); _mcRefreshPeriodUI(); }
+
+// Regras de tempo por modalidade: Futsal = 2 tempos de 20 min; Beach = 3 períodos de 12 min
+function _mcPeriods() { return _mcMod === 'beach' ? { n: 3, sec: 720, lbl: 'Período' } : { n: 2, sec: 1200, lbl: 'Tempo' }; }
+const _MC_ORD = ['', '1º', '2º', '3º', '4º'];
+function _mcRefreshPeriodUI() {
+  const info = _mcPeriods();
+  const badge = document.getElementById('mc-periodo-badge');
+  if (badge) {
+    badge.textContent = (_MC_ORD[mcPeriodo] || '1º') + ' ' + info.lbl.toUpperCase() + ' · ' + (info.sec / 60) + ' min';
+    const p1 = mcPeriodo <= 1;
+    badge.style.background = p1 ? 'rgba(59,130,246,.1)' : 'rgba(245,158,11,.1)';
+    badge.style.color = p1 ? 'var(--primary)' : 'var(--warning)';
+    badge.style.borderColor = p1 ? 'rgba(59,130,246,.3)' : 'rgba(245,158,11,.3)';
+  }
+  const btn = document.getElementById('mc-btn-2t');
+  if (btn) {
+    if (mcPeriodo >= info.n) btn.style.display = 'none';
+    else btn.textContent = '⏩ ' + _MC_ORD[mcPeriodo + 1] + ' ' + info.lbl;
+  }
+}
 
 let mcData = {};
 let mcLog = [];
@@ -3713,6 +3733,7 @@ function mcSyncModalidadeFromGk() {
   const g = gkId && DB.goleiras.find(x => x.id === gkId);
   _mcMod = (g && g.modalidade === 'beach') ? 'beach' : 'futsal';
   mcRenderButtons();
+  _mcRefreshPeriodUI();
 }
 
 function mcOnPartidaChange() {
@@ -3744,7 +3765,7 @@ function mcToggleTimer() {
     clearInterval(mcTimerInterval); mcTimerInterval=null; mcRunning=false;
     if (btn) btn.innerHTML='▶ Continuar';
     if (dot) { dot.style.background='var(--warning)'; dot.style.animation=''; }
-    if (btn2t && mcPeriodo===1) btn2t.style.display='inline-flex';
+    if (btn2t && mcPeriodo < _mcPeriods().n) { btn2t.textContent = '⏩ ' + _MC_ORD[mcPeriodo + 1] + ' ' + _mcPeriods().lbl; btn2t.style.display = 'inline-flex'; }
   } else {
     mcRunning=true;
     if (btn) btn.innerHTML='⏸ Pausar';
@@ -4262,22 +4283,24 @@ function mcAjustarPlacar(team, delta) {
 
 // ── Segundo Tempo ────────────────────────────────────────────
 function mcIniciarSegundoTempo() {
-  if (mcPeriodo===2) return;
-  if (!confirm('Iniciar 2º Tempo?\nO cronômetro será zerado e os eventos da goleira atual serão salvos como 1º Tempo.')) return;
-  mcSnapshotGkSegmento('1T');
-  mcPeriodo=2;
+  const info = _mcPeriods();
+  if (mcPeriodo >= info.n) return;
+  const nextP = mcPeriodo + 1;
+  const ord = _MC_ORD[nextP];
+  if (!confirm('Iniciar ' + ord + ' ' + info.lbl + '?\nO cronômetro será zerado e os eventos do período atual serão salvos.')) return;
+  mcSnapshotGkSegmento(mcPeriodo + 'T');
+  mcPeriodo = nextP;
   if (mcRunning) mcToggleTimer();
-  mcSeconds=0;
-  document.getElementById('mc-timer').textContent='00:00';
-  MC_FIELDS.forEach(f=>mcData[f]=0);
+  mcSeconds = 0;
+  const tel = document.getElementById('mc-timer'); if (tel) tel.textContent = '00:00';
+  MC_FIELDS.forEach(f => mcData[f] = 0);
   mcUpdateCounters();
-  const badge=document.getElementById('mc-periodo-badge');
-  if(badge){badge.textContent='2º TEMPO';badge.style.background='rgba(245,158,11,.1)';badge.style.color='var(--warning)';badge.style.borderColor='rgba(245,158,11,.3)';}
-  document.getElementById('mc-btn-2t').style.display='none';
-  mcLog.unshift({key:'_periodo',label:'─── 2º Tempo ───',tipo:'periodo',time:'00:00',periodo:2,sec:0});
+  _mcRefreshPeriodUI();
+  document.getElementById('mc-btn-2t').style.display = 'none';
+  mcLog.unshift({ key: '_periodo', label: '─── ' + ord + ' ' + info.lbl + ' ───', tipo: 'periodo', time: '00:00', periodo: nextP, sec: 0 });
   mcUpdateLog();
   mcUpdatePeriodStats();
-  toast('2º Tempo iniciado — cronômetro zerado!','info');
+  toast(ord + ' ' + info.lbl + ' iniciado — cronômetro zerado!', 'info');
 }
 
 // ── Tempo Técnico ─────────────────────────────────────────────
@@ -4445,8 +4468,7 @@ function mcSalvarEFechar() {
   document.getElementById('mc-highlights').innerHTML='<div style="color:var(--muted);font-size:12px;text-align:center;padding:8px 0;">Registre eventos para ver destaques</div>';
   document.getElementById('mc-event-count').textContent='0 eventos';
   mcUpdateNotaUI();
-  const badge=document.getElementById('mc-periodo-badge');
-  if(badge){badge.textContent='1º TEMPO';badge.style.background='rgba(59,130,246,.1)';badge.style.color='var(--primary)';badge.style.borderColor='rgba(59,130,246,.3)';}
+  _mcRefreshPeriodUI();
   const undoBtn=document.getElementById('mc-btn-undo');
   if(undoBtn){undoBtn.disabled=true;undoBtn.style.opacity='.5';}
   navigate('scout');
