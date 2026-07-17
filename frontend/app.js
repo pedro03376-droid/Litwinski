@@ -5341,6 +5341,7 @@ async function _googleLoginSuccess(user) {
     }
     // Auth confirmada → token do Firebase disponível: baixa os dados do clube
     try { cloudPullCore(false); cloudPullNew(true); } catch (e) {}
+    try { setTimeout(_maybeShowWelcome, 1500); } catch (e) {}
   } catch(e) {
     console.error('[GKHub] _googleLoginSuccess error:', e);
     // Force navigation even if something fails
@@ -6174,6 +6175,35 @@ function joinClubKey() {
   toast('Código atualizado. Recarregando para sincronizar…', 'success');
   setTimeout(() => location.reload(), 900);
 }
+// Aviso único: mostra o código do clube e alerta para não usar de outro clube
+function _maybeShowWelcome() {
+  if (localStorage.getItem('gkhub_welcome_seen')) return;
+  if (document.getElementById('twofa-lock')) return;              // aguarda 2FA
+  const ov = document.getElementById('auth-overlay');
+  if (ov && !ov.classList.contains('hidden')) return;            // ainda no login
+  const key = _cloudClubKey();
+  let m = document.getElementById('welcome-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'welcome-modal'; m.className = 'modal-backdrop'; document.body.appendChild(m); }
+  m.innerHTML = `
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-header"><span class="modal-title">👋 Bem-vindo(a) ao GK Hub</span></div>
+      <div class="modal-body" style="font-size:13px;line-height:1.6;">
+        <p>Este é o <b>código do SEU clube</b> na nuvem:</p>
+        <div style="display:flex;gap:8px;align-items:center;margin:10px 0;">
+          <code style="flex:1;background:var(--bg);padding:10px;border-radius:8px;font-size:14px;word-break:break-all;">${_esc(key)}</code>
+          <button class="btn btn-secondary btn-sm" onclick="copyClubKey()">Copiar</button>
+        </div>
+        <div style="background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px;color:var(--text);">
+          ⚠️ <b>Importante:</b><br>
+          • Compartilhe este código <b>apenas com a sua comissão técnica</b>.<br>
+          • <b>NÃO</b> insira o código de outro clube — cada clube tem o seu, e os dados <b>nunca se misturam</b>.
+        </div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-primary" onclick="_dismissWelcome()">Entendi</button></div>
+    </div>`;
+  openModal('welcome-modal');
+}
+function _dismissWelcome() { localStorage.setItem('gkhub_welcome_seen', '1'); closeModal('welcome-modal'); }
 
 function rtdbPath(path) {
   return rtdbUrl + path + '.json';
@@ -8184,6 +8214,7 @@ try { _updateScrollUI(); setTimeout(_updateScrollUI, 700); } catch (e) {}
 initFirebaseFromStorage();
 // Baixa (mescla) os dados da nuvem ao abrir — quem entra pela 1ª vez já vê o clube
 try { cloudPullCore(false); } catch (e) {}
+try { setTimeout(_maybeShowWelcome, 2500); } catch (e) {}
 try { cloudPullNew(true).then(c => { if (c) { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a === 'dashboard') refreshDashboard(); updateNotifBadge(); } }); } catch (e) {}
 
 // ═══════════════════════════════════════════════════════════
