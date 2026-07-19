@@ -2988,6 +2988,7 @@ function gerarAnalise(gkId) {
 }
 
 function exportarAnalisePDF() {
+  if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   const gkId = analiseGkId;
@@ -3016,9 +3017,9 @@ function exportarAnalisePDF() {
     startY: 42,
     head:[['Métrica','Valor','Avaliação']],
     body:[
-      ['Nota Geral', avgNota!==null?avgNota.toFixed(1)+'/10':'—', avgNota>=8.5?'Elite':avgNota>=7?'Excelente':avgNota>=5.5?'Boa':avgNota>=4?'Regular':'Em Desenvolvimento'],
-      ['Taxa de Defesa', taxaDef!==null?(taxaDef*100).toFixed(0)+'%':'—', taxaDef>=.85?'Excelente':taxaDef>=.70?'Boa':taxaDef>=.55?'Regular':'A melhorar'],
-      ['Precisão Distribuição', taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—', taxaDist>=.80?'Excelente':taxaDist>=.65?'Boa':'A melhorar'],
+      ['Nota Geral', avgNota!==null?avgNota.toFixed(1)+'/10':'—', avgNota===null?'—':avgNota>=8.5?'Elite':avgNota>=7?'Excelente':avgNota>=5.5?'Boa':avgNota>=4?'Regular':'Em Desenvolvimento'],
+      ['Taxa de Defesa', taxaDef!==null?(taxaDef*100).toFixed(0)+'%':'—', taxaDef===null?'—':taxaDef>=.85?'Excelente':taxaDef>=.70?'Boa':taxaDef>=.55?'Regular':'A melhorar'],
+      ['Precisão Distribuição', taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—', taxaDist===null?'—':taxaDist>=.80?'Excelente':taxaDist>=.65?'Boa':'A melhorar'],
       ['Total Defesas', totalDef.toString(), (totalDef/nP).toFixed(1)+'/jogo'],
       ['Gols Sofridos', totalGols.toString(), (totalGols/nP).toFixed(1)+'/jogo'],
       ['Interceptações', sum('int').toString(), (sum('int')/nP).toFixed(1)+'/jogo'],
@@ -3429,6 +3430,7 @@ function pdfIndividual() {
   const gkId = document.getElementById('pdf-gk-select').value;
   if (!gkId) { toast('Selecione um(a) goleiro(a)','error'); return; }
   const gk = DB.goleiras.find(g=>g.id===gkId);
+  if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   pdfHeader(doc, 'Relatório Individual — ' + gk.nome);
@@ -3460,6 +3462,7 @@ function pdfIndividual() {
 function pdfPartidas() {
   const partidas = DB.partidas;
   if (!partidas.length) { toast('Nenhuma partida registrada','error'); return; }
+  if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   pdfHeader(doc, 'Relatório de Partidas');
@@ -3498,6 +3501,7 @@ function pdfCompeticao() {
   if (!comp) { toast('Selecione uma competição', 'error'); return; }
   const partidas = DB.partidas.filter(p => (p.competicao || '') === comp);
   if (!partidas.length) { toast('Nenhuma partida nesta competição', 'error'); return; }
+  if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
   pdfHeader(doc, 'Relatório — ' + comp);
@@ -3512,10 +3516,11 @@ function pdfCompeticao() {
     const gkNome = gkMap[p.goalkeeperId] || '—';
     const gk2Nome = p.gk2Id ? (gkMap[p.gk2Id] || '—') : '';
     const gkCell = gk2Nome ? `${gkNome} (${p.periodo1||'1ºT'}) / ${gk2Nome} (${p.periodo2||'2ºT'})` : gkNome;
-    const r = p.gf > p.gc ? 'V' : p.gf < p.gc ? 'D' : 'E';
+    const hasScore = p.gf != null && p.gc != null;
+    const r = hasScore ? (p.gf > p.gc ? 'V' : p.gf < p.gc ? 'D' : 'E') : '';
     const ptScouts = scouts.filter(s => s.partidaId === p.id);
     const def = ptScouts.reduce((a,s) => a+(+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0), 0);
-    return [p.data ? formatDate(p.data) : '—', p.adversario, gkCell, `${r} ${p.gf}×${p.gc}`, def || '—', p.gc ?? '—'];
+    return [p.data ? formatDate(p.data) : '—', p.adversario, gkCell, hasScore ? `${r} ${p.gf}×${p.gc}` : '—', def || '—', p.gc ?? '—'];
   });
   doc.autoTable({
     startY: 56,
@@ -3559,9 +3564,10 @@ function pdfCompeticao() {
 
   // ── Resumo ──
   const totalJogos = partidas.length;
-  const vitorias = partidas.filter(p => p.gf > p.gc).length;
-  const derrotas = partidas.filter(p => p.gf < p.gc).length;
-  const empates  = partidas.filter(p => p.gf === p.gc).length;
+  const comPlacar = partidas.filter(p => p.gf != null && p.gc != null);
+  const vitorias = comPlacar.filter(p => p.gf > p.gc).length;
+  const derrotas = comPlacar.filter(p => p.gf < p.gc).length;
+  const empates  = comPlacar.filter(p => p.gf === p.gc).length;
   const y2 = doc.lastAutoTable.finalY + 10;
   doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
   doc.text('Resumo da Competição', 14, y2);
@@ -3570,7 +3576,7 @@ function pdfCompeticao() {
     body: [
       ['Partidas disputadas', totalJogos],
       ['Vitórias', vitorias], ['Empates', empates], ['Derrotas', derrotas],
-      ['Aproveitamento', totalJogos ? Math.round(((vitorias + empates*0.5)/totalJogos)*100)+'%' : '—'],
+      ['Aproveitamento', comPlacar.length ? Math.round(((vitorias + empates*0.5)/comPlacar.length)*100)+'%' : '—'],
     ],
     styles: { fontSize: 9 },
     columnStyles: { 0: { fontStyle: 'bold' } }
@@ -6365,6 +6371,9 @@ function openTpExerciseForm() {
     document.body.appendChild(modal);
   }
   ['name', 'objective', 'materials', 'description'].forEach(f => { const el = document.getElementById('tp-ex-' + f); if (el) el.value = ''; });
+  const _exCat = document.getElementById('tp-ex-category'); if (_exCat) _exCat.selectedIndex = 0;
+  const _exMin = document.getElementById('tp-ex-minutes'); if (_exMin) _exMin.value = '10';
+  const _exDif = document.getElementById('tp-ex-difficulty'); if (_exDif) _exDif.value = '3';
   openModal('tp-exercise-modal');
 }
 
@@ -6618,7 +6627,9 @@ function openTpSessionForm() {
       </div>`;
     document.body.appendChild(modal);
   }
-  ['title','location','category','objective'].forEach(f => { const el = document.getElementById('tp-f-' + f); if (el) el.value = ''; });
+  ['title','date','time','location','category','objective'].forEach(f => { const el = document.getElementById('tp-f-' + f); if (el) el.value = ''; });
+  const _dur = document.getElementById('tp-f-duration'); if (_dur) _dur.value = '60';
+  const _int = document.getElementById('tp-f-intensity'); if (_int) _int.value = '5';
   openModal('tp-session-modal');
 }
 
