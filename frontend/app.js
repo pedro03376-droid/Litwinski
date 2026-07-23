@@ -887,7 +887,9 @@ function salvarGoleira() {
     goleiras.push(obj);
   }
   DB.saveGoleiras(goleiras);
-  cloudSet('goleiras', editingId.goleira ? goleiras.find(g=>g.id===editingId.goleira) : obj);
+  const _savedG = editingId.goleira ? goleiras.find(g=>g.id===editingId.goleira) : obj;
+  cloudSet('goleiras', _savedG);
+  _pgMirrorGoleira(_savedG);   // espelho Postgres (Fase 1) — best-effort, desligado por padrão
   logAudit('Goleiros(as)', (editingId.goleira ? 'Atualizou' : 'Cadastrou') + ' o(a) goleiro(a) ' + nome);
   if (!editingId.goleira) pushNotif('info', 'Novo(a) goleiro(a)', nome + ' foi cadastrada.');
   closeModal('modal-goleira');
@@ -7374,6 +7376,51 @@ const api = {
   patch:  (path, body) => apiRequest('PATCH',  path, body),
   delete: (path)       => apiRequest('DELETE', path),
 };
+
+/* ── ESPELHO POSTGRES (Fase 1 — piloto de goleiros) ─────────────────
+   Copia cada goleiro salvo para o backend (fonte da verdade durável),
+   SEM mexer no fluxo atual: o Firebase continua principal.
+   - DESLIGADO por padrão. Ligue com localStorage 'gkhub_pg_mirror' = '1'.
+   - Best-effort: qualquer falha é silenciosa e nunca trava o app.
+   - Idempotente no servidor (create-or-update por externalId+teamId),
+     então não gera duplicatas.
+   ------------------------------------------------------------------ */
+function _pgMirrorOn() {
+  try { return localStorage.getItem('gkhub_pg_mirror') === '1'; } catch (e) { return false; }
+}
+function _pgNum(v, min, max) {
+  const n = parseFloat(v);
+  if (!isFinite(n) || n < min || n > max) return undefined;
+  return n;
+}
+function _pgMirrorGoleira(g) {
+  // Só espelha se: ligado, conectado ao backend (token), com clube do backend
+  // e com os campos mínimos exigidos (nome, nascimento, categoria).
+  if (!_pgMirrorOn() || !g) return;
+  if (typeof _apiToken !== 'function' || !_apiToken()) return;
+  const teamId = (typeof _activeWorkspaceId !== 'undefined' && _activeWorkspaceId) ? _activeWorkspaceId : null;
+  if (!teamId) return;
+  if (!g.nome || !g.nasc || !g.categoria) return;
+
+  const hand = g.mao === 'Esquerda' ? 'left' : g.mao === 'Direita' ? 'right' : undefined;
+  const foot = g.pe === 'Esquerdo' ? 'left' : (g.pe === 'Direito' || g.pe === 'Ambidestro') ? 'right' : undefined;
+  const payload = {
+    externalId: String(g.id),
+    teamId,
+    name: String(g.nome).slice(0, 100),
+    birthDate: g.nasc,
+    category: String(g.categoria).slice(0, 50),
+    height: _pgNum(g.altura, 100, 230),
+    weight: _pgNum(g.peso, 30, 200),
+    jerseyNumber: _pgNum(g.num, 1, 99),
+    dominantHand: hand,
+    dominantFoot: foot,
+    observations: g.obs || undefined,
+  };
+  Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+  // dispara e esquece — nunca bloqueia o salvamento local
+  try { api.post('/goalkeepers/sync', payload).catch(() => {}); } catch (e) { /* silencioso */ }
+}
 
 /* ── Backend Connect UI ──────────────────────────────── */
 function _renderBackendStatus() {

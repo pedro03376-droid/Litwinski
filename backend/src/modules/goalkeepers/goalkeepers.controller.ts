@@ -28,6 +28,7 @@ import {
   GoalkeepersService,
   CreateGoalkeeperDto,
   UpdateGoalkeeperDto,
+  SyncGoalkeeperDto,
   EvolutionPeriod,
 } from './goalkeepers.service';
 
@@ -162,6 +163,24 @@ export class GoalkeepersController {
   @ApiResponse({ status: 403, description: 'Forbidden.' })
   create(@Body() createGoalkeeperDto: CreateGoalkeeperDto) {
     return this.goalkeepersService.create(createGoalkeeperDto);
+  }
+
+  // ─── POST /goalkeepers/sync ────────────────────────────────────────────────
+
+  @Post('sync')
+  @Roles(UserRole.ADMIN, UserRole.TECHNICAL_STAFF)
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Espelho (create-or-update) de um goleiro vindo do app',
+    description:
+      'Idempotente por (teamId, externalId): cria se não existir, atualiza se já existir. ' +
+      'Não gera duplicatas. Admin ou Comissão Técnica.',
+  })
+  @ApiResponse({ status: 200, description: 'Goleiro criado ou atualizado.' })
+  @ApiResponse({ status: 400, description: 'externalId/teamId ausentes ou dados inválidos.' })
+  @ApiResponse({ status: 403, description: 'Forbidden.' })
+  syncFromClient(@Body() dto: SyncGoalkeeperDto) {
+    return this.goalkeepersService.syncFromClient(dto);
   }
 
   // ─── PATCH /goalkeepers/:id ────────────────────────────────────────────────

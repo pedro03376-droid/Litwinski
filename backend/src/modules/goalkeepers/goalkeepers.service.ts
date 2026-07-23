@@ -112,6 +112,29 @@ export class UpdateGoalkeeperDto {
   @ApiPropertyOptional() @IsOptional() @IsBoolean() isActive?: boolean;
 }
 
+// DTO do espelho do cliente: exige externalId + teamId; o restante é opcional
+// e permissivo (best-effort), para não rejeitar cadastros parciais do app.
+export class SyncGoalkeeperDto {
+  @ApiProperty({ description: 'ID do registro no cliente (app)' })
+  @IsString() externalId: string;
+
+  @ApiProperty({ description: 'UUID do clube/time no backend' })
+  @IsString() teamId: string;
+
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(100) name: string;
+  @ApiProperty({ description: 'Data de nascimento (YYYY-MM-DD)' })
+  @IsDateString() birthDate: string;
+  @ApiProperty() @IsString() @MinLength(1) @MaxLength(50) category: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(100) @Max(230) height?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber({ maxDecimalPlaces: 2 }) @Min(30) @Max(200) weight?: number;
+  @ApiPropertyOptional({ enum: DominantHand }) @IsOptional() @IsEnum(DominantHand) dominantHand?: DominantHand;
+  @ApiPropertyOptional({ enum: DominantFoot }) @IsOptional() @IsEnum(DominantFoot) dominantFoot?: DominantFoot;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(99) jerseyNumber?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) nationality?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() observations?: string;
+}
+
 export class PaginatedGoalkeepers {
   data: Goalkeeper[];
   total: number;
@@ -275,6 +298,48 @@ export class GoalkeepersService {
     }
 
     return goalkeeper;
+  }
+
+  /**
+   * Espelho vindo do cliente: cria OU atualiza pelo par (teamId, externalId),
+   * de forma idempotente — chamar várias vezes não gera duplicatas.
+   * Usado pela sincronização do app (fonte da verdade no Postgres).
+   */
+  async syncFromClient(dto: SyncGoalkeeperDto): Promise<Goalkeeper> {
+    if (!dto.externalId) throw new BadRequestException('externalId is required');
+    if (!dto.teamId) throw new BadRequestException('teamId is required');
+
+    const fields: Record<string, unknown> = {
+      name: dto.name?.trim(),
+      birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+      category: dto.category?.trim(),
+      height: dto.height,
+      weight: dto.weight,
+      dominantHand: dto.dominantHand,
+      dominantFoot: dto.dominantFoot,
+      jerseyNumber: dto.jerseyNumber,
+      nationality: dto.nationality,
+      observations: dto.observations,
+    };
+    // Remove chaves indefinidas para não sobrescrever com undefined.
+    Object.keys(fields).forEach((k) => fields[k] === undefined && delete fields[k]);
+
+    const existing = await this.goalkeeperRepository.findOne({
+      where: { externalId: dto.externalId, teamId: dto.teamId },
+    });
+    if (existing) {
+      Object.assign(existing, fields);
+      return this.goalkeeperRepository.save(existing);
+    }
+    const created = this.goalkeeperRepository.create({
+      ...fields,
+      externalId: dto.externalId,
+      teamId: dto.teamId,
+      dominantHand: dto.dominantHand ?? DominantHand.RIGHT,
+      dominantFoot: dto.dominantFoot ?? DominantFoot.RIGHT,
+      isActive: true,
+    });
+    return this.goalkeeperRepository.save(created);
   }
 
   /**

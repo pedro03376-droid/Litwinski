@@ -1,6 +1,6 @@
 import {
   Entity, PrimaryGeneratedColumn, Column, CreateDateColumn,
-  UpdateDateColumn, ManyToOne, OneToMany, JoinColumn,
+  UpdateDateColumn, ManyToOne, OneToMany, JoinColumn, Index,
 } from 'typeorm';
 import { Team } from '../../teams/entities/team.entity';
 import { Match } from '../../matches/entities/match.entity';
@@ -14,6 +14,12 @@ export enum DominantFoot { RIGHT = 'right', LEFT = 'left' }
 export class Goalkeeper {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  // Código de origem: id do registro no aparelho/cliente. Permite espelhar
+  // (criar-ou-atualizar) sem duplicar. Único por clube (teamId + externalId).
+  @Index()
+  @Column({ nullable: true })
+  externalId?: string;
 
   @Column()
   name: string;
