@@ -1,4 +1,4 @@
-const CACHE = 'gkhub-v61';
+const CACHE = 'gkhub-v62';
 
 const PRECACHE = [
   './',

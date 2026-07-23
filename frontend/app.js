@@ -6375,8 +6375,26 @@ function _cloudClubKey() {
   }
   return k;
 }
-function _cloudNS() { return 'clubs/' + String(_cloudClubKey()).replace(/[.#$/\[\]]/g, '_'); }
+// Segmento seguro do clube (mesma sanitização usada no caminho da nuvem e nas regras).
+function _cloudClubSeg() { return String(_cloudClubKey()).replace(/[.#$/\[\]]/g, '_'); }
+function _cloudNS() { return 'clubs/' + _cloudClubSeg(); }
 function _cp(sub) { return '/' + _cloudNS() + sub; } // caminho na nuvem com o namespace do clube
+
+// Registra que ESTE usuário é membro do clube atual: /clubMembers/<clube>/<uid> = true.
+// É o que permite às regras do Firebase liberarem o acesso só para membros do clube,
+// sem trancar ninguém para fora (cada um só grava a própria associação).
+let _membershipEnsuredFor = null;
+async function _ensureClubMembership() {
+  if (!rtdbUrl) return;
+  const u = (typeof _firebaseAuth !== 'undefined' && _firebaseAuth) ? _firebaseAuth.currentUser : null;
+  if (!u || !u.uid) return;
+  const seg = _cloudClubSeg();
+  if (_membershipEnsuredFor === seg) return;
+  try {
+    await rtdbPut('/clubMembers/' + seg + '/' + u.uid, true);
+    _membershipEnsuredFor = seg;
+  } catch (e) { /* silencioso: nunca bloqueia o app */ }
+}
 function _renderClubKey() { const el = document.getElementById('club-key-display'); if (el) el.textContent = _cloudClubKey(); }
 function copyClubKey() { const k = _cloudClubKey(); if (navigator.clipboard) navigator.clipboard.writeText(k); toast('Código copiado. Compartilhe só com a sua comissão.', 'success'); }
 function joinClubKey() {
@@ -7699,6 +7717,7 @@ async function cloudPullNew(silent) {
 // Sincronizar). Remoto vence por registro; mantém itens locais ainda não enviados.
 async function cloudPullCore(silent) {
   if (!rtdbUrl) return 0;
+  await _ensureClubMembership();   // garante acesso do usuário ao clube antes de ler
   let changed = 0;
   for (const col of ['goleiras', 'partidas', 'scouts']) {
     try {
@@ -7727,6 +7746,7 @@ async function cloudSyncNow() {
   if (!rtdbUrl) { toast('Nuvem não conectada.', 'info'); return; }
   toast('Sincronizando…', 'info');
   try {
+    await _ensureClubMembership();          // registra a associação ao clube (regras do Firebase)
     await cloudPullCore(true);              // baixa dados principais da nuvem (mescla)
     await cloudPullNew(true);               // baixa coleções novas (mescla)
     // envia o estado local completo para o espaço do clube
@@ -8663,6 +8683,7 @@ async function syncAllToCloud() {
 
   toast('Sincronizando dados com a nuvem…', 'info');
   try {
+    await _ensureClubMembership();   // garante a associação ao clube antes de escrever
     await Promise.all([
       ...goleiras.map(g => { const {id,...r} = g; return rtdbPut(_cp('/goleiras/'+id), r); }),
       ...partidas.map(p => { const {id,...r} = p; return rtdbPut(_cp('/partidas/'+id), r); }),
