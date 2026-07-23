@@ -4800,6 +4800,173 @@ function _pdfHeatmap(data,totalDef,totalGol) {
   return cv;
 }
 
+// ── Compartilhar relatório pós-jogo (imagem + WhatsApp) ──────
+// Reúne os números-chave da partida atual (mesma base do relatório em tela).
+function _mcShareData() {
+  const segs = mcCurrentReportSegs || mcPendingSegmentos || [];
+  if (!segs.length) return null;
+  const partida = DB.partidas.find(p => p.id === (mcPendingPId || segs[0]?.partidaId));
+  const gkIds = [...new Set(segs.map(s => s.gkId))];
+  const clb = (function(){ try { return JSON.parse(localStorage.getItem('gkhub_club_settings')||'{}'); } catch(e){ return {}; } })();
+  const gks = gkIds.map(gkId => {
+    const gk = DB.goleiras.find(g => g.id === gkId);
+    const gkSegs = segs.filter(s => s.gkId === gkId);
+    const sum = f => gkSegs.reduce((a,s) => a + (+s.data[f]||0), 0);
+    const def = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
+    const gol = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+    const distC = sum('dpc')+sum('dmc'), distE = sum('dpe')+sum('dme');
+    const distT = distC + distE;
+    const taxaDist = distT > 0 ? distC/distT : null;
+    const nota = mcNotaAtual;
+    const nivel = nota>=9?'Elite':nota>=7.5?'Destaque':nota>=6?'Competitiva':nota>=4.5?'Em Desenvolvimento':'Necessita Evolução';
+    const cor = nota>=9?'#34D399':nota>=7.5?'#3B82F6':nota>=6?'#F59E0B':nota>=4.5?'#94A3B8':'#EF4444';
+    return { nome: gk?.nome || 'Goleiro(a)', nota, nivel, cor, def, gol, intercep: sum('int'),
+             taxaDist: taxaDist!==null ? Math.round(taxaDist*100)+'%' : '—', streak: mcMaxStreak };
+  });
+  const hasResult = partida && partida.gf != null && partida.gc != null;
+  return {
+    clube: clb.display || clb.nome || 'GK Hub',
+    adversario: partida?.adversario || '',
+    data: partida?.data ? formatDate(partida.data) : '',
+    tempo: mcFormatTime(mcSeconds),
+    periodos: segs.length,
+    placar: hasResult ? `${partida.gf}×${partida.gc}` : '',
+    resultado: hasResult ? (partida.gf>partida.gc?'Vitória':partida.gf<partida.gc?'Derrota':'Empate') : '',
+    gks
+  };
+}
+
+function _mcShareText(d) {
+  const linhas = [];
+  linhas.push(`🧤 Relatório Pós-Jogo — ${d.clube}`);
+  if (d.adversario) linhas.push(`🆚 ${d.adversario}${d.data?' · '+d.data:''}${d.placar?' · '+d.placar+(d.resultado?' ('+d.resultado+')':''):''}`);
+  linhas.push(`⏱ ${d.tempo} jogados · ${d.periodos} período(s)`);
+  d.gks.forEach(g => {
+    linhas.push('');
+    linhas.push(`👤 ${g.nome} — Nota ${g.nota.toFixed(1)}/10 (${g.nivel})`);
+    linhas.push(`🧤 Defesas: ${g.def} · 🥅 Gols sofridos: ${g.gol}`);
+    linhas.push(`🎯 Precisão distribuição: ${g.taxaDist} · 🔥 Maior sequência: ${g.streak} def.`);
+  });
+  linhas.push('');
+  linhas.push('Gerado no GK Hub');
+  return linhas.join('\n');
+}
+
+// Desenha o card-resumo num canvas e devolve um Blob PNG (sem dependências externas).
+function _mcShareCanvas(d) {
+  const SC = 2; // densidade para nitidez
+  const W = 540;
+  const headerH = 132, matchH = d.adversario ? 44 : 0;
+  const gkH = 196;
+  const H = 40 + headerH + matchH + d.gks.length * (gkH + 14) + 44;
+  const cv = document.createElement('canvas');
+  cv.width = W * SC; cv.height = H * SC;
+  const ctx = cv.getContext('2d');
+  ctx.scale(SC, SC);
+  const rrect = (x,y,w,h,r) => { ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); };
+  // fundo
+  ctx.fillStyle = '#0d0d1a'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle = '#3b82f6'; ctx.fillRect(0,0,W,4);
+  let y = 26;
+  // cabeçalho
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#00d4ff'; ctx.font = '800 26px Inter, Arial, sans-serif';
+  ctx.fillText(d.clube, 24, y+8);
+  ctx.fillStyle = '#b4b4c8'; ctx.font = '600 13px Inter, Arial, sans-serif';
+  ctx.fillText('RELATÓRIO PÓS-JOGO', 24, y+30);
+  ctx.fillStyle = '#6b7280'; ctx.font = '500 12px Inter, Arial, sans-serif';
+  ctx.fillText(`⏱ ${d.tempo} jogados · ${d.periodos} período(s)`, 24, y+50);
+  y += headerH - 46;
+  // faixa da partida
+  if (d.adversario) {
+    rrect(24, y, W-48, 32, 10); ctx.fillStyle = 'rgba(59,130,246,0.10)'; ctx.fill();
+    ctx.fillStyle = '#e8e8f4'; ctx.font = '700 14px Inter, Arial, sans-serif';
+    ctx.fillText(`🆚 ${d.adversario}${d.data?'  ·  '+d.data:''}`, 36, y+21);
+    if (d.placar) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = d.resultado==='Vitória'?'#34D399':d.resultado==='Derrota'?'#EF4444':'#F59E0B';
+      ctx.font = '800 15px Inter, Arial, sans-serif';
+      ctx.fillText(`${d.placar}  ${d.resultado}`, W-36, y+21);
+      ctx.textAlign = 'left';
+    }
+    y += 44;
+  }
+  // blocos por goleiro(a)
+  d.gks.forEach(g => {
+    rrect(24, y, W-48, gkH, 14); ctx.fillStyle = '#131324'; ctx.fill();
+    ctx.strokeStyle = 'rgba(59,130,246,0.18)'; ctx.lineWidth = 1; ctx.stroke();
+    // nota grande
+    ctx.textAlign = 'center';
+    ctx.fillStyle = g.cor; ctx.font = '900 46px Inter, Arial, sans-serif';
+    ctx.fillText(g.nota.toFixed(1), 92, y+56);
+    ctx.fillStyle = '#6b7280'; ctx.font = '700 9px Inter, Arial, sans-serif';
+    ctx.fillText('NOTA FINAL', 92, y+74);
+    // nome + nível
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#ffffff'; ctx.font = '800 20px Inter, Arial, sans-serif';
+    ctx.fillText(g.nome, 168, y+38);
+    ctx.fillStyle = g.cor; ctx.font = '800 18px Inter, Arial, sans-serif';
+    ctx.fillText(g.nivel, 168, y+62);
+    ctx.fillStyle = '#94a3b8'; ctx.font = '500 12px Inter, Arial, sans-serif';
+    ctx.fillText(`🔥 Maior sequência: ${g.streak} defesas`, 168, y+84);
+    // tiles
+    const tiles = [
+      { l:'DEFESAS', v:String(g.def), c:'#3B82F6' },
+      { l:'GOLS SOFR.', v:String(g.gol), c:'#EF4444' },
+      { l:'INTERCEP.', v:String(g.intercep), c:'#6EE7B7' },
+      { l:'PREC. DIST.', v:g.taxaDist, c:'#F59E0B' },
+    ];
+    const tW = (W-48-16-3*8)/4, tY = y+104, tH = 68;
+    tiles.forEach((t,i) => {
+      const tX = 32 + i*(tW+8);
+      rrect(tX, tY, tW, tH, 10); ctx.fillStyle = '#1a1a30'; ctx.fill();
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#6b7280'; ctx.font = '700 8px Inter, Arial, sans-serif';
+      ctx.fillText(t.l, tX+tW/2, tY+20);
+      ctx.fillStyle = t.c; ctx.font = '800 26px Inter, Arial, sans-serif';
+      ctx.fillText(t.v, tX+tW/2, tY+50);
+    });
+    ctx.textAlign = 'left';
+    y += gkH + 14;
+  });
+  // rodapé
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#4b5563'; ctx.font = '600 11px Inter, Arial, sans-serif';
+  ctx.fillText('Gerado no GK Hub · Plataforma de Desenvolvimento de Goleiros(as)', W/2, H-18);
+  return new Promise(res => cv.toBlob(b => res(b), 'image/png', 0.95));
+}
+
+async function mcCompartilharRelatorio() {
+  const d = _mcShareData();
+  if (!d) { toast('Nenhum dado para compartilhar', 'error'); return; }
+  const texto = _mcShareText(d);
+  let blob = null;
+  try { blob = await _mcShareCanvas(d); } catch(e) { blob = null; }
+  // 1) Web Share API com imagem (ideal no celular: WhatsApp, etc.)
+  if (blob && navigator.canShare) {
+    const file = new File([blob], 'relatorio-pos-jogo.png', { type: 'image/png' });
+    if (navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: 'Relatório Pós-Jogo', text: texto });
+        return;
+      } catch(e) { if (e && e.name === 'AbortError') return; /* segue para fallback */ }
+    }
+  }
+  // 2) Web Share só de texto (se suportado)
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Relatório Pós-Jogo', text: texto }); return; }
+    catch(e) { if (e && e.name === 'AbortError') return; }
+  }
+  // 3) Fallback desktop: baixa a imagem e abre o WhatsApp Web com o texto
+  if (blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'relatorio-pos-jogo.png'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+  window.open('https://wa.me/?text=' + encodeURIComponent(texto), '_blank');
+  toast('Imagem baixada e WhatsApp aberto com o resumo', 'success');
+}
+
 // ── PDF Profissional ─────────────────────────────────────────
 function mcExportarRelatorioPDF() {
   try { _mcExportarRelatorioPDFImpl(); } catch(e) { console.error('PDF error:',e); toast('Erro ao gerar PDF: '+e.message,'error'); }
