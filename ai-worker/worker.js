@@ -91,8 +91,16 @@ export default {
         }
       );
       const data = await r.json();
+      // Se a Gemini devolveu um erro (chave inválida, modelo, cota…), mostra o motivo.
+      if (data && data.error) {
+        return json({ analysis: null, error: 'gemini_error', status: r.status, detail: String((data.error && data.error.message) || '').slice(0, 400) });
+      }
       let text = ((data && data.candidates && data.candidates[0] && data.candidates[0].content &&
         data.candidates[0].content.parts) || []).map(p => p.text || '').join('').trim();
+      if (!text) {
+        const fr = data && data.candidates && data.candidates[0] && data.candidates[0].finishReason;
+        return json({ analysis: null, error: 'empty', detail: (fr ? 'finishReason=' + fr + ' ' : '') + JSON.stringify(data).slice(0, 300) });
+      }
       // remove cercas de código, se houver
       text = text.replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
       let parsed = null;
@@ -100,7 +108,7 @@ export default {
         const s = text.indexOf('{'), e2 = text.lastIndexOf('}');
         if (s >= 0 && e2 > s) { try { parsed = JSON.parse(text.slice(s, e2 + 1)); } catch (e3) {} }
       }
-      if (!parsed) return json({ analysis: null, error: 'parse_failed' });
+      if (!parsed) return json({ analysis: null, error: 'parse_failed', detail: text.slice(0, 300) });
       return json({ analysis: coerce(parsed) });
     } catch (e) {
       return json({ analysis: null, error: 'gemini_failed' });
