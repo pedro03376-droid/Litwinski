@@ -5529,25 +5529,9 @@ async function _googleLoginSuccess(user) {
     const overlay = document.getElementById('auth-overlay');
     if (overlay) overlay.classList.add('hidden');
     _updateSidebarUser();
-    // Exchange the Firebase ID token for a backend JWT so authed API calls work.
-    try {
-      const idToken = await user.getIdToken();
-      const res = await fetch(_API_URL + '/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const payload = data?.data || data || {};
-        const tok = payload.access_token || payload.accessToken;
-        if (tok) localStorage.setItem(_API_TOKEN_KEY, tok);
-      } else {
-        console.warn('[GKHub] /auth/google failed:', res.status);
-      }
-    } catch (e) {
-      console.warn('[GKHub] backend token exchange error:', e);
-    }
+    // Troca o token do Firebase por um JWT do backend (com tentativas p/ cold start).
+    try { _wakeBackend(); } catch (e) {}
+    try { await _exchangeFirebaseToken(2); } catch (e) {}
     const token = _apiToken();
     if (token) {
       await _afterLoginLoadClubs();
@@ -6722,9 +6706,10 @@ async function renderTreinos() {
   const sessEl = document.getElementById('tp-sessions');
   if (kpis) kpis.innerHTML = '<div style="color:var(--muted);font-size:13px;">Carregando…</div>';
 
-  // Acorda o servidor (cold start do plano grátis) e tenta enviar o que
-  // estiver salvo no aparelho antes de listar.
+  // Acorda o servidor (cold start do plano grátis), reconecta ao backend se o
+  // login tiver falhado, e tenta enviar o que estiver salvo no aparelho.
   try { _wakeBackend(); } catch (e) {}
+  try { await _ensureBackendToken(); } catch (e) {}
   try { await _tpFlushPending(); } catch (e) {}
 
   let dash = {}, sessions = [], dashFailed = false;
@@ -7492,6 +7477,48 @@ function _wakeBackend() {
   } catch (e) {}
 }
 window.addEventListener('load', () => { setTimeout(_wakeBackend, 500); });
+
+// Troca o token do Firebase por um JWT do backend. Com novas tentativas para
+// sobreviver ao "cold start" do servidor grátis (a 1ª chamada pode falhar
+// enquanto ele acorda). Retorna true se conseguiu um token.
+async function _exchangeFirebaseToken(retries) {
+  let u = null;
+  try { u = (typeof _firebaseAuth !== 'undefined' && _firebaseAuth) ? _firebaseAuth.currentUser : null; } catch (e) {}
+  if (!u) return false;
+  let idToken;
+  try { idToken = await u.getIdToken(); } catch (e) { return false; }
+  const max = (retries == null) ? 1 : retries;
+  for (let attempt = 0; attempt <= max; attempt++) {
+    try {
+      const res = await fetch(_API_URL + '/auth/google', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const payload = (data && data.data) ? data.data : (data || {});
+        const tok = payload.access_token || payload.accessToken;
+        if (tok) { try { localStorage.setItem(_API_TOKEN_KEY, tok); } catch (e) {} return true; }
+        return false;
+      }
+    } catch (e) { /* rede / servidor acordando */ }
+    if (attempt < max) await new Promise(r => setTimeout(r, 3000)); // espera o servidor acordar
+  }
+  return false;
+}
+
+// Garante que há um token do backend: se faltar mas o usuário está logado no
+// Google, refaz a troca (recupera de uma falha de login por cold start).
+let _ensuringToken = false;
+async function _ensureBackendToken() {
+  try {
+    if (_apiToken()) return true;
+    if (_ensuringToken) return false;
+    _ensuringToken = true;
+    try { return await _exchangeFirebaseToken(2); }
+    finally { _ensuringToken = false; }
+  } catch (e) { return false; }
+}
 const _API_TOKEN_KEY = 'gkhub_api_token';
 
 function _apiToken() { return localStorage.getItem(_API_TOKEN_KEY); }
@@ -8897,9 +8924,9 @@ window.addEventListener('online', () => {
   if (lbl) lbl.textContent = 'Reconectado…';
   // Auto-sync pending data
   setTimeout(syncAllToCloud, 800);
-  // Acorda o backend e reenvia treinos salvos offline (best-effort)
+  // Acorda o backend, reconecta se preciso e reenvia treinos salvos offline
   try { _wakeBackend(); } catch (e) {}
-  setTimeout(() => { try { _tpFlushPending(); } catch (e) {} }, 1200);
+  setTimeout(() => { _ensureBackendToken().then(() => { try { _tpFlushPending(); } catch (e) {} }); }, 1500);
 });
 
 window.addEventListener('offline', () => {
