@@ -7444,7 +7444,7 @@ async function tpExportPdf() {
 // ── Backend API Client ────────────────────────────────────────
 // URL do backend. Pode ser trocada sem novo deploy do app: basta definir
 // localStorage 'gkhub_api_url' (ex.: ao migrar o backend para outro host).
-const _API_URL_DEFAULT = 'https://litwinski-production.up.railway.app/api/v1';
+const _API_URL_DEFAULT = 'https://gkhub-backend.onrender.com/api/v1';
 const _API_URL = (function () {
   try { return (localStorage.getItem('gkhub_api_url') || '').trim() || _API_URL_DEFAULT; }
   catch (e) { return _API_URL_DEFAULT; }
