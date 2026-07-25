@@ -6584,7 +6584,7 @@ async function createTpExercise() {
     closeModal('tp-exercise-modal');
     toast('Exercício criado!', 'success');
     renderTpExercises();
-  } catch (e) { toast('Não foi possível salvar.', 'error'); }
+  } catch (e) { toast(_tpSaveErr(e, 'o exercício'), 'error'); }
 }
 
 async function tpDeleteExercise(id) {
@@ -6820,6 +6820,16 @@ function openTpSessionForm() {
   openModal('tp-session-modal');
 }
 
+// Mensagem de erro clara para o módulo Treinos+ (que salva no backend):
+// distingue sessão expirada (401/403) de servidor indisponível/conexão.
+function _tpSaveErr(e, noun) {
+  const s = String((e && e.message) || '');
+  if (/\b40[13]\b/.test(s) || !_apiToken()) {
+    return 'Sessão do servidor expirada. Reconecte em Config. do Clube → Backend e tente de novo.';
+  }
+  return 'Não foi possível salvar ' + (noun || '') + '. O servidor pode estar iniciando — tente de novo em ~30s.';
+}
+
 async function createTpSession() {
   const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const title = val('tp-f-title');
@@ -6844,7 +6854,7 @@ async function createTpSession() {
     toast('Sessão criada!', 'success');
     renderTreinos();
   } catch (e) {
-    toast('Não foi possível salvar. Verifique a conexão.', 'error');
+    toast(_tpSaveErr(e, 'a sessão'), 'error');
   }
 }
 
@@ -6912,7 +6922,7 @@ async function tpSaveAttendance(id) {
     if (updated) _tpDetailSession.attendance = updated;
     toast('Presença salva!', 'success');
     renderTreinos();
-  } catch (e) { toast('Não foi possível salvar a presença.', 'error'); }
+  } catch (e) { toast(_tpSaveErr(e, 'a presença'), 'error'); }
 }
 
 // PSE/RPE tab — 0-10 per goalkeeper
@@ -6951,7 +6961,7 @@ async function tpSaveRpe(id) {
     toast('PSE salva!', 'success');
     tpRenderDetail();
     renderTreinos();
-  } catch (e) { toast('Não foi possível salvar a PSE.', 'error'); }
+  } catch (e) { toast(_tpSaveErr(e, 'a PSE'), 'error'); }
 }
 
 // Evaluation tab — pick a goalkeeper, score fundamentals
@@ -6992,7 +7002,7 @@ async function tpSaveEvaluation(id) {
     if (fresh) _tpDetailSession = fresh;
     toast('Avaliação salva!', 'success');
     renderTreinos();
-  } catch (e) { toast('Não foi possível salvar a avaliação.', 'error'); }
+  } catch (e) { toast(_tpSaveErr(e, 'a avaliação'), 'error'); }
 }
 
 function tpStatusButtons(s) {
@@ -7091,7 +7101,7 @@ async function tpSaveBlocks(id) {
     const updated = _tpUnwrap(await api.post('/training-plus/sessions/' + id + '/blocks', { blocks }), null);
     if (updated) { _tpDetailSession = updated; _tpPlannerBlocks = (updated.blocks || []).map(b => ({ type: b.type, plannedMinutes: b.plannedMinutes || 0, objective: b.objective || '' })); tpRenderDetail(); }
     toast('Planejamento salvo!', 'success');
-  } catch (e) { toast('Não foi possível salvar os blocos.', 'error'); }
+  } catch (e) { toast(_tpSaveErr(e, 'os blocos'), 'error'); }
 }
 
 async function tpSetStatus(id, status) {
