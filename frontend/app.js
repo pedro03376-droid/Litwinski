@@ -683,7 +683,7 @@ function navigate(page) {
   if (page === 'treinos') renderTreinos();
   if (page === 'heatmap') renderHeatmap();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
-  if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); loadClubMembers(); }
+  if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); renderBackendCard(); loadClubMembers(); }
   if (page === 'usuario') { loadUserPage(); }
   if (page === 'notificacoes') renderNotificacoes();
   if (page === 'central-relatorios') renderCentralRelatorios();
@@ -7518,6 +7518,34 @@ async function _ensureBackendToken() {
     try { return await _exchangeFirebaseToken(2); }
     finally { _ensuringToken = false; }
   } catch (e) { return false; }
+}
+
+// Cartão de status do servidor na tela de Config (Conectado/Desconectado + reconectar).
+async function renderBackendCard() {
+  const el = document.getElementById('backend-card-body');
+  if (!el) return;
+  el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Verificando conexão… <span style="opacity:.7">(o servidor grátis pode levar ~50s para acordar)</span></div>';
+  try { _wakeBackend(); } catch (e) {}
+  let ok = !!_apiToken();
+  if (!ok) { try { ok = await _ensureBackendToken(); } catch (e) {} }
+  const url = _API_URL.replace(/\/api\/v1$/, '');
+  if (ok) {
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--success);">' +
+        '<span style="width:9px;height:9px;border-radius:50%;background:var(--success);display:inline-block;"></span> Conectado' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:4px;word-break:break-all;">' + _esc(url) + '</div>' +
+      '<button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="renderBackendCard()">🔄 Verificar novamente</button>';
+  } else {
+    el.innerHTML =
+      '<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--error);">' +
+        '<span style="width:9px;height:9px;border-radius:50%;background:var(--error);display:inline-block;"></span> Desconectado' +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;">Pode ser o servidor ainda acordando (~50s) — clique em Reconectar. ' +
+      'Se persistir, entre novamente com o Google.</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-top:4px;word-break:break-all;">' + _esc(url) + '</div>' +
+      '<button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="renderBackendCard()">🔄 Reconectar</button>';
+  }
 }
 const _API_TOKEN_KEY = 'gkhub_api_token';
 
