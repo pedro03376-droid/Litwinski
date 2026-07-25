@@ -1,0 +1,9 @@
+name = "gkhub-ai"
+main = "worker.js"
+compatibility_date = "2024-11-01"
+
+# A chave da Gemini NÃO vai aqui (é secreta). Defina com:
+#   npx wrangler secret put GEMINI_API_KEY
+# (opcional) modelo:
+# [vars]
+# GEMINI_MODEL = "gemini-2.0-flash"

@@ -5529,16 +5529,9 @@ async function _googleLoginSuccess(user) {
     const overlay = document.getElementById('auth-overlay');
     if (overlay) overlay.classList.add('hidden');
     _updateSidebarUser();
-    // Troca o token do Firebase por um JWT do backend (com tentativas p/ cold start).
-    try { _wakeBackend(); } catch (e) {}
-    try { await _exchangeFirebaseToken(2); } catch (e) {}
-    const token = _apiToken();
-    if (token) {
-      await _afterLoginLoadClubs();
-    } else {
-      navigate('dashboard');
-    }
-    // Auth confirmada → token do Firebase disponível: baixa os dados do clube
+    // App agora é local + Firebase (sem backend central): vai direto ao painel.
+    navigate('dashboard');
+    // Auth confirmada → baixa os dados do clube da nuvem (Firebase).
     try { cloudPullCore(false); cloudPullNew(true); } catch (e) {}
     try { setTimeout(_maybeShowWelcome, 1500); } catch (e) {}
   } catch(e) {
@@ -6253,6 +6246,26 @@ function initWorkspaceSwitcher() {
 
 /* ── Club Members ────────────────────────────────────── */
 async function loadClubMembers() {
+  // Multiusuário agora é pela NUVEM (Firebase), via código do clube — não há
+  // mais servidor central de membros. Mostra como compartilhar com a comissão.
+  const container = document.getElementById('club-members-list');
+  if (!container) return;
+  let code = '';
+  try { code = (typeof _cloudClubKey === 'function') ? _cloudClubKey() : ''; } catch (e) {}
+  container.innerHTML =
+    '<div style="font-size:13px;color:var(--muted);line-height:1.6;">' +
+      'Para trabalhar em equipe, compartilhe o <strong>código do clube</strong> com a sua comissão. ' +
+      'Quem entrar com o mesmo código vê e sincroniza os mesmos dados.' +
+    '</div>' +
+    (code ?
+      '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">' +
+        '<code style="font-size:13px;background:var(--bg);padding:6px 10px;border-radius:8px;border:1px solid var(--border);word-break:break-all;">' + _esc(code) + '</code>' +
+        '<button class="btn btn-secondary btn-sm" onclick="copyClubKey && copyClubKey()">Copiar código</button>' +
+      '</div>' : '') +
+    '<div style="font-size:11px;color:var(--muted);margin-top:8px;">Em <strong>Config. do Clube → Código do clube</strong> também dá para entrar em outro código.</div>';
+  return;
+}
+async function _loadClubMembersLegacy() {
   const token = _apiToken();
   const container = document.getElementById('club-members-list');
   if (!container) return;
@@ -6497,6 +6510,168 @@ const TP_EVAL_FUNDAMENTALS = {
 };
 const TP_EVAL_GROUP_LABEL = { technical: 'Técnico', physical: 'Físico', mental: 'Mental' };
 
+/* ═══════════════════════════════════════════════════════════════════════
+   TREINOS+ LOCAL — substitui o backend (NestJS/Postgres) por armazenamento
+   no aparelho + Firebase (mesmo padrão do resto do app). As chamadas
+   api.*('/training-plus/...') são interceptadas em apiRequest e atendidas
+   aqui, devolvendo os mesmos formatos que a tela espera. Funciona offline
+   e sincroniza entre aparelhos pela nuvem (coleções em _NEW_SYNC).
+   ═══════════════════════════════════════════════════════════════════════ */
+function _tpNewId() { return 'tp' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function _tpAll(col) { return DB.load(col) || []; }
+function _tpSaveAll(col, arr) { DB.save(col, arr); }
+
+function _tpDashboard(teamId) {
+  let s = _tpAll('tp_sessions');
+  if (teamId) s = s.filter(x => !x.teamId || x.teamId === teamId);
+  const finished = s.filter(x => x.status === 'finished').length;
+  let attP = 0, attT = 0;
+  s.forEach(x => (x.attendance || []).forEach(a => { attT++; if (a.status === 'present') attP++; else if (a.status === 'partial') attP += 0.5; }));
+  let evSum = 0, evN = 0;
+  s.forEach(x => (x.evaluations || []).forEach(e => ['technical', 'physical', 'mental'].forEach(g => Object.values(e[g] || {}).forEach(v => { if (typeof v === 'number') { evSum += v; evN++; } }))));
+  let rSum = 0, rN = 0;
+  s.forEach(x => (x.rpe || []).forEach(r => { if (typeof r.value === 'number') { rSum += r.value; rN++; } }));
+  const now = Date.now(), wk = 7 * 864e5;
+  let weekly = 0;
+  s.forEach(x => {
+    const d = x.date ? new Date(x.date + 'T00:00:00').getTime() : 0;
+    if (d && (now - d) <= wk && d <= now + 864e5) {
+      const rl = (x.rpe || []).reduce((a, r) => a + (r.workload || 0), 0);
+      weekly += rl || ((x.durationMinutes || 0) * (x.plannedIntensity || 0));
+    }
+  });
+  const today = new Date().toISOString().slice(0, 10);
+  const next = s.filter(x => x.date && x.date >= today && x.status !== 'cancelled' && x.status !== 'finished')
+    .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')))[0] || null;
+  return {
+    totalSessions: s.length, finishedSessions: finished,
+    attendanceRate: attT ? Math.round((attP / attT) * 100) : null,
+    avgEvaluation: evN ? +(evSum / evN).toFixed(1) : null,
+    avgRpe: rN ? +(rSum / rN).toFixed(1) : null,
+    weeklyWorkload: Math.round(weekly), nextSession: next,
+  };
+}
+
+function _tpGkSummary(gkId) {
+  const s = _tpAll('tp_sessions').slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  let presP = 0, presT = 0, rSum = 0, rN = 0, wl = 0;
+  const tg = { technical: [], physical: [], mental: [] };
+  const recentEvaluations = [];
+  s.forEach(x => {
+    const att = (x.attendance || []).find(a => a.goalkeeperId === gkId);
+    if (att) { presT++; if (att.status === 'present') presP++; else if (att.status === 'partial') presP += 0.5; }
+    (x.rpe || []).forEach(r => { if (r.goalkeeperId === gkId && typeof r.value === 'number') { rSum += r.value; rN++; wl += (r.workload || 0); } });
+    const ev = (x.evaluations || []).find(e => e.goalkeeperId === gkId);
+    if (ev) {
+      recentEvaluations.push({ technical: ev.technical || {}, physical: ev.physical || {}, mental: ev.mental || {} });
+      ['technical', 'physical', 'mental'].forEach(g => { const vs = Object.values(ev[g] || {}).filter(n => typeof n === 'number'); if (vs.length) tg[g].push(vs.reduce((a, b) => a + b, 0) / vs.length); });
+    }
+  });
+  const avg = arr => arr.length ? +(arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(1) : null;
+  const trainings = presT;
+  const goals = _tpAll('tp_goals').filter(g => g.goalkeeperId === gkId);
+  return {
+    trainings, attendanceRate: presT ? Math.round((presP / presT) * 100) : 0,
+    avgTechnical: avg(tg.technical), avgPhysical: avg(tg.physical), avgMental: avg(tg.mental),
+    avgRpe: rN ? +(rSum / rN).toFixed(1) : null, accumulatedWorkload: Math.round(wl),
+    recentEvaluations: recentEvaluations.slice(0, 12), goals,
+  };
+}
+
+async function _tpLocalApi(method, path, body) {
+  method = (method || 'GET').toUpperCase();
+  body = body || {};
+  const [rawPath, qs] = String(path).split('?');
+  const p = rawPath.replace(/^\/training-plus/, '');
+  const q = new URLSearchParams(qs || '');
+  let m;
+
+  if (p === '/dashboard') return _tpDashboard(q.get('teamId'));
+
+  if (p === '/sessions' && method === 'GET') {
+    let s = _tpAll('tp_sessions');
+    const teamId = q.get('teamId'); if (teamId) s = s.filter(x => !x.teamId || x.teamId === teamId);
+    const from = q.get('from'), to = q.get('to'), status = q.get('status');
+    if (from) s = s.filter(x => x.date && x.date >= from);
+    if (to) s = s.filter(x => x.date && x.date <= to);
+    if (status) s = s.filter(x => (x.status || 'scheduled') === status);
+    return s;
+  }
+  if (p === '/sessions' && method === 'POST') {
+    const arr = _tpAll('tp_sessions');
+    const sess = {
+      id: _tpNewId(), status: 'scheduled', attendance: [], rpe: [], evaluations: [], blocks: [],
+      createdAt: new Date().toISOString(), teamId: body.teamId || undefined,
+      title: body.title, date: body.date, time: body.time, location: body.location, category: body.category,
+      objective: body.objective, durationMinutes: body.durationMinutes || 0, plannedIntensity: body.plannedIntensity || 0,
+    };
+    arr.push(sess); _tpSaveAll('tp_sessions', arr); return sess;
+  }
+
+  if (p === '/exercises' && method === 'GET') {
+    let ex = _tpAll('tp_exercises');
+    const teamId = q.get('teamId'); if (teamId) ex = ex.filter(x => !x.teamId || x.teamId === teamId);
+    const search = (q.get('search') || '').toLowerCase(); if (search) ex = ex.filter(x => (x.name || '').toLowerCase().includes(search));
+    return ex;
+  }
+  if (p === '/exercises' && method === 'POST') {
+    const arr = _tpAll('tp_exercises');
+    const ex = { id: _tpNewId(), teamId: body.teamId || undefined, name: body.name, category: body.category, objective: body.objective, materials: body.materials, estimatedMinutes: body.estimatedMinutes, difficulty: body.difficulty };
+    arr.push(ex); _tpSaveAll('tp_exercises', arr); return ex;
+  }
+  if ((m = p.match(/^\/exercises\/(.+)$/)) && method === 'DELETE') {
+    _tpSaveAll('tp_exercises', _tpAll('tp_exercises').filter(x => x.id !== m[1])); return { ok: true };
+  }
+
+  if ((m = p.match(/^\/goalkeeper\/(.+)\/summary$/)) && method === 'GET') return _tpGkSummary(m[1]);
+
+  if (p === '/goals' && method === 'POST') {
+    const arr = _tpAll('tp_goals');
+    const g = { id: _tpNewId(), goalkeeperId: body.goalkeeperId, title: body.title, fundamental: body.fundamental, progress: body.progress || 0, status: body.status || 'active' };
+    arr.push(g); _tpSaveAll('tp_goals', arr); return g;
+  }
+  if ((m = p.match(/^\/goals\/(.+)$/)) && method === 'PATCH') {
+    const arr = _tpAll('tp_goals'); const i = arr.findIndex(x => x.id === m[1]);
+    if (i < 0) throw new Error('TP 404'); arr[i] = { ...arr[i], ...body }; _tpSaveAll('tp_goals', arr); return arr[i];
+  }
+  if ((m = p.match(/^\/goals\/(.+)$/)) && method === 'DELETE') {
+    _tpSaveAll('tp_goals', _tpAll('tp_goals').filter(x => x.id !== m[1])); return { ok: true };
+  }
+
+  if ((m = p.match(/^\/sessions\/([^/]+)\/attendance$/)) && method === 'POST') {
+    const arr = _tpAll('tp_sessions'); const i = arr.findIndex(x => x.id === m[1]); if (i < 0) throw new Error('TP 404');
+    arr[i].attendance = (body.entries || []).map(e => ({ goalkeeperId: e.goalkeeperId, status: e.status }));
+    _tpSaveAll('tp_sessions', arr); return arr[i].attendance;
+  }
+  if ((m = p.match(/^\/sessions\/([^/]+)\/rpe$/)) && method === 'POST') {
+    const arr = _tpAll('tp_sessions'); const i = arr.findIndex(x => x.id === m[1]); if (i < 0) throw new Error('TP 404');
+    const dur = arr[i].durationMinutes || 0; const rpe = arr[i].rpe || [];
+    const j = rpe.findIndex(r => r.goalkeeperId === body.goalkeeperId);
+    const rec = { goalkeeperId: body.goalkeeperId, value: body.value, workload: dur * (body.value || 0) };
+    if (j >= 0) rpe[j] = rec; else rpe.push(rec);
+    arr[i].rpe = rpe; _tpSaveAll('tp_sessions', arr); return rec;
+  }
+  if ((m = p.match(/^\/sessions\/([^/]+)\/evaluation$/)) && method === 'POST') {
+    const arr = _tpAll('tp_sessions'); const i = arr.findIndex(x => x.id === m[1]); if (i < 0) throw new Error('TP 404');
+    const evs = arr[i].evaluations || []; const j = evs.findIndex(e => e.goalkeeperId === body.goalkeeperId);
+    const rec = { goalkeeperId: body.goalkeeperId, technical: body.technical || {}, physical: body.physical || {}, mental: body.mental || {}, date: arr[i].date };
+    if (j >= 0) evs[j] = rec; else evs.push(rec);
+    arr[i].evaluations = evs; _tpSaveAll('tp_sessions', arr); return rec;
+  }
+  if ((m = p.match(/^\/sessions\/([^/]+)\/blocks$/)) && method === 'POST') {
+    const arr = _tpAll('tp_sessions'); const i = arr.findIndex(x => x.id === m[1]); if (i < 0) throw new Error('TP 404');
+    arr[i].blocks = (body.blocks || []).map((b, k) => ({ type: b.type, plannedMinutes: b.plannedMinutes || 0, objective: b.objective, order: b.order != null ? b.order : k }));
+    _tpSaveAll('tp_sessions', arr); return arr[i];
+  }
+  if ((m = p.match(/^\/sessions\/([^/]+)$/))) {
+    const arr = _tpAll('tp_sessions'); const i = arr.findIndex(x => x.id === m[1]);
+    if (method === 'GET') { if (i < 0) throw new Error('TP 404'); return arr[i]; }
+    if (method === 'PATCH') { if (i < 0) throw new Error('TP 404'); arr[i] = { ...arr[i], ...body }; _tpSaveAll('tp_sessions', arr); return arr[i]; }
+    if (method === 'DELETE') { _tpSaveAll('tp_sessions', arr.filter(x => x.id !== m[1])); return { ok: true }; }
+  }
+  throw new Error('TP local: rota não suportada ' + method + ' ' + p);
+}
+
 let _tpExercisesCache = [];
 
 async function renderTpExercises() {
@@ -6706,10 +6881,7 @@ async function renderTreinos() {
   const sessEl = document.getElementById('tp-sessions');
   if (kpis) kpis.innerHTML = '<div style="color:var(--muted);font-size:13px;">Carregando…</div>';
 
-  // Acorda o servidor (cold start do plano grátis), reconecta ao backend se o
-  // login tiver falhado, e tenta enviar o que estiver salvo no aparelho.
-  try { _wakeBackend(); } catch (e) {}
-  try { await _ensureBackendToken(); } catch (e) {}
+  // Treinos+ é local (aparelho + Firebase). Absorve qualquer item de fila antiga.
   try { await _tpFlushPending(); } catch (e) {}
 
   let dash = {}, sessions = [], dashFailed = false;
@@ -6894,7 +7066,8 @@ function _tpIsLocal(id) { return String(id || '').startsWith('local_'); }
 let _tpFlushing = false;
 async function _tpFlushPending() {
   if (_tpFlushing) return 0;
-  if (typeof _apiToken !== 'function' || !_apiToken()) return 0;   // sem login no backend, não há para onde enviar
+  // Treinos+ agora é local: api.post roteia para o armazenamento do aparelho,
+  // então itens antigos da fila são absorvidos localmente (não precisa de login).
   if (!_tpPendingCount()) return 0;
   _tpFlushing = true;
   let flushed = 0;
@@ -7464,6 +7637,16 @@ function setBackendUrl(url) {
   setTimeout(() => location.reload(), 900);
 }
 
+// Aponta a IA para a mini-função (Cloudflare Worker). Use no Console:
+//   setAiUrl('https://gkhub-ai.SEU-SUBDOMINIO.workers.dev')
+function setAiUrl(url) {
+  url = String(url || '').trim().replace(/\/+$/, '');
+  try {
+    if (!url) { localStorage.removeItem('gkhub_ai_url'); toast('IA voltou ao padrão (heurística).', 'info'); }
+    else { localStorage.setItem('gkhub_ai_url', url); toast('IA conectada à sua função.', 'success'); }
+  } catch (e) {}
+}
+
 // "Acorda" o backend grátis (o Render hiberna após ~15 min). Um ping leve no
 // /health ao abrir o app / voltar a ficar online reduz o cold start quando o
 // usuário chega nos Treinos. Best-effort e no máximo 1x por minuto.
@@ -7476,7 +7659,6 @@ function _wakeBackend() {
     fetch(_API_URL + '/health', { method: 'GET', cache: 'no-store' }).catch(() => {});
   } catch (e) {}
 }
-window.addEventListener('load', () => { setTimeout(_wakeBackend, 500); });
 
 // Troca o token do Firebase por um JWT do backend. Com novas tentativas para
 // sobreviver ao "cold start" do servidor grátis (a 1ª chamada pode falhar
@@ -7520,38 +7702,46 @@ async function _ensureBackendToken() {
   } catch (e) { return false; }
 }
 
-// Cartão de status do servidor na tela de Config (Conectado/Desconectado + reconectar).
+// Cartão de status na tela de Config. O app não depende mais de um servidor
+// central: dados e Treinos+ ficam no aparelho + Firebase; a IA é opcional.
 async function renderBackendCard() {
   const el = document.getElementById('backend-card-body');
   if (!el) return;
-  el.innerHTML = '<div style="color:var(--muted);font-size:13px;">Verificando conexão… <span style="opacity:.7">(o servidor grátis pode levar ~50s para acordar)</span></div>';
-  try { _wakeBackend(); } catch (e) {}
-  let ok = !!_apiToken();
-  if (!ok) { try { ok = await _ensureBackendToken(); } catch (e) {} }
-  const url = _API_URL.replace(/\/api\/v1$/, '');
-  if (ok) {
-    el.innerHTML =
-      '<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--success);">' +
-        '<span style="width:9px;height:9px;border-radius:50%;background:var(--success);display:inline-block;"></span> Conectado' +
-      '</div>' +
-      '<div style="font-size:12px;color:var(--muted);margin-top:4px;word-break:break-all;">' + _esc(url) + '</div>' +
-      '<button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="renderBackendCard()">🔄 Verificar novamente</button>';
-  } else {
-    el.innerHTML =
-      '<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--error);">' +
-        '<span style="width:9px;height:9px;border-radius:50%;background:var(--error);display:inline-block;"></span> Desconectado' +
-      '</div>' +
-      '<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.5;">Pode ser o servidor ainda acordando (~50s) — clique em Reconectar. ' +
-      'Se persistir, entre novamente com o Google.</div>' +
-      '<div style="font-size:11px;color:var(--muted);margin-top:4px;word-break:break-all;">' + _esc(url) + '</div>' +
-      '<button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="renderBackendCard()">🔄 Reconectar</button>';
-  }
+  let aiOn = false;
+  try { aiOn = !!(localStorage.getItem('gkhub_ai_url') || '').trim(); } catch (e) {}
+  el.innerHTML =
+    '<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--success);">' +
+      '<span style="width:9px;height:9px;border-radius:50%;background:var(--success);display:inline-block;"></span> Local + Nuvem (Firebase)' +
+    '</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6;">' +
+      'Seus dados e os <strong>Treinos+</strong> ficam salvos no aparelho e sincronizam pela nuvem. ' +
+      'Não é preciso servidor central — funciona offline e não trava.' +
+    '</div>' +
+    '<div style="font-size:13px;margin-top:10px;display:flex;align-items:center;gap:8px;">' +
+      '<span style="width:9px;height:9px;border-radius:50%;background:' + (aiOn ? 'var(--success)' : 'var(--muted)') + ';display:inline-block;"></span>' +
+      'IA: ' + (aiOn ? '<strong>conectada (Gemini)</strong>' : 'modo regras (heurística)') +
+    '</div>';
 }
 const _API_TOKEN_KEY = 'gkhub_api_token';
 
 function _apiToken() { return localStorage.getItem(_API_TOKEN_KEY); }
 
 async function apiRequest(method, path, body) {
+  // Treinos+ agora é 100% local (aparelho + Firebase) — sem backend.
+  if (path.indexOf('/training-plus') === 0) return _tpLocalApi(method, path, body);
+  // IA: vai para a mini-função (Cloudflare Worker) se configurada; senão, o
+  // chamador cai no modo heurístico.
+  if (path.indexOf('/ai-analysis') === 0) {
+    let base = '';
+    try { base = (localStorage.getItem('gkhub_ai_url') || '').trim(); } catch (e) {}
+    if (!base) throw new Error('AI no-url');
+    const res = await fetch(base.replace(/\/+$/, '') + path.replace('/ai-analysis', ''), {
+      method, headers: { 'Content-Type': 'application/json' },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    if (!res.ok) throw new Error('AI ' + res.status);
+    return res.json();
+  }
   const token = _apiToken();
   const res = await fetch(_API_URL + path, {
     method,
@@ -7923,7 +8113,7 @@ function cloudDelete(col, id) {
    com mesclagem ao abrir. Último a escrever vence por coleção.
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
-const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications'];
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals'];
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
@@ -8953,8 +9143,7 @@ window.addEventListener('online', () => {
   // Auto-sync pending data
   setTimeout(syncAllToCloud, 800);
   // Acorda o backend, reconecta se preciso e reenvia treinos salvos offline
-  try { _wakeBackend(); } catch (e) {}
-  setTimeout(() => { _ensureBackendToken().then(() => { try { _tpFlushPending(); } catch (e) {} }); }, 1500);
+  setTimeout(() => { try { _tpFlushPending(); } catch (e) {} }, 1200);
 });
 
 window.addEventListener('offline', () => {
