@@ -6507,6 +6507,9 @@ async function renderTpExercises() {
   const q = params.length ? '?' + params.join('&') : '';
   let list = [];
   try { list = _tpUnwrap(await api.get('/training-plus/exercises' + q), []) || []; } catch (e) { list = []; }
+  // Junta exercícios salvos offline (aguardando servidor).
+  const _pendEx = _tpPendingList('exercises').map(p => ({ ...p.payload, id: p.localId, _pending: true }));
+  list = _pendEx.concat(list);
   _tpExercisesCache = list;
   if (!list.length) {
     el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0;">Nenhum exercício cadastrado.</div>';
@@ -6516,7 +6519,7 @@ async function renderTpExercises() {
     list.map(x => `
       <div class="stat-card" style="padding:12px;">
         <div style="display:flex;justify-content:space-between;gap:6px;align-items:start;">
-          <div style="font-weight:700;font-size:14px;">${_esc(x.name || 'Exercício')}</div>
+          <div style="font-weight:700;font-size:14px;">${_esc(x.name || 'Exercício')}${(x._pending || _tpIsLocal(x.id)) ? ' <span style="font-size:10px;color:var(--warning);font-weight:600;">📥 no aparelho</span>' : ''}</div>
           <button class="btn btn-ghost btn-sm" style="color:#ef4444;padding:2px 6px;" onclick="tpDeleteExercise('${_esc(x.id)}')">✕</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">${_esc(TP_EX_LABEL[x.category] || x.category || '—')}${x.estimatedMinutes ? ' · ' + x.estimatedMinutes + ' min' : ''}${x.difficulty ? ' · dif. ' + x.difficulty : ''}</div>
@@ -6584,11 +6587,22 @@ async function createTpExercise() {
     closeModal('tp-exercise-modal');
     toast('Exercício criado!', 'success');
     renderTpExercises();
-  } catch (e) { toast(_tpSaveErr(e, 'o exercício'), 'error'); }
+  } catch (e) {
+    _tpPendingAdd('exercises', body);
+    closeModal('tp-exercise-modal');
+    toast('Sem servidor agora — exercício salvo no aparelho. Sincroniza sozinho quando o servidor voltar.', 'info');
+    renderTpExercises();
+  }
 }
 
 async function tpDeleteExercise(id) {
   if (!confirm('Excluir este exercício?')) return;
+  if (_tpIsLocal(id)) {   // ainda não sincronizado — remove só da fila local
+    _tpPendingRemove('exercises', id);
+    toast('Exercício removido do aparelho.', 'success');
+    renderTpExercises();
+    return;
+  }
   try { await api.delete('/training-plus/exercises/' + id); toast('Exercício excluído.', 'success'); renderTpExercises(); }
   catch (e) { toast('Não foi possível excluir.', 'error'); }
 }
@@ -6689,16 +6703,19 @@ async function renderTreinos() {
   const sessEl = document.getElementById('tp-sessions');
   if (kpis) kpis.innerHTML = '<div style="color:var(--muted);font-size:13px;">Carregando…</div>';
 
-  let dash = {}, sessions = [];
+  // Tenta enviar o que estiver salvo no aparelho antes de listar.
+  try { await _tpFlushPending(); } catch (e) {}
+
+  let dash = {}, sessions = [], dashFailed = false;
   try {
     dash = _tpUnwrap(await api.get('/training-plus/dashboard' + q), {}) || {};
-  } catch (e) {
-    if (kpis) kpis.innerHTML = '<div style="color:var(--muted);font-size:13px;">Não foi possível carregar os treinos. Verifique a conexão com o servidor.</div>';
-    return;
-  }
+  } catch (e) { dashFailed = true; }
   try {
     sessions = _tpUnwrap(await api.get('/training-plus/sessions' + q), []) || [];
   } catch (e) { sessions = []; }
+  // Junta as sessões salvas offline (aguardando servidor).
+  const _pendSess = _tpPendingList('sessions').map(p => ({ ...p.payload, id: p.localId, _pending: true, status: 'scheduled' }));
+  sessions = _pendSess.concat(sessions);
   _tpSessionsCache = sessions;
   _tpDashCache = dash;
   tpRenderCalendar();
@@ -6717,11 +6734,20 @@ async function renderTreinos() {
     { label: 'PSE média', value: num(dash.avgRpe) },
     { label: 'Carga semanal', value: dash.weeklyWorkload ?? 0 },
   ];
-  if (kpis) kpis.innerHTML = cards.map(c => `
+  if (kpis) {
+    const _pc = _tpPendingCount();
+    const _banner = (dashFailed || _pc)
+      ? `<div style="grid-column:1/-1;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--warning);">
+           ${_pc ? '📥 ' + _pc + ' item(ns) salvos no aparelho, aguardando o servidor voltar (sincroniza sozinho).' : ''}
+           ${dashFailed ? (_pc ? '<br>' : '') + '⚠ Servidor de treinos indisponível no momento — você pode continuar cadastrando; sincroniza depois.' : ''}
+         </div>`
+      : '';
+    kpis.innerHTML = _banner + cards.map(c => `
     <div class="stat-card" style="padding:14px 16px;">
       <div style="font-size:12px;color:var(--muted);font-weight:600;">${_esc(c.label)}</div>
       <div style="font-size:24px;font-weight:800;margin-top:4px;">${_esc(String(c.value))}</div>
     </div>`).join('');
+  }
 
   // Next session card
   if (nextEl) {
@@ -6764,12 +6790,19 @@ async function renderTreinos() {
         .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
         .map(s => {
           const st = s.status || 'scheduled';
-          return `<tr style="cursor:pointer;" onclick="tpOpenSession('${_esc(s.id)}')">
+          const pend = s._pending || _tpIsLocal(s.id);
+          const click = pend
+            ? `onclick="toast('Salvo no aparelho — sincroniza quando o servidor voltar.','info')"`
+            : `onclick="tpOpenSession('${_esc(s.id)}')"`;
+          const statusCell = pend
+            ? `<span style="color:var(--warning);font-weight:600;font-size:12px;">📥 No aparelho</span>`
+            : `<span style="color:${TP_STATUS_COLOR[st] || 'var(--muted)'};font-weight:600;font-size:12px;">${TP_STATUS_LABEL[st] || st}</span>`;
+          return `<tr style="cursor:pointer;" ${click}>
             <td>${s.date ? formatDate(s.date) : '—'}${s.time ? '<br><span style="color:var(--muted);font-size:12px;">' + _esc(s.time) + '</span>' : ''}</td>
             <td>${_esc(s.title || 'Treino')}${s.category ? '<br><span style="color:var(--muted);font-size:12px;">' + _esc(s.category) + '</span>' : ''}</td>
             <td>${s.location ? _esc(s.location) : '—'}</td>
             <td>${s.durationMinutes ? s.durationMinutes + ' min' : '—'}</td>
-            <td><span style="color:${TP_STATUS_COLOR[st] || 'var(--muted)'};font-weight:600;font-size:12px;">${TP_STATUS_LABEL[st] || st}</span></td>
+            <td>${statusCell}</td>
           </tr>`;
         }).join('');
       sessEl.innerHTML = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:14px;">
@@ -6830,6 +6863,50 @@ function _tpSaveErr(e, noun) {
   return 'Não foi possível salvar ' + (noun || '') + '. O servidor pode estar iniciando — tente de novo em ~30s.';
 }
 
+/* ── Treinos+ OFFLINE (fila local + sincronização automática) ─────────
+   Quando o servidor está fora do ar ou a sessão do backend expirou, as
+   sessões e exercícios são salvos NO APARELHO e sincronizados sozinhos
+   assim que o servidor voltar. Assim o cliente nunca fica travado.
+   ------------------------------------------------------------------ */
+const _TP_PENDING_KEY = 'gkhub_tp_pending';
+function _tpPendingLoad() { try { return JSON.parse(localStorage.getItem(_TP_PENDING_KEY) || '{}') || {}; } catch (e) { return {}; } }
+function _tpPendingSave(o) { try { localStorage.setItem(_TP_PENDING_KEY, JSON.stringify(o)); } catch (e) {} }
+function _tpPendingList(kind) { const o = _tpPendingLoad(); return Array.isArray(o[kind]) ? o[kind] : []; }
+function _tpPendingAdd(kind, payload) {
+  const o = _tpPendingLoad(); if (!Array.isArray(o[kind])) o[kind] = [];
+  const localId = 'local_' + kind + '_' + uid();
+  o[kind].push({ localId, payload, createdAt: new Date().toISOString() });
+  _tpPendingSave(o); return localId;
+}
+function _tpPendingRemove(kind, localId) {
+  const o = _tpPendingLoad();
+  if (Array.isArray(o[kind])) { o[kind] = o[kind].filter(x => x.localId !== localId); _tpPendingSave(o); }
+}
+function _tpPendingCount() { const o = _tpPendingLoad(); return (Array.isArray(o.sessions) ? o.sessions.length : 0) + (Array.isArray(o.exercises) ? o.exercises.length : 0); }
+function _tpIsLocal(id) { return String(id || '').startsWith('local_'); }
+
+let _tpFlushing = false;
+async function _tpFlushPending() {
+  if (_tpFlushing) return 0;
+  if (typeof _apiToken !== 'function' || !_apiToken()) return 0;   // sem login no backend, não há para onde enviar
+  if (!_tpPendingCount()) return 0;
+  _tpFlushing = true;
+  let flushed = 0;
+  try {
+    // Exercícios primeiro (independentes); depois sessões.
+    for (const it of _tpPendingList('exercises')) {
+      try { await api.post('/training-plus/exercises', it.payload); _tpPendingRemove('exercises', it.localId); flushed++; }
+      catch (e) { break; }   // servidor ainda indisponível — mantém na fila e tenta depois
+    }
+    for (const it of _tpPendingList('sessions')) {
+      try { await api.post('/training-plus/sessions', it.payload); _tpPendingRemove('sessions', it.localId); flushed++; }
+      catch (e) { break; }
+    }
+  } finally { _tpFlushing = false; }
+  if (flushed) toast(flushed + ' item(ns) de treino sincronizado(s) com o servidor.', 'success');
+  return flushed;
+}
+
 async function createTpSession() {
   const val = (id) => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
   const title = val('tp-f-title');
@@ -6854,7 +6931,11 @@ async function createTpSession() {
     toast('Sessão criada!', 'success');
     renderTreinos();
   } catch (e) {
-    toast(_tpSaveErr(e, 'a sessão'), 'error');
+    // Servidor fora/deslogado → salva no aparelho e sincroniza quando voltar.
+    _tpPendingAdd('sessions', body);
+    closeModal('tp-session-modal');
+    toast('Sem servidor agora — sessão salva no aparelho. Sincroniza sozinho quando o servidor voltar.', 'info');
+    renderTreinos();
   }
 }
 
@@ -8767,6 +8848,8 @@ window.addEventListener('online', () => {
   if (lbl) lbl.textContent = 'Reconectado…';
   // Auto-sync pending data
   setTimeout(syncAllToCloud, 800);
+  // Reenvia treinos salvos offline (best-effort)
+  setTimeout(() => { try { _tpFlushPending(); } catch (e) {} }, 1200);
 });
 
 window.addEventListener('offline', () => {
