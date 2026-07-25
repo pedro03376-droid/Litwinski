@@ -3640,13 +3640,13 @@ const MC_BUTTONS = {
   futsal: {
     def: [['dad','Alta<br>Direita','Alta Dir.'],['dae','Alta<br>Esquerda','Alta Esq.'],['dc','Central','Central'],['dbd','Baixa<br>Direita','Baixa Dir.'],['dbe','Baixa<br>Esquerda','Baixa Esq.'],['esq','Esquadro','Esquadro']],
     dist: [['dpc','Pé<br>Certo','Pé Certo'],['dpe','Pé<br>Errado','Pé Errado'],['dmc','Mão<br>Certa','Mão Certa'],['dme','Mão<br>Errada','Mão Errada']],
-    out: [['int','Interceptação','Interceptação'],['sai','Saída<br>do Gol','Saída'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.'],['golgk','🧤⚽ Gol da<br>Goleira','Gol da Goleira']],
+    out: [['int','Interceptação','Interceptação'],['sai','Saída<br>do Gol','Saída'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.']],
     distTitle: '🟡 Distribuição',
   },
   beach: {
     def: [['dad','Aérea<br>Direita','Aérea Dir.'],['dae','Aérea<br>Esquerda','Aérea Esq.'],['dc','Aérea<br>Central','Aérea Central'],['dbd','Rasteira<br>Direita','Rasteira Dir.'],['dbe','Rasteira<br>Esquerda','Rasteira Esq.'],['esq','Voleio/<br>Bicicleta','Voleio/Bicicleta']],
     dist: [['dmc','Arremesso<br>Certo','Arremesso Certo'],['dme','Arremesso<br>Errado','Arremesso Errado'],['dpc','Pé<br>Certo','Pé Certo'],['dpe','Pé<br>Errado','Pé Errado']],
-    out: [['int','Interceptação','Interceptação'],['sai','Saída/<br>Soco','Saída/Soco'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.'],['golgk','🧤⚽ Gol da<br>Goleira','Gol da Goleira']],
+    out: [['int','Interceptação','Interceptação'],['sai','Saída/<br>Soco','Saída/Soco'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.']],
     distTitle: '🟡 Distribuição (arremesso)',
   },
 };
