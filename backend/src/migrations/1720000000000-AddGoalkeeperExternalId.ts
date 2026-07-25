@@ -13,12 +13,20 @@ export class AddGoalkeeperExternalId1720000000000
   name = 'AddGoalkeeperExternalId1720000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(
-      `ALTER TABLE "goalkeepers" ADD COLUMN IF NOT EXISTS "externalId" character varying`,
-    );
-    await queryRunner.query(
-      `CREATE INDEX IF NOT EXISTS "IDX_goalkeepers_externalId" ON "goalkeepers" ("externalId")`,
-    );
+    // Só altera se a tabela já existir. Num banco novo/vazio (ex.: primeiro
+    // deploy no Neon), as tabelas são criadas pelo synchronize (DB_SYNC=true)
+    // já COM a coluna externalId — então aqui viramos no-op sem quebrar o boot.
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.tables WHERE table_name = 'goalkeepers'
+        ) THEN
+          ALTER TABLE "goalkeepers" ADD COLUMN IF NOT EXISTS "externalId" character varying;
+          CREATE INDEX IF NOT EXISTS "IDX_goalkeepers_externalId" ON "goalkeepers" ("externalId");
+        END IF;
+      END $$;
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

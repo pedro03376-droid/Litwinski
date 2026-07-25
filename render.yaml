@@ -25,7 +25,7 @@ services:
       - key: APP_SECRET
         generateValue: true
       - key: DB_SYNC
-        value: "false"               # ligue como "true" UMA vez no 1º deploy p/ criar tabelas
+        sync: false                  # digite "true" no 1º deploy (cria as tabelas); depois mude p/ "false"
       - key: ALLOWED_ORIGINS
         value: https://pedro03376-droid.github.io
       - key: DATABASE_URL
