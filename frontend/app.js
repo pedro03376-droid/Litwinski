@@ -7442,7 +7442,21 @@ async function tpExportPdf() {
 }
 
 // ── Backend API Client ────────────────────────────────────────
-const _API_URL = 'https://litwinski-production.up.railway.app/api/v1';
+// URL do backend. Pode ser trocada sem novo deploy do app: basta definir
+// localStorage 'gkhub_api_url' (ex.: ao migrar o backend para outro host).
+const _API_URL_DEFAULT = 'https://litwinski-production.up.railway.app/api/v1';
+const _API_URL = (function () {
+  try { return (localStorage.getItem('gkhub_api_url') || '').trim() || _API_URL_DEFAULT; }
+  catch (e) { return _API_URL_DEFAULT; }
+})();
+// Helper para apontar o app a um novo backend (use no Console do navegador):
+//   setBackendUrl('https://SEU-APP.onrender.com/api/v1')
+function setBackendUrl(url) {
+  url = String(url || '').trim().replace(/\/+$/, '');
+  if (!url) { try { localStorage.removeItem('gkhub_api_url'); } catch (e) {} toast('Backend voltou ao padrão. Recarregando…', 'info'); }
+  else { if (!/\/api\/v1$/.test(url)) url += '/api/v1'; try { localStorage.setItem('gkhub_api_url', url); } catch (e) {} toast('Backend definido. Recarregando…', 'success'); }
+  setTimeout(() => location.reload(), 900);
+}
 const _API_TOKEN_KEY = 'gkhub_api_token';
 
 function _apiToken() { return localStorage.getItem(_API_TOKEN_KEY); }

@@ -21,6 +21,7 @@ import { TrainingPlusModule } from './modules/training-plus/training-plus.module
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { databaseConfig } from './config/database.config';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { databaseConfig } from './config/database.config';
     CompetitionsModule,
     TrainingPlusModule,
   ],
+  controllers: [AppController],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],

@@ -1,0 +1,36 @@
+# Blueprint do Render para o backend do GK Hub (plano GRÁTIS, via Docker).
+# No Render: New → Blueprint → conecte este repositório. Ele lê este arquivo.
+# Depois preencha DATABASE_URL (do Neon) e as chaves de IA (opcionais).
+services:
+  - type: web
+    name: gkhub-backend
+    runtime: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    region: oregon
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true          # o Render gera um segredo forte
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 30d
+      - key: APP_SECRET
+        generateValue: true
+      - key: DB_SYNC
+        value: "false"               # ligue como "true" UMA vez no 1º deploy p/ criar tabelas
+      - key: ALLOWED_ORIGINS
+        value: https://pedro03376-droid.github.io
+      - key: DATABASE_URL
+        sync: false                  # cole a string do Neon (Passo 1 do guia)
+      - key: GEMINI_API_KEY
+        sync: false                  # opcional (IA grátis do Google)
+      - key: ANTHROPIC_API_KEY
+        sync: false                  # opcional (IA paga)
