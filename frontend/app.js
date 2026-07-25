@@ -1655,6 +1655,9 @@ async function _aiPost(context) {
 }
 function _aiRenderResult(a, bodyEl, scoreLabel, opts) {
   opts = opts || {};
+  // Tolera resposta em texto puro (versões antigas do worker): embrulha num objeto.
+  if (typeof a === 'string') a = { attentionPoints: [a], strengths: [], trainingSuggestions: [] };
+  a = a || {};
   const gkId = opts.gkId;
   const list = (arr) => (arr && arr.length) ? arr.map(x => `<li style="margin-bottom:4px;">${_esc(x)}</li>`).join('') : '<li style="color:var(--muted);">—</li>';
   const sec = (icon, title, arr, color) => `<div style="margin-bottom:12px;"><div style="font-weight:700;font-size:13px;color:${color};margin-bottom:4px;">${icon} ${title}</div><ul style="margin:0 0 0 18px;font-size:13px;line-height:1.5;">${list(arr)}</ul></div>`;
@@ -1729,6 +1732,33 @@ function pidFromAI(gkId) {
 }
 
 // Match Center — análise da partida ao vivo
+// Análise local (heurística) da partida, no formato do _aiRenderResult.
+// Usada como reserva quando a IA (Gemini) não está disponível.
+function _mcLocalAnalysis() {
+  const d = (typeof mcData !== 'undefined' && mcData) ? mcData : {};
+  const s = k => +(d[k] || 0);
+  const def = s('dad') + s('dae') + s('dbd') + s('dbe') + s('dc') + s('d1x1') + s('esq');
+  const gol = s('gda') + s('gfa') + s('gpe') + s('gfl');
+  const taxa = (def + gol) > 0 ? Math.round(def / (def + gol) * 100) : null;
+  const streak = (typeof mcMaxStreak !== 'undefined') ? mcMaxStreak : 0;
+  const strengths = [], attention = [], training = [];
+  if (taxa != null && taxa >= 80) strengths.push('Taxa de defesa de ' + taxa + '% — excelente aproveitamento.');
+  if (streak >= 4) strengths.push('Sequência de ' + streak + ' defesas consecutivas — consistência.');
+  if (s('int') >= 2) strengths.push(s('int') + ' interceptações — boa leitura de jogo.');
+  if (s('esq') > 0) strengths.push(s('esq') + ' esquadro(s) — reações de alto nível.');
+  if (taxa != null && taxa < 65) { attention.push('Taxa de defesa de ' + taxa + '% — trabalhar posicionamento.'); training.push('Treino de posicionamento de gol com finalizações variadas.'); }
+  if (s('gpe') > 0) { attention.push(s('gpe') + ' gol(is) de pênalti sofrido(s).'); training.push('Estudo de cobranças de pênalti (lateralidade do adversário).'); }
+  if ((s('dme') + s('dpe')) > (s('dmc') + s('dpc'))) { attention.push('Mais distribuições erradas que certas.'); training.push('Sessão de distribuição: alvos a 10m e 15m.'); }
+  training.push('Revisão em vídeo dos lances da partida com a comissão.');
+  return {
+    overallScore: +(((typeof mcNotaAtual !== 'undefined') ? mcNotaAtual : 7) || 7).toFixed(1),
+    strengths: strengths.length ? strengths : ['Manter o nível e continuar evoluindo.'],
+    attentionPoints: attention.length ? attention : ['Continuar acumulando dados para análise.'],
+    evolutionNotes: [],
+    trainingSuggestions: training,
+  };
+}
+
 async function mcAnaliseIA() {
   const wrap = document.getElementById('mc-ai-wrap');
   const bodyEl = document.getElementById('mc-ai-body');
@@ -1750,7 +1780,14 @@ async function mcAnaliseIA() {
   };
   const a = await _aiPost(ctx);
   if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
-  if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;">⚠️ IA indisponível (servidor sem chave, sem conexão ou sem login no backend). Tente novamente após entrar com email/Google.</div>'; return; }
+  if (!a) {
+    // Sem IA no momento → mostra uma análise local (heurística) da partida.
+    const local = _mcLocalAnalysis();
+    bodyEl.innerHTML = '<div style="font-size:12px;color:var(--warning);margin-bottom:10px;">⚠️ IA (Gemini) indisponível agora — mostrando análise automática local da partida:</div>';
+    const box = document.createElement('div'); bodyEl.appendChild(box);
+    _aiRenderResult(local, box, 'Nota da partida (local)', {});
+    return;
+  }
   if (gk) _saveAIAnalysis('partida', gk.id, a, (gk.nome || '') + (p ? ' vs ' + p.adversario : ''));
   _aiRenderResult(a, bodyEl, 'Nota da partida (IA)', { gkId: gk ? gk.id : null });
   try { logAudit('IA', 'Gerou análise IA da partida' + (p ? ' vs ' + p.adversario : '')); } catch (e) {}
@@ -1779,7 +1816,7 @@ async function tpAnaliseIA() {
   };
   const a = await _aiPost(ctx);
   if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
-  if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;">⚠️ IA indisponível (servidor sem chave, sem conexão ou sem login no backend).</div>'; return; }
+  if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;">⚠️ IA (Gemini) indisponível no momento. Tente novamente em instantes.</div>'; return; }
   _saveAIAnalysis('treino', null, a, 'Equipe');
   _aiRenderResult(a, bodyEl, 'Prontidão da equipe (IA)');
   try { logAudit('IA', 'Gerou sugestão de treino por IA'); } catch (e) {}
@@ -1822,7 +1859,7 @@ async function gerarAnaliseIA() {
   if (!a) {
     // Fallback: insights locais (heurística) quando a IA não está disponível
     const local = gkIntelligence(gkId, DB.partidas, DB.scouts);
-    body.innerHTML = `<div style="font-size:12px;color:var(--warning);margin-bottom:10px;">⚠️ IA indisponível (servidor sem chave ou sem conexão). Mostrando insights automáticos locais:</div>`
+    body.innerHTML = `<div style="font-size:12px;color:var(--warning);margin-bottom:10px;">⚠️ IA (Gemini) indisponível agora. Mostrando insights automáticos locais:</div>`
       + (local.length ? local.map(i => `<div style="font-size:13px;padding:4px 0;">${i.icon} ${_esc(i.text)}</div>`).join('') : '<div style="color:var(--muted);font-size:13px;">Sem insights suficientes.</div>');
     return;
   }
