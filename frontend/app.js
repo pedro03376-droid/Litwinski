@@ -3640,20 +3640,25 @@ const MC_BUTTONS = {
   futsal: {
     def: [['dad','Alta<br>Direita','Alta Dir.'],['dae','Alta<br>Esquerda','Alta Esq.'],['dc','Central','Central'],['dbd','Baixa<br>Direita','Baixa Dir.'],['dbe','Baixa<br>Esquerda','Baixa Esq.'],['esq','Esquadro','Esquadro']],
     dist: [['dpc','Pé<br>Certo','Pé Certo'],['dpe','Pé<br>Errado','Pé Errado'],['dmc','Mão<br>Certa','Mão Certa'],['dme','Mão<br>Errada','Mão Errada']],
-    out: [['int','Interceptação','Interceptação'],['sai','Saída<br>do Gol','Saída'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.']],
+    out: [['int','Interceptação','Interceptação'],['sai','Saída<br>do Gol','Saída'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.'],['golgk','🧤⚽ Gol da<br>Goleira','Gol da Goleira']],
     distTitle: '🟡 Distribuição',
   },
   beach: {
     def: [['dad','Aérea<br>Direita','Aérea Dir.'],['dae','Aérea<br>Esquerda','Aérea Esq.'],['dc','Aérea<br>Central','Aérea Central'],['dbd','Rasteira<br>Direita','Rasteira Dir.'],['dbe','Rasteira<br>Esquerda','Rasteira Esq.'],['esq','Voleio/<br>Bicicleta','Voleio/Bicicleta']],
     dist: [['dmc','Arremesso<br>Certo','Arremesso Certo'],['dme','Arremesso<br>Errado','Arremesso Errado'],['dpc','Pé<br>Certo','Pé Certo'],['dpe','Pé<br>Errado','Pé Errado']],
-    out: [['int','Interceptação','Interceptação'],['sai','Saída/<br>Soco','Saída/Soco'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.']],
+    out: [['int','Interceptação','Interceptação'],['sai','Saída/<br>Soco','Saída/Soco'],['pose','Posic.<br>Esq.','Pos. Esq.'],['posd','Posic.<br>Dir.','Pos. Dir.'],['golgk','🧤⚽ Gol da<br>Goleira','Gol da Goleira']],
     distTitle: '🟡 Distribuição (arremesso)',
   },
 };
 function _mcEsc(s) { return String(s).replace(/'/g, "\\'"); }
 function mcRenderButtons() {
   const cfg = MC_BUTTONS[_mcMod] || MC_BUTTONS.futsal;
-  const build = (arr, cls) => arr.map(([f, html, label]) => `<button class="mc-btn ${cls}" onclick="mcEvento('${f}','${_mcEsc(label)}','${cls === 'mc-btn-def' ? 'def' : cls === 'mc-btn-dist' ? 'dist' : 'out'}')">${html}</button>`).join('');
+  const build = (arr, cls) => arr.map(([f, html, label]) => {
+    const tipo = cls === 'mc-btn-def' ? 'def' : cls === 'mc-btn-dist' ? 'dist' : 'out';
+    // "Gol da goleira" tem ação própria (soma ao placar) e destaque visual.
+    if (f === 'golgk') return `<button class="mc-btn ${cls}" style="border-color:rgba(16,185,129,.5);color:#10B981;font-weight:700;" onclick="mcGolGoleira()">${html}</button>`;
+    return `<button class="mc-btn ${cls}" onclick="mcEvento('${f}','${_mcEsc(label)}','${tipo}')">${html}</button>`;
+  }).join('');
   const dg = document.getElementById('mc-def-grid'); if (dg) dg.innerHTML = build(cfg.def, 'mc-btn-def');
   const sg = document.getElementById('mc-dist-grid'); if (sg) sg.innerHTML = build(cfg.dist, 'mc-btn-dist');
   const og = document.getElementById('mc-out-grid'); if (og) og.innerHTML = build(cfg.out, 'mc-btn-out');
@@ -3741,12 +3746,13 @@ const MC_NOTA_PESOS = {
   dpe:-0.10, dme:-0.10,             // distribuição errada
   gda:-0.20, gfa:-0.20, gpe:-0.20, gfl:-0.20, // gol sofrido
   int:+0.10, sai:+0.10,             // interceptação / saída correta
-  pose:+0.05, posd:+0.05            // posicionamento
+  pose:+0.05, posd:+0.05,           // posicionamento
+  golgk:+0.40                       // gol marcado pela goleira (grande positivo)
 };
 
 const MC_ICONS = {
   def:'🧤', gol:'⚽', dist:'🎯', out:'🛡️',
-  sub:'🔄', periodo:'─', 'placar-nos':'⚽', 'placar-adv':'⚽', tt:'⏱'
+  sub:'🔄', periodo:'─', 'placar-nos':'⚽', 'placar-adv':'⚽', tt:'⏱', golgk:'🧤'
 };
 
 const MC_TIPO_ICONS = {
@@ -3864,9 +3870,34 @@ function mcEvento(key, label, tipo) {
   if (undoBtn) { undoBtn.disabled=false; undoBtn.style.opacity='1'; }
 }
 
+// Gol marcado PELA goleira: conta como gol do time (placar) + estatística + nota.
+function mcGolGoleira() {
+  mcData.golgk = (mcData.golgk || 0) + 1;
+  mcPlacar.nos = (mcPlacar.nos || 0) + 1;
+  const elNos = document.getElementById('mc-score-nos');
+  if (elNos) elNos.textContent = mcPlacar.nos;
+  const timeStr = mcFormatTime(mcSeconds);
+  mcLog.unshift({ key: 'golgk', label: '🧤⚽ Gol da Goleira!', tipo: 'golgk', time: timeStr, periodo: mcPeriodo, sec: mcSeconds });
+  mcUpdateCounters();
+  mcUpdateLog();
+  mcUpdateNota('golgk');
+  mcUpdateHighlights();
+  try { mcUpdateEventMap(); } catch (e) {}
+  try { mcUpdatePeriodStats(); } catch (e) {}
+  const undoBtn = document.getElementById('mc-btn-undo');
+  if (undoBtn) { undoBtn.disabled = false; undoBtn.style.opacity = '1'; }
+  toast('🧤 Gol da goleira registrado! (+1 no placar)', 'success');
+}
+
 function mcDesfazer() {
   if (!mcLog.length) return;
   const last=mcLog.shift();
+  // Desfazer um gol da goleira também remove +1 do placar.
+  if (last.key === 'golgk') {
+    mcPlacar.nos = Math.max(0, (mcPlacar.nos || 0) - 1);
+    const elNos = document.getElementById('mc-score-nos');
+    if (elNos) elNos.textContent = mcPlacar.nos;
+  }
   if (mcData[last.key] > 0) mcData[last.key]--;
   mcUpdateCounters();
   mcUpdateLog();
@@ -3905,8 +3936,8 @@ function mcUpdateLog() {
     el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px 0;font-size:13px;">Nenhum evento registrado</div>';
     return;
   }
-  const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)',tt:'rgba(167,139,250,.15)'};
-  const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)',tt:'rgba(167,139,250,.4)'};
+  const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)',tt:'rgba(167,139,250,.15)',golgk:'rgba(16,185,129,.2)'};
+  const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)',tt:'rgba(167,139,250,.4)',golgk:'rgba(16,185,129,.6)'};
   el.innerHTML=mcLog.slice(0,60).map((e,i)=>{
     if (e.tipo==='periodo') return `<div style="text-align:center;padding:6px 0;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
     const icon=MC_TIPO_ICONS[e.key]||MC_ICONS[e.tipo]||'●';
@@ -4303,7 +4334,7 @@ function mcRenderSmartLog() {
   const events=mcLog.filter(e=>e.tipo!=='periodo').slice().reverse();
   if (!events.length){el.innerHTML='';return;}
   const fases=mcDetectFases();
-  const typeColors={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#8B5CF6','placar-nos':'#10B981','placar-adv':'#EF4444'};
+  const typeColors={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#8B5CF6','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981'};
   let html='<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">Linha do Tempo</div>';
   let lastFaseIdx=-1;
   for (const ev of events) {
@@ -4682,7 +4713,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
 
   const timelineEvents=mcLog.filter(e=>e.tipo!=='periodo').slice(0,20);
   if (timelineEvents.length) {
-    const typeColors2={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#F59E0B','placar-nos':'#10B981','placar-adv':'#EF4444'};
+    const typeColors2={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#F59E0B','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981'};
     html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
       <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📅 Timeline do Jogo</div>
       ${timelineEvents.map(e=>`
