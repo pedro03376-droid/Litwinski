@@ -6722,7 +6722,9 @@ async function renderTreinos() {
   const sessEl = document.getElementById('tp-sessions');
   if (kpis) kpis.innerHTML = '<div style="color:var(--muted);font-size:13px;">Carregando…</div>';
 
-  // Tenta enviar o que estiver salvo no aparelho antes de listar.
+  // Acorda o servidor (cold start do plano grátis) e tenta enviar o que
+  // estiver salvo no aparelho antes de listar.
+  try { _wakeBackend(); } catch (e) {}
   try { await _tpFlushPending(); } catch (e) {}
 
   let dash = {}, sessions = [], dashFailed = false;
@@ -7476,6 +7478,20 @@ function setBackendUrl(url) {
   else { if (!/\/api\/v1$/.test(url)) url += '/api/v1'; try { localStorage.setItem('gkhub_api_url', url); } catch (e) {} toast('Backend definido. Recarregando…', 'success'); }
   setTimeout(() => location.reload(), 900);
 }
+
+// "Acorda" o backend grátis (o Render hiberna após ~15 min). Um ping leve no
+// /health ao abrir o app / voltar a ficar online reduz o cold start quando o
+// usuário chega nos Treinos. Best-effort e no máximo 1x por minuto.
+let _wakeTs = 0;
+function _wakeBackend() {
+  try {
+    const now = Date.now();
+    if (now - _wakeTs < 60000) return;
+    _wakeTs = now;
+    fetch(_API_URL + '/health', { method: 'GET', cache: 'no-store' }).catch(() => {});
+  } catch (e) {}
+}
+window.addEventListener('load', () => { setTimeout(_wakeBackend, 500); });
 const _API_TOKEN_KEY = 'gkhub_api_token';
 
 function _apiToken() { return localStorage.getItem(_API_TOKEN_KEY); }
@@ -8881,7 +8897,8 @@ window.addEventListener('online', () => {
   if (lbl) lbl.textContent = 'Reconectado…';
   // Auto-sync pending data
   setTimeout(syncAllToCloud, 800);
-  // Reenvia treinos salvos offline (best-effort)
+  // Acorda o backend e reenvia treinos salvos offline (best-effort)
+  try { _wakeBackend(); } catch (e) {}
   setTimeout(() => { try { _tpFlushPending(); } catch (e) {} }, 1200);
 });
 
