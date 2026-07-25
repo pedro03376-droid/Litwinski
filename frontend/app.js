@@ -7624,6 +7624,10 @@ async function tpExportPdf() {
 // URL do backend. Pode ser trocada sem novo deploy do app: basta definir
 // localStorage 'gkhub_api_url' (ex.: ao migrar o backend para outro host).
 const _API_URL_DEFAULT = 'https://gkhub-backend.onrender.com/api/v1';
+// Função de IA (Cloudflare Worker) — padrão para todos os aparelhos. Pode ser
+// trocada com setAiUrl('...'). A IA só responde de fato quando a chave da
+// Gemini estiver configurada no worker (senão, cai no modo regras).
+const _AI_URL_DEFAULT = 'https://snowy-moon-21c7gkhubai.pedro03376.workers.dev';
 const _API_URL = (function () {
   try { return (localStorage.getItem('gkhub_api_url') || '').trim() || _API_URL_DEFAULT; }
   catch (e) { return _API_URL_DEFAULT; }
@@ -7707,8 +7711,8 @@ async function _ensureBackendToken() {
 async function renderBackendCard() {
   const el = document.getElementById('backend-card-body');
   if (!el) return;
-  let aiOn = false;
-  try { aiOn = !!(localStorage.getItem('gkhub_ai_url') || '').trim(); } catch (e) {}
+  let aiOn = !!(typeof _AI_URL_DEFAULT !== 'undefined' && _AI_URL_DEFAULT);
+  try { const v = (localStorage.getItem('gkhub_ai_url') || '').trim(); if (v) aiOn = true; } catch (e) {}
   el.innerHTML =
     '<div style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--success);">' +
       '<span style="width:9px;height:9px;border-radius:50%;background:var(--success);display:inline-block;"></span> Local + Nuvem (Firebase)' +
@@ -7732,8 +7736,8 @@ async function apiRequest(method, path, body) {
   // IA: vai para a mini-função (Cloudflare Worker) se configurada; senão, o
   // chamador cai no modo heurístico.
   if (path.indexOf('/ai-analysis') === 0) {
-    let base = '';
-    try { base = (localStorage.getItem('gkhub_ai_url') || '').trim(); } catch (e) {}
+    let base = _AI_URL_DEFAULT;
+    try { base = (localStorage.getItem('gkhub_ai_url') || '').trim() || _AI_URL_DEFAULT; } catch (e) {}
     if (!base) throw new Error('AI no-url');
     const res = await fetch(base.replace(/\/+$/, '') + path.replace('/ai-analysis', ''), {
       method, headers: { 'Content-Type': 'application/json' },
