@@ -5990,10 +5990,19 @@ async function authLogin() {
 
 /* ── Post-login: load clubs and show selector or go directly ── */
 async function _afterLoginLoadClubs() {
+  let _wsOk = false;
   try {
     const workspaces = await api.get('/teams/my-workspaces');
     _workspaces = Array.isArray(workspaces) ? workspaces : (workspaces?.data || []);
+    _wsOk = true;
   } catch(e) { _workspaces = []; }
+
+  // Limpa clube "fantasma" salvo de um backend anterior (ex.: troca de host):
+  // se o clube ativo não existe mais na lista real, esquece-o.
+  if (_wsOk && _activeWorkspaceId && !_workspaces.some(w => w.teamId === _activeWorkspaceId)) {
+    _activeWorkspaceId = null;
+    try { localStorage.removeItem('gkhub_active_workspace'); } catch(e){}
+  }
 
   if (_workspaces.length === 0) {
     // No clubs — go to dashboard directly
@@ -6267,19 +6276,29 @@ async function loadClubMembers() {
     container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Faça login para ver os membros do clube.</div>';
     return;
   }
-  // Auto-resolve workspace if not set yet
-  if (!_activeWorkspaceId) {
-    try {
-      const ws = await api.get('/teams/my-workspaces');
-      _workspaces = Array.isArray(ws) ? ws : (ws?.data || []);
+  // Busca a lista real de clubes e valida o clube ativo (corrige clube
+  // "fantasma" salvo de um backend anterior).
+  let _wsOk = false;
+  try {
+    const ws = await api.get('/teams/my-workspaces');
+    _workspaces = Array.isArray(ws) ? ws : (ws?.data || []);
+    _wsOk = true;
+  } catch(e) {}
+  if (_wsOk) {
+    const valid = _activeWorkspaceId && _workspaces.some(w => w.teamId === _activeWorkspaceId);
+    if (!valid) {
       if (_workspaces.length > 0) {
-        const first = _workspaces[0];
-        _setActiveWorkspace(first.teamId, first.teamName);
+        _setActiveWorkspace(_workspaces[0].teamId, _workspaces[0].teamName);
+      } else {
+        _activeWorkspaceId = null;
+        try { localStorage.removeItem('gkhub_active_workspace'); } catch(e){}
+        container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhum clube neste servidor ainda.<br><button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="createWorkspace(\'Clube\')">+ Criar clube</button></div>';
+        return;
       }
-    } catch(e) {}
+    }
   }
   if (!_activeWorkspaceId) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhum clube vinculado à sua conta.</div>';
+    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhum clube vinculado à sua conta.<br><button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="createWorkspace(\'Clube\')">+ Criar clube</button></div>';
     return;
   }
   container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Carregando...</div>';
