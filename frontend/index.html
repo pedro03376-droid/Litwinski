@@ -78,23 +78,18 @@
     <div class="auth-logo-text">GK Hub</div>
     <div class="auth-logo-sub">Plataforma de Performance para Goleiros(as) de Futsal</div>
 
-    <!-- Email + Senha (backend login — principal) -->
-    <div style="margin-bottom:12px;">
-      <input class="form-input" id="auth-email" type="email" placeholder="Email"
-        style="margin-bottom:8px;background:var(--surface);"
-        onkeydown="if(event.key==='Enter')document.getElementById('auth-pass').focus()" />
-      <input class="form-input" id="auth-pass" type="password" placeholder="Senha"
-        style="background:var(--surface);"
-        onkeydown="if(event.key==='Enter')authLogin()" />
+    <!-- Email + Senha desativado: o app agora é local + nuvem (Firebase), sem
+         servidor central. O login é feito pelo Google. Mantido oculto para não
+         quebrar referências. -->
+    <div style="display:none;">
+      <input class="form-input" id="auth-email" type="email" />
+      <input class="form-input" id="auth-pass" type="password" />
+      <button id="auth-login-btn" onclick="authLogin()"></button>
     </div>
-    <button class="btn btn-primary" style="width:100%;margin-bottom:4px;" id="auth-login-btn" onclick="authLogin()">
-      Entrar
-    </button>
 
     <div id="auth-err" class="auth-err"></div>
 
-    <!-- Google Sign-In -->
-    <div class="auth-divider"><span>ou</span></div>
+    <!-- Google Sign-In (login principal) -->
     <div id="auth-google-section">
       <button type="button" class="btn-google"
         onclick="authGoogle();">
@@ -138,7 +133,7 @@
 <!-- Sidebar -->
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
-    <div class="sidebar-logo-text" onclick="showClubSelector()" style="cursor:pointer;" title="Trocar clube">
+    <div class="sidebar-logo-text" onclick="navigate('config')" style="cursor:pointer;" title="Clube e compartilhamento">
       <h1 id="sidebar-club-name">GKHub</h1>
       <p id="sidebar-club-sub">Goalkeeper Performance Platform</p>
     </div>
@@ -249,7 +244,7 @@
       Segurança (2FA)
     </button>
     <div style="display:flex;gap:6px;margin-bottom:6px;">
-      <button class="btn btn-ghost btn-sm" onclick="showClubSelector()" style="flex:1;justify-content:center;color:var(--muted);font-size:11px;" title="Trocar clube">
+      <button class="btn btn-ghost btn-sm" onclick="navigate('config')" style="flex:1;justify-content:center;color:var(--muted);font-size:11px;" title="Clube e compartilhamento">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
         Trocar Clube
       </button>
@@ -323,7 +318,7 @@
             Segurança
           </div>
           <div class="user-dropdown-divider"></div>
-          <div class="user-dropdown-item" onclick="closeUserMenu();showClubSelector();">
+          <div class="user-dropdown-item" onclick="closeUserMenu();navigate('config');">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
             Trocar Clube
           </div>
@@ -1700,8 +1695,7 @@
       <!-- Membros do Clube (backend) -->
       <div class="card" style="max-width:680px;margin-bottom:16px;" id="club-members-card">
         <div class="card-header">
-          <span class="card-title">Membros do Clube</span>
-          <button class="btn btn-primary btn-sm" onclick="openAddMemberModal()">+ Adicionar</button>
+          <span class="card-title">Compartilhar com a comissão</span>
         </div>
         <div id="club-members-list" style="min-height:48px;">
           <div style="color:var(--muted);font-size:13px;padding:8px 0;">Carregando membros...</div>

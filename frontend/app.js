@@ -3630,7 +3630,7 @@ function pdfCompeticao() {
 // ═══════════════════════════════════════════════════════════
 // MATCH CENTER — Central de Análise Profissional
 // ═══════════════════════════════════════════════════════════
-const MC_FIELDS = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai'];
+const MC_FIELDS = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai','golgk'];
 
 // Botões de defesa/distribuição/outros por MODALIDADE. Mesmos CAMPOS de dados
 // (para não quebrar notas/heatmap) — muda só rótulo/ordem/ênfase. Beach: jogo
