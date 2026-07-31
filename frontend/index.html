@@ -580,6 +580,14 @@
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:10px;">Importar/restaurar substitui os dados atuais. O backup não inclui sua sessão de login por segurança.</div>
         <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-weight:700;font-size:13px;">🗂️ Histórico de backups (nuvem)</div>
+            <button class="btn btn-ghost btn-sm" onclick="renderBackupHistory()">Atualizar</button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Um backup é salvo automaticamente na nuvem 1x por dia. Mantemos os últimos 10 — dá para restaurar qualquer um.</div>
+          <div id="backup-history"><div style="font-size:12px;color:var(--muted);">—</div></div>
+        </div>
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
           <div style="font-weight:700;font-size:13px;margin-bottom:6px;">🔑 Código do clube (nuvem)</div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Cada clube tem um código próprio — os dados de clubes diferentes <b>nunca se misturam</b>. Membros do <b>mesmo</b> clube devem usar o <b>mesmo</b> código. Compartilhe este código só com a sua comissão técnica.</div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
@@ -1189,6 +1197,7 @@
         <div class="card" style="margin-bottom:20px;">
           <div class="card-header"><span class="card-title">Treinos</span><span id="perfil-tp-label" style="font-size:12px;color:var(--muted);"></span></div>
           <div id="perfil-tp-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;"></div>
+          <div id="perfil-tp-acwr" style="display:none;margin-bottom:16px;"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;" class="tp-grid">
             <div><div style="font-weight:600;font-size:13px;margin-bottom:6px;">Evolução por fundamento</div><div style="height:200px;"><canvas id="chart-perfil-tp"></canvas></div></div>
             <div>

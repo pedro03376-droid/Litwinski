@@ -683,7 +683,7 @@ function navigate(page) {
   if (page === 'treinos') renderTreinos();
   if (page === 'heatmap') renderHeatmap();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
-  if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); renderBackendCard(); loadClubMembers(); }
+  if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); renderBackendCard(); loadClubMembers(); renderBackupHistory(); }
   if (page === 'usuario') { loadUserPage(); }
   if (page === 'notificacoes') renderNotificacoes();
   if (page === 'central-relatorios') renderCentralRelatorios();
@@ -4569,9 +4569,35 @@ function mcSalvarEFechar() {
 }
 
 // ── Relatório Pós-Jogo ───────────────────────────────────────
+// Vídeo do jogo ligado aos lances: monta um link que abre no segundo do evento.
+let mcVideoUrl = '';
+let mcReportPId = null;
+function _videoAtTime(url, sec) {
+  url = String(url || '').trim();
+  if (!url) return '#';
+  sec = Math.max(0, Math.floor(sec || 0));
+  try {
+    if (/youtu\.be\//.test(url) || /youtube\.com/.test(url)) {
+      const clean = url.replace(/([?&])t=\d+s?/,'$1').replace(/[?&]$/,'');
+      return clean + (clean.includes('?') ? '&' : '?') + 't=' + sec + 's';
+    }
+    return url.split('#')[0] + '#t=' + sec;
+  } catch (e) { return url; }
+}
+function mcSetVideoUrl(v) {
+  mcVideoUrl = String(v || '').trim();
+  if (mcReportPId) {
+    const ps = DB.partidas; const i = ps.findIndex(p => p.id === mcReportPId);
+    if (i >= 0) { ps[i].videoUrl = mcVideoUrl; DB.savePartidas(ps); try { cloudSet('partidas', ps[i]); } catch (e) {} }
+  }
+  mcMostrarRelatorioFinal(mcCurrentReportSegs, mcReportPId);
+}
+
 function mcMostrarRelatorioFinal(segs, pId) {
   mcCurrentReportSegs = segs;
   const partida=DB.partidas.find(p=>p.id===pId);
+  mcReportPId = pId;
+  mcVideoUrl = (partida && partida.videoUrl) || '';
   const gkIds=[...new Set(segs.map(s=>s.gkId))];
   const subtitleParts=[];
   if(partida) subtitleParts.push(`${partida.adversario} · ${formatDate(partida.data||'')}`);
@@ -4711,18 +4737,29 @@ function mcMostrarRelatorioFinal(segs, pId) {
     }).join('')}`:''}
   </div>`;
 
+  // 🎥 Vídeo do jogo — cole o link e os lances viram clicáveis (abrem no tempo do lance)
+  html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">🎥 Vídeo do jogo</div>
+    <input id="mc-video-url" class="form-input" style="font-size:12px;padding:8px;width:100%;" placeholder="Cole o link do vídeo (YouTube, Drive, Vimeo…)" value="${_esc(mcVideoUrl)}" onchange="mcSetVideoUrl(this.value)">
+    ${mcVideoUrl?'<div style="font-size:11px;color:var(--success);margin-top:6px;">✅ Clique no horário de cada lance (abaixo) para abrir o vídeo naquele momento.</div>':'<div style="font-size:11px;color:var(--muted);margin-top:6px;">Com o link colado, cada lance da timeline abre o vídeo no segundo exato.</div>'}
+  </div>`;
+
   const timelineEvents=mcLog.filter(e=>e.tipo!=='periodo').slice(0,20);
   if (timelineEvents.length) {
     const typeColors2={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#F59E0B','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981'};
     html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
       <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📅 Timeline do Jogo</div>
-      ${timelineEvents.map(e=>`
+      ${timelineEvents.map(e=>{
+        const tempo = mcVideoUrl
+          ? `<a href="${_esc(_videoAtTime(mcVideoUrl,e.sec))}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;font-variant-numeric:tabular-nums;">${e.time}</a>`
+          : `<span style="color:var(--muted);font-variant-numeric:tabular-nums;">${e.time}</span>`;
+        return `
         <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;">
-          <span style="color:var(--muted);font-variant-numeric:tabular-nums;width:40px;flex-shrink:0;">${e.time}</span>
+          <span style="width:40px;flex-shrink:0;">${tempo}</span>
           <span style="width:8px;height:8px;border-radius:50%;background:${typeColors2[e.tipo]||'var(--muted)'};flex-shrink:0;"></span>
           <span style="flex:1;">${e.label}</span>
           <span style="font-size:9px;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;font-weight:700;">${e.periodo}T</span>
-        </div>`).join('')}
+        </div>`;}).join('')}
     </div>`;
   }
 
@@ -6539,6 +6576,34 @@ function _tpDashboard(teamId) {
   };
 }
 
+// ACWR — relação carga aguda (7 dias) / crônica (média semanal de 28 dias).
+// Base científica de prevenção de lesão: fora da "zona ideal" = mais risco.
+function _tpACWR(gkId) {
+  const s = _tpAll('tp_sessions');
+  const now = Date.now(), D = 864e5;
+  let acute = 0, chronic28 = 0;
+  s.forEach(x => {
+    if (!x.date) return;
+    const d = new Date(x.date + 'T00:00:00').getTime();
+    if (isNaN(d) || d > now) return;
+    const age = now - d;
+    const load = (x.rpe || []).filter(r => r.goalkeeperId === gkId)
+      .reduce((a, r) => a + (r.workload || ((x.durationMinutes || 0) * (r.value || 0))), 0);
+    if (!load) return;
+    if (age <= 7 * D) acute += load;
+    if (age <= 28 * D) chronic28 += load;
+  });
+  const chronic = chronic28 / 4; // média semanal das últimas 4 semanas
+  if (!chronic) return { ratio: null, status: 'Sem dados', color: 'var(--muted)', acute: Math.round(acute), chronic: 0 };
+  const ratio = +(acute / chronic).toFixed(2);
+  let status, color;
+  if (ratio < 0.8) { status = 'Subcarga'; color = '#3B82F6'; }
+  else if (ratio <= 1.3) { status = 'Ideal'; color = '#10B981'; }
+  else if (ratio <= 1.5) { status = 'Atenção'; color = '#F59E0B'; }
+  else { status = 'Risco alto'; color = '#EF4444'; }
+  return { ratio, status, color, acute: Math.round(acute), chronic: Math.round(chronic) };
+}
+
 function _tpGkSummary(gkId) {
   const s = _tpAll('tp_sessions').slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
   let presP = 0, presT = 0, rSum = 0, rN = 0, wl = 0;
@@ -6562,6 +6627,7 @@ function _tpGkSummary(gkId) {
     avgTechnical: avg(tg.technical), avgPhysical: avg(tg.physical), avgMental: avg(tg.mental),
     avgRpe: rN ? +(rSum / rN).toFixed(1) : null, accumulatedWorkload: Math.round(wl),
     recentEvaluations: recentEvaluations.slice(0, 12), goals,
+    acwr: _tpACWR(gkId),
   };
 }
 
@@ -7406,6 +7472,26 @@ async function renderPerfilTreinos(gkId) {
       <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;">${k}</div>
     </div>`).join('');
 
+  // Risco de lesão por carga (ACWR) — só aparece quando há dados suficientes.
+  const acwrEl = document.getElementById('perfil-tp-acwr');
+  if (acwrEl) {
+    const a = sum.acwr;
+    if (a && a.ratio != null) {
+      acwrEl.style.display = 'block';
+      acwrEl.innerHTML =
+        '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border:1px solid ' + a.color + '55;border-left:4px solid ' + a.color + ';border-radius:10px;">' +
+          '<div style="text-align:center;min-width:64px;"><div style="font-size:22px;font-weight:900;color:' + a.color + ';line-height:1;">' + a.ratio + '</div><div style="font-size:9px;color:var(--muted);letter-spacing:.5px;">ACWR</div></div>' +
+          '<div style="flex:1;">' +
+            '<div style="font-weight:700;font-size:14px;color:' + a.color + ';">Risco de lesão: ' + a.status + '</div>' +
+            '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Carga aguda (7d): ' + a.acute + ' · crônica (média/sem): ' + a.chronic + ' · zona ideal 0,8–1,3</div>' +
+          '</div>' +
+        '</div>';
+    } else {
+      acwrEl.style.display = 'block';
+      acwrEl.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:8px 2px;">Risco de lesão (ACWR): registre PSE nos treinos por ~4 semanas para calcular.</div>';
+    }
+  }
+
   // Evolution chart per fundamental from recentEvaluations (reverse to chrono)
   const evals = [...(sum.recentEvaluations || [])].reverse();
   const avgMap = (m) => { const v = Object.values(m || {}).filter(n => typeof n === 'number'); return v.length ? +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(2) : null; };
@@ -7892,6 +7978,65 @@ async function cloudRestore() {
   try { const snap = await rtdbGet(_cp('/backups/latest')); if (!snap) { toast('Nenhum backup na nuvem ainda.', 'info'); return; } _gkRestore(snap); toast('Restaurado da nuvem! Recarregando…', 'success'); setTimeout(() => location.reload(), 900); }
   catch (e) { toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : 'Não foi possível restaurar da nuvem.', 'error'); }
 }
+// Lista só as CHAVES de um caminho (shallow) — leve, não baixa o conteúdo.
+async function _rtdbShallow(path) {
+  const t = await _rtdbToken();
+  const res = await fetch(rtdbUrl + path + '.json?shallow=true' + (t ? '&auth=' + encodeURIComponent(t) : ''));
+  if (!res.ok) throw _rtdbErr(res.status);
+  return res.json();
+}
+
+// Backup AUTOMÁTICO diário na nuvem, com histórico (mantém os últimos 10).
+async function _autoBackup() {
+  if (!rtdbUrl) return;
+  try {
+    const last = +(localStorage.getItem('gkhub_last_autobackup') || 0);
+    if (Date.now() - last < 20 * 3600e3) return;   // no máximo 1 por dia
+    await _ensureClubMembership();
+    const day = new Date().toISOString().slice(0, 10);
+    const snap = _gkSnapshot();
+    await rtdbPut(_cp('/backups/history/' + day), snap);
+    await rtdbPut(_cp('/backups/latest'), snap);
+    localStorage.setItem('gkhub_last_autobackup', String(Date.now()));
+    // Prune: mantém os 10 mais recentes.
+    try {
+      const keys = await _rtdbShallow(_cp('/backups/history'));
+      if (keys) { const ds = Object.keys(keys).sort(); while (ds.length > 10) { const k = ds.shift(); await rtdbDelete(_cp('/backups/history/' + k)); } }
+    } catch (e) {}
+  } catch (e) { /* silencioso: nunca bloqueia o app */ }
+}
+
+// Lista o histórico de backups da nuvem na tela de Config.
+async function renderBackupHistory() {
+  const el = document.getElementById('backup-history');
+  if (!el) return;
+  if (!rtdbUrl) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);">Conecte a nuvem para ver o histórico.</div>'; return; }
+  el.innerHTML = '<div style="font-size:12px;color:var(--muted);">Carregando histórico…</div>';
+  try {
+    const keys = await _rtdbShallow(_cp('/backups/history'));
+    const days = keys ? Object.keys(keys).sort().reverse() : [];
+    if (!days.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);">Nenhum backup automático ainda (é criado 1x por dia ao abrir o app).</div>'; return; }
+    el.innerHTML = days.map(d =>
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
+        '<span>📦 ' + _esc(d) + '</span>' +
+        '<button class="btn btn-secondary btn-sm" onclick="restoreBackupDate(\'' + _esc(d) + '\')">Restaurar</button>' +
+      '</div>').join('');
+  } catch (e) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--error);">Não foi possível carregar o histórico.</div>';
+  }
+}
+async function restoreBackupDate(day) {
+  if (!confirm('Restaurar o backup de ' + day + '? Isso SOBRESCREVE os dados atuais deste aparelho.')) return;
+  try {
+    const snap = await rtdbGet(_cp('/backups/history/' + day));
+    if (!snap) { toast('Backup não encontrado.', 'error'); return; }
+    _gkRestore(snap);
+    try { logAudit('Dados', 'Restaurou backup de ' + day); } catch (e) {}
+    toast('Backup de ' + day + ' restaurado! Recarregando…', 'success');
+    setTimeout(() => location.reload(), 900);
+  } catch (e) { toast('Não foi possível restaurar esse backup.', 'error'); }
+}
+
 /* ── Privacidade / LGPD — export e exclusão por atleta ─────── */
 function _athleteData(gkId) {
   const gk = DB.goleiras.find(g => g.id === gkId) || {};
@@ -8800,6 +8945,7 @@ try { _updateScrollUI(); setTimeout(_updateScrollUI, 700); } catch (e) {}
 initFirebaseFromStorage();
 // Baixa (mescla) os dados da nuvem ao abrir — quem entra pela 1ª vez já vê o clube
 try { cloudPullCore(false); } catch (e) {}
+try { setTimeout(() => { _autoBackup(); }, 6000); } catch (e) {}   // backup automático diário (nuvem)
 try { setTimeout(_maybeShowWelcome, 2500); } catch (e) {}
 try { cloudPullNew(true).then(c => { if (c) { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a === 'dashboard') refreshDashboard(); updateNotifBadge(); } }); } catch (e) {}
 
