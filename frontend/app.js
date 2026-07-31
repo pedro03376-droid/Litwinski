@@ -6297,20 +6297,6 @@ async function switchWorkspace(teamId, teamName) {
   }
 }
 
-function initWorkspaceSwitcher() {
-  const token = _apiToken();
-  if (!token) return;
-  const saved = localStorage.getItem('gkhub_active_workspace');
-  if (saved) {
-    try {
-      const ws = JSON.parse(saved);
-      _activeWorkspaceId = ws.teamId;
-      document.getElementById('workspace-name').textContent = ws.teamName;
-      document.getElementById('workspace-switcher').style.display = 'block';
-    } catch(e) {}
-  }
-  loadWorkspaces();
-}
 
 /* ── Club Members ────────────────────────────────────── */
 async function loadClubMembers() {
@@ -6333,74 +6319,7 @@ async function loadClubMembers() {
     '<div style="font-size:11px;color:var(--muted);margin-top:8px;">Em <strong>Config. do Clube → Código do clube</strong> também dá para entrar em outro código.</div>';
   return;
 }
-async function _loadClubMembersLegacy() {
-  const token = _apiToken();
-  const container = document.getElementById('club-members-list');
-  if (!container) return;
-  if (!token) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Faça login para ver os membros do clube.</div>';
-    return;
-  }
-  // Busca a lista real de clubes e valida o clube ativo (corrige clube
-  // "fantasma" salvo de um backend anterior).
-  let _wsOk = false;
-  try {
-    const ws = await api.get('/teams/my-workspaces');
-    _workspaces = Array.isArray(ws) ? ws : (ws?.data || []);
-    _wsOk = true;
-  } catch(e) {}
-  if (_wsOk) {
-    const valid = _activeWorkspaceId && _workspaces.some(w => w.teamId === _activeWorkspaceId);
-    if (!valid) {
-      if (_workspaces.length > 0) {
-        _setActiveWorkspace(_workspaces[0].teamId, _workspaces[0].teamName);
-      } else {
-        _activeWorkspaceId = null;
-        try { localStorage.removeItem('gkhub_active_workspace'); } catch(e){}
-        container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhum clube neste servidor ainda.<br><button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="createWorkspace(\'Clube\')">+ Criar clube</button></div>';
-        return;
-      }
-    }
-  }
-  if (!_activeWorkspaceId) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhum clube vinculado à sua conta.<br><button class="btn btn-primary btn-sm" style="margin-top:10px;" onclick="createWorkspace(\'Clube\')">+ Criar clube</button></div>';
-    return;
-  }
-  container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Carregando...</div>';
-  try {
-    const data = await api.get('/teams/' + _activeWorkspaceId + '/members');
-    const members = Array.isArray(data) ? data : (data.data || []);
-    if (!members.length) {
-      container.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhum membro cadastrado.</div>';
-      return;
-    }
-    const roleLabel = { admin:'Admin', coach:'Preparador', viewer:'Visualizador' };
-    const roleColor = { admin:'var(--primary)', coach:'var(--success)', viewer:'var(--muted)' };
-    container.innerHTML = members.map(m => `
-      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">
-        <div style="width:34px;height:34px;border-radius:50%;background:var(--primary-g);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff;flex-shrink:0;">
-          ${_esc((m.name||m.email||'?')[0].toUpperCase())}
-        </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(m.name||'—')}</div>
-          <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${_esc(m.email||'')}</div>
-        </div>
-        <span style="font-size:10px;font-weight:700;color:${roleColor[m.role]||'var(--muted)'};background:rgba(255,255,255,.06);padding:2px 8px;border-radius:20px;white-space:nowrap;">${roleLabel[m.role]||m.role}</span>
-        <button onclick="removeMember('${_esc(m.userId)}')" title="Remover" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-        </button>
-      </div>`).join('');
-  } catch(e) {
-    container.innerHTML = '<div style="color:var(--error);font-size:13px;padding:8px 0;">Erro ao carregar membros. Verifique o backend.</div>';
-  }
-}
 
-function openAddMemberModal() {
-  const modal = document.getElementById('add-member-modal');
-  modal.style.display = 'flex';
-  document.getElementById('add-member-email').value = '';
-  document.getElementById('add-member-err').style.display = 'none';
-}
 function closeAddMemberModal() {
   document.getElementById('add-member-modal').style.display = 'none';
 }
@@ -7723,56 +7642,14 @@ function setAiUrl(url) {
 // /health ao abrir o app / voltar a ficar online reduz o cold start quando o
 // usuário chega nos Treinos. Best-effort e no máximo 1x por minuto.
 let _wakeTs = 0;
-function _wakeBackend() {
-  try {
-    const now = Date.now();
-    if (now - _wakeTs < 60000) return;
-    _wakeTs = now;
-    fetch(_API_URL + '/health', { method: 'GET', cache: 'no-store' }).catch(() => {});
-  } catch (e) {}
-}
 
 // Troca o token do Firebase por um JWT do backend. Com novas tentativas para
 // sobreviver ao "cold start" do servidor grátis (a 1ª chamada pode falhar
 // enquanto ele acorda). Retorna true se conseguiu um token.
-async function _exchangeFirebaseToken(retries) {
-  let u = null;
-  try { u = (typeof _firebaseAuth !== 'undefined' && _firebaseAuth) ? _firebaseAuth.currentUser : null; } catch (e) {}
-  if (!u) return false;
-  let idToken;
-  try { idToken = await u.getIdToken(); } catch (e) { return false; }
-  const max = (retries == null) ? 1 : retries;
-  for (let attempt = 0; attempt <= max; attempt++) {
-    try {
-      const res = await fetch(_API_URL + '/auth/google', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        const payload = (data && data.data) ? data.data : (data || {});
-        const tok = payload.access_token || payload.accessToken;
-        if (tok) { try { localStorage.setItem(_API_TOKEN_KEY, tok); } catch (e) {} return true; }
-        return false;
-      }
-    } catch (e) { /* rede / servidor acordando */ }
-    if (attempt < max) await new Promise(r => setTimeout(r, 3000)); // espera o servidor acordar
-  }
-  return false;
-}
 
 // Garante que há um token do backend: se faltar mas o usuário está logado no
 // Google, refaz a troca (recupera de uma falha de login por cold start).
 let _ensuringToken = false;
-async function _ensureBackendToken() {
-  try {
-    if (_apiToken()) return true;
-    if (_ensuringToken) return false;
-    _ensuringToken = true;
-    try { return await _exchangeFirebaseToken(2); }
-    finally { _ensuringToken = false; }
-  } catch (e) { return false; }
-}
 
 // Cartão de status na tela de Config. O app não depende mais de um servidor
 // central: dados e Treinos+ ficam no aparelho + Firebase; a IA é opcional.
@@ -7903,33 +7780,6 @@ function _renderBackendStatus() {
   }
 }
 
-async function backendConnect() {
-  const email = document.getElementById('backend-email').value.trim();
-  const pass  = document.getElementById('backend-pass').value;
-  const errEl = document.getElementById('backend-err');
-  const btn   = document.getElementById('backend-connect-btn');
-  errEl.style.display = 'none';
-  if (!email || !pass) { errEl.textContent='Preencha email e senha.'; errEl.style.display='block'; return; }
-  btn.disabled = true; btn.textContent = 'Conectando...';
-  try {
-    const result = await apiLogin(email, pass);
-    if (result) {
-      localStorage.setItem('gkhub_backend_email', email);
-      _renderBackendStatus();
-      loadWorkspaces();
-      loadClubMembers();
-      toast('Backend conectado com sucesso!', 'success');
-    } else {
-      errEl.textContent = 'Email ou senha incorretos.';
-      errEl.style.display = 'block';
-    }
-  } catch(e) {
-    errEl.textContent = 'Erro de conexão com o servidor.';
-    errEl.style.display = 'block';
-  } finally {
-    btn.disabled = false; btn.textContent = 'Conectar ao Backend';
-  }
-}
 
 function backendDisconnect() {
   localStorage.removeItem(_API_TOKEN_KEY);
@@ -7961,12 +7811,6 @@ async function apiLogin(email, password) {
   return null;
 }
 
-async function apiPing() {
-  try {
-    const res = await fetch(_API_URL.replace('/api/v1','') + '/api/docs-json', { method: 'HEAD' });
-    return res.ok || res.status === 404;
-  } catch { return false; }
-}
 
 // Anexa o token do Firebase (quando logado via Google) para que regras do
 // tipo "auth != null" aceitem as chamadas REST ao Realtime Database.
