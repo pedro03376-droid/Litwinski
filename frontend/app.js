@@ -683,7 +683,7 @@ function navigate(page) {
   if (page === 'treinos') renderTreinos();
   if (page === 'heatmap') renderHeatmap();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
-  if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); renderBackendCard(); loadClubMembers(); renderBackupHistory(); }
+  if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); renderBackendCard(); loadClubMembers(); renderBackupHistory(); renderAdminPanel(); }
   if (page === 'usuario') { loadUserPage(); }
   if (page === 'notificacoes') renderNotificacoes();
   if (page === 'central-relatorios') renderCentralRelatorios();
@@ -8037,6 +8037,72 @@ async function restoreBackupDate(day) {
   } catch (e) { toast('Não foi possível restaurar esse backup.', 'error'); }
 }
 
+/* ── ADMIN — registro central de uso + painel "quem está usando" ──────
+   Cada usuário grava só o PRÓPRIO registro em /registry/<uid>. Só o email
+   admin consegue LER a lista inteira (imposto pelas regras do Firebase). */
+const _ADMIN_EMAIL = 'pedro03376@gmail.com';
+function _isAdmin() {
+  try {
+    const u = (typeof _firebaseAuth !== 'undefined' && _firebaseAuth) ? _firebaseAuth.currentUser : null;
+    return !!(u && u.email && u.email.toLowerCase() === _ADMIN_EMAIL);
+  } catch (e) { return false; }
+}
+async function _registerUsage() {
+  if (!rtdbUrl) return;
+  const u = (typeof _firebaseAuth !== 'undefined' && _firebaseAuth) ? _firebaseAuth.currentUser : null;
+  if (!u || !u.uid) return;
+  try {
+    await rtdbPut('/registry/' + u.uid, {
+      email: u.email || '', name: u.displayName || '',
+      clubKey: _cloudClubKey(),
+      goleiras: (DB.goleiras || []).length,
+      partidas: (DB.partidas || []).length,
+      treinos: (DB.load('tp_sessions') || []).length,
+      lastSeen: new Date().toISOString(),
+    });
+  } catch (e) { /* silencioso: regras podem ainda não permitir */ }
+}
+function _relDateShort(iso) {
+  try {
+    const d = new Date(iso).getTime(); const diff = Date.now() - d;
+    const dias = Math.floor(diff / 864e5);
+    if (dias <= 0) return 'hoje';
+    if (dias === 1) return 'ontem';
+    if (dias < 30) return dias + ' dias';
+    return new Date(iso).toLocaleDateString('pt-BR');
+  } catch (e) { return '—'; }
+}
+async function renderAdminPanel() {
+  const card = document.getElementById('admin-panel-card');
+  const body = document.getElementById('admin-panel-body');
+  if (!card || !body) return;
+  if (!_isAdmin()) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  body.innerHTML = '<div style="font-size:12px;color:var(--muted);">Carregando…</div>';
+  try {
+    const reg = await rtdbGet('/registry');
+    const rows = reg ? Object.values(reg) : [];
+    rows.sort((a, b) => String(b.lastSeen || '').localeCompare(String(a.lastSeen || '')));
+    if (!rows.length) { body.innerHTML = '<div style="font-size:12px;color:var(--muted);">Nenhum registro ainda.</div>'; return; }
+    const head = '<tr style="text-align:left;color:var(--muted);font-size:11px;"><th style="padding:6px;">Usuário</th><th style="padding:6px;">Clube</th><th style="padding:6px;">Últ. acesso</th><th style="padding:6px;">Gol.</th><th style="padding:6px;">Part.</th><th style="padding:6px;">Trein.</th></tr>';
+    body.innerHTML =
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">' + rows.length + ' usuário(s) registrado(s):</div>' +
+      '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead>' + head + '</thead><tbody>' +
+      rows.map(r =>
+        '<tr style="border-top:1px solid var(--border);">' +
+          '<td style="padding:6px;">' + _esc(r.name || r.email || '—') + '<br><span style="color:var(--muted);font-size:10px;">' + _esc(r.email || '') + '</span></td>' +
+          '<td style="padding:6px;font-family:monospace;font-size:10px;word-break:break-all;">' + _esc(r.clubKey || '—') + '</td>' +
+          '<td style="padding:6px;">' + _relDateShort(r.lastSeen) + '</td>' +
+          '<td style="padding:6px;text-align:center;">' + (r.goleiras ?? '—') + '</td>' +
+          '<td style="padding:6px;text-align:center;">' + (r.partidas ?? '—') + '</td>' +
+          '<td style="padding:6px;text-align:center;">' + (r.treinos ?? '—') + '</td>' +
+        '</tr>').join('') +
+      '</tbody></table></div>';
+  } catch (e) {
+    body.innerHTML = '<div style="font-size:12px;color:var(--error);">Não foi possível carregar (verifique as regras do Firebase para /registry).</div>';
+  }
+}
+
 /* ── Privacidade / LGPD — export e exclusão por atleta ─────── */
 function _athleteData(gkId) {
   const gk = DB.goleiras.find(g => g.id === gkId) || {};
@@ -8946,6 +9012,7 @@ initFirebaseFromStorage();
 // Baixa (mescla) os dados da nuvem ao abrir — quem entra pela 1ª vez já vê o clube
 try { cloudPullCore(false); } catch (e) {}
 try { setTimeout(() => { _autoBackup(); }, 6000); } catch (e) {}   // backup automático diário (nuvem)
+try { setTimeout(() => { _registerUsage(); }, 4000); } catch (e) {}   // registro central de uso (admin)
 try { setTimeout(_maybeShowWelcome, 2500); } catch (e) {}
 try { cloudPullNew(true).then(c => { if (c) { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a === 'dashboard') refreshDashboard(); updateNotifBadge(); } }); } catch (e) {}
 

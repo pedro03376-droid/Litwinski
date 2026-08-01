@@ -1691,6 +1691,15 @@
     <!-- ══ CONFIG FIREBASE ══ -->
     <div id="page-config" class="page">
 
+      <!-- Painel Admin (só aparece para o administrador) -->
+      <div class="card" style="max-width:680px;margin-bottom:16px;display:none;" id="admin-panel-card">
+        <div class="card-header">
+          <span class="card-title">🛡️ Admin — quem está usando</span>
+          <button class="btn btn-ghost btn-sm" onclick="renderAdminPanel()">Atualizar</button>
+        </div>
+        <div id="admin-panel-body"><div style="font-size:12px;color:var(--muted);">—</div></div>
+      </div>
+
       <!-- Status do Servidor (backend) -->
       <div class="card" style="max-width:680px;margin-bottom:16px;" id="backend-card">
         <div class="card-header">

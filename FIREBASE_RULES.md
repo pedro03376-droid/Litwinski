@@ -32,10 +32,22 @@ substitua tudo pelo conteúdo abaixo → **Publicar**.
           ".write": "auth != null"
         }
       }
+    },
+    "registry": {
+      ".read": "auth != null && auth.token.email === 'pedro03376@gmail.com'",
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth.token.email === 'pedro03376@gmail.com')",
+        ".write": "auth != null && auth.uid === $uid"
+      }
     }
   }
 }
 ```
+
+> **`registry`** = o painel "quem está usando". Cada usuário grava **só o próprio**
+> registro; **apenas o email admin** (`pedro03376@gmail.com`) consegue **ler a lista
+> inteira**. Segurança imposta pelo servidor. Se um dia mudar o email admin, troque
+> nos dois lugares acima (e no `_ADMIN_EMAIL` do app).
 
 ## Depois de publicar — como conferir que a sincronização voltou
 1. No app: **Config. do Clube → 🔄 Sincronizar agora**.
