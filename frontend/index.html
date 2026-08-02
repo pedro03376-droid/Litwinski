@@ -78,6 +78,14 @@
     <div class="auth-logo-text">GK Hub</div>
     <div class="auth-logo-sub">Plataforma de Performance para Goleiros(as) de Futsal</div>
 
+    <!-- Aviso: navegador embutido (WhatsApp/Instagram) bloqueia o login do Google -->
+    <div id="auth-inapp-warn" style="display:none;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.4);color:var(--warning,#f59e0b);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px;line-height:1.5;text-align:left;">
+      ⚠️ <b>Abra no Chrome ou Safari para entrar.</b><br>
+      Você abriu pelo navegador do WhatsApp/Instagram, e o Google não permite login por aqui.
+      Toque em <b>⋮ / Compartilhar → “Abrir no navegador”</b>, ou copie o link abaixo e cole no Chrome/Safari.
+      <button onclick="copyAppLink()" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;border:1px solid rgba(245,158,11,.5);background:rgba(245,158,11,.15);color:var(--warning,#f59e0b);font-weight:700;cursor:pointer;">📋 Copiar link do app</button>
+    </div>
+
     <!-- Email + Senha desativado: o app agora é local + nuvem (Firebase), sem
          servidor central. O login é feito pelo Google. Mantido oculto para não
          quebrar referências. -->

@@ -5886,7 +5886,26 @@ function _init2FA() {
   if (ov && ov.classList.contains('hidden')) _maybeShow2FA();
 }
 
+// Detecta navegadores embutidos (WhatsApp/Instagram/Facebook/etc.), onde o
+// login do Google é BLOQUEADO pela política do Google ("navegador não seguro").
+function _isInAppBrowser() {
+  const ua = navigator.userAgent || '';
+  return /FBAN|FBAV|FB_IAB|Instagram|WhatsApp|Line\/|Twitter|Snapchat|TikTok|MicroMessenger|; wv\)/i.test(ua);
+}
+function copyAppLink() {
+  const url = 'https://pedro03376-droid.github.io/Litwinski/';
+  try { if (navigator.clipboard) navigator.clipboard.writeText(url); } catch (e) {}
+  try { toast('Link copiado! Cole no Chrome ou Safari.', 'success'); } catch (e) {}
+}
+
 function initAuth() {
+  // Aviso de navegador embutido (só quando ainda não está logado)
+  try {
+    const stored0 = JSON.parse(localStorage.getItem(_AUTH_SESSION) || 'null');
+    if (_isInAppBrowser() && !(stored0 && stored0.token)) {
+      const w = document.getElementById('auth-inapp-warn'); if (w) w.style.display = 'block';
+    }
+  } catch (e) {}
   // Verifica sessão IMEDIATAMENTE (síncrono) — não bloqueia a UI
   try {
     const stored = JSON.parse(localStorage.getItem(_AUTH_SESSION) || 'null');
