@@ -45,3 +45,8 @@ coverage/
 *.tgz
 *.tar.gz
 __pycache__/
+
+# ruflo local tool state
+.claude-flow/
+.claude/.proven-config-version
+.claude/proven-config.json

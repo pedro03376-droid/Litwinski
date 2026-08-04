@@ -7,6 +7,13 @@
       "skillPath": "skills/frontend-design/SKILL.md",
       "computedHash": "4eabc66183767153e404b39d1b839b1c37f2d82d86f0a0d7e880a579d8d62336"
     },
+    "project-graveyard": {
+      "source": "Shubhamsaboo/awesome-llm-apps",
+      "ref": "main",
+      "sourceType": "github",
+      "skillPath": "agent_skills/project-graveyard/SKILL.md",
+      "computedHash": "ea8e195b66e66afd21ebd8a73438f3d106e966054af81c0a308e7bfcb8d4d76e"
+    },
     "ui-ux-pro-max": {
       "source": "nextlevelbuilder/ui-ux-pro-max-skill",
       "sourceType": "github",
