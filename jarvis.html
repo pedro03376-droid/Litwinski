@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>JARVIS</title>
+<style>
+  :root{
+    --accent:#00d4ff;
+    --accent-dim:#0090b0;
+    --violet:#8b5cff;
+    --bg:#05070d;
+    --bg2:#0a0e18;
+    --panel:#0d1220;
+    --panel-border:#1c2740;
+    --text:#dfe8f5;
+    --text-dim:#7f8ba3;
+    --danger:#ff5547;
+    --ok:#10b981;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    width:100%; height:100%;
+    background:var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    overflow-x:hidden;
+  }
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(ellipse at 50% -10%, rgba(0,212,255,0.10), transparent 55%),
+      radial-gradient(ellipse at 90% 100%, rgba(139,92,255,0.08), transparent 50%),
+      var(--bg);
+  }
+  ::selection{ background:var(--accent); color:#000; }
+  button{ font-family:inherit; cursor:pointer; }
+  input{ font-family:inherit; }
+
+  /* ============ BOOT SCREEN ============ */
+  #boot-screen{
+    position:fixed; inset:0; z-index:9999;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:var(--bg);
+    transition:opacity .8s ease;
+  }
+  #boot-screen.fade-out{ opacity:0; pointer-events:none; }
+  .boot-name{
+    font-family:"Courier New",Consolas,monospace;
+    font-weight:700;
+    font-size:clamp(2.6rem,9vw,6rem);
+    letter-spacing:.35em;
+    padding-left:.35em;
+    background:linear-gradient(90deg,var(--accent),var(--violet));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 0 60px rgba(0,212,255,0.25);
+    animation:bootPulse 2.2s ease-in-out infinite;
+  }
+  @keyframes bootPulse{
+    0%,100%{ filter:brightness(1); }
+    50%{ filter:brightness(1.35); }
+  }
+  .boot-line{
+    width:min(340px,70vw); height:2px; margin:22px 0 26px;
+    background:linear-gradient(90deg, transparent, var(--accent), var(--violet), transparent);
+    background-size:200% 100%;
+    animation:slideLine 2.4s linear infinite;
+  }
+  @keyframes slideLine{
+    0%{ background-position:200% 0; }
+    100%{ background-position:-200% 0; }
+  }
+  .boot-status{
+    font-family:"Courier New",Consolas,monospace;
+    font-size:.8rem; letter-spacing:.3em; color:var(--accent);
+    animation:blink 1.1s steps(2,start) infinite;
+  }
+  @keyframes blink{ 50%{ opacity:.15; } }
+  .boot-version{
+    position:absolute; bottom:26px;
+    font-family:"Courier New",Consolas,monospace;
+    font-size:.7rem; letter-spacing:.2em; color:var(--text-dim);
+  }
+
+  /* ============ ACTIVATION SCREEN ============ */
+  #activation-screen{
+    position:fixed; inset:0; z-index:9998;
+    display:none; flex-direction:column; align-items:center; justify-content:center;
+    background:var(--bg); text-align:center; padding:20px;
+  }
+  #activation-screen.show{ display:flex; }
+  .act-name{
+    font-family:"Courier New",Consolas,monospace;
+    font-weight:700;
+    font-size:clamp(2.2rem,8vw,5rem);
+    letter-spacing:.3em;
+    padding-left:.3em;
+    background:linear-gradient(90deg,var(--accent),var(--violet));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    margin-bottom:46px;
+  }
+  #activate-btn{
+    background:linear-gradient(135deg, rgba(0,212,255,0.15), rgba(139,92,255,0.15));
+    border:1px solid var(--accent);
+    color:var(--accent);
+    padding:18px 44px;
+    font-size:1.05rem;
+    letter-spacing:.15em;
+    border-radius:6px;
+    box-shadow:0 0 30px rgba(0,212,255,0.15), inset 0 0 20px rgba(0,212,255,0.08);
+    transition:all .25s ease;
+  }
+  #activate-btn:hover{
+    background:linear-gradient(135deg, rgba(0,212,255,0.3), rgba(139,92,255,0.3));
+    box-shadow:0 0 46px rgba(0,212,255,0.35), inset 0 0 26px rgba(0,212,255,0.15);
+    transform:translateY(-2px);
+  }
+  .act-hint{
+    margin-top:18px; font-size:.75rem; letter-spacing:.25em; color:var(--text-dim);
+  }
+
+  /* ============ APP ============ */
+  #app{ display:none; min-height:100vh; padding-bottom:60px; }
+  #app.show{ display:block; }
+
+  .topbar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:12px 18px; border-bottom:1px solid var(--panel-border);
+    background:rgba(10,14,24,0.7); backdrop-filter:blur(6px);
+    position:sticky; top:0; z-index:50;
+  }
+  .topbar .brand{
+    font-family:"Courier New",Consolas,monospace; font-weight:700;
+    letter-spacing:.2em; color:var(--accent); font-size:.85rem; margin-right:auto;
+  }
+  #apikey-input{
+    background:var(--panel); border:1px solid var(--panel-border); color:var(--text);
+    padding:8px 12px; border-radius:6px; font-size:.8rem; width:min(260px,40vw);
+    outline:none;
+  }
+  #apikey-input:focus{ border-color:var(--accent); }
+  #apikey-save{
+    background:transparent; border:1px solid var(--accent-dim); color:var(--accent);
+    padding:8px 14px; border-radius:6px; font-size:.75rem; letter-spacing:.1em;
+  }
+  #apikey-save:hover{ background:rgba(0,212,255,0.1); }
+  .key-status{ font-size:.7rem; color:var(--text-dim); }
+  .key-status.ok{ color:var(--ok); }
+
+  main.stage{
+    max-width:900px; margin:0 auto; padding:40px 20px 10px;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+  }
+
+  .orb-wrap{ position:relative; width:220px; height:220px; margin-bottom:20px; cursor:pointer; }
+  #orb-container{ width:100%; height:100%; display:block; }
+  #orb-container svg{ width:100%; height:100%; display:block; }
+  .orb-core{ transform-origin:center; }
+  .orb-ring{ transform-origin:center; fill:none; }
+
+  .assistant-name{
+    font-family:"Courier New",Consolas,monospace; font-weight:700;
+    letter-spacing:.25em; font-size:1.4rem;
+    background:linear-gradient(90deg,var(--accent),var(--violet));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    margin-bottom:14px;
+  }
+  .line{ min-height:1.4em; font-size:.95rem; margin:4px 0; max-width:640px; }
+  .line.user{ color:var(--text-dim); }
+  .line.assistant{ color:var(--text); font-weight:500; }
+  .status-text{
+    font-family:"Courier New",Consolas,monospace; font-size:.72rem;
+    letter-spacing:.25em; color:var(--accent); margin-top:10px; min-height:1.2em;
+  }
+
+  .controls{
+    display:flex; align-items:center; gap:10px; margin-top:26px; flex-wrap:wrap; justify-content:center;
+  }
+  #text-input{
+    background:var(--panel); border:1px solid var(--panel-border); color:var(--text);
+    padding:12px 16px; border-radius:24px; font-size:.9rem; width:min(360px,80vw); outline:none;
+  }
+  #text-input:focus{ border-color:var(--accent); }
+  .icon-btn{
+    width:46px; height:46px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--panel-border); color:var(--text);
+    display:flex; align-items:center; justify-content:center; font-size:1.1rem;
+    transition:all .2s ease;
+  }
+  .icon-btn:hover{ border-color:var(--accent); color:var(--accent); }
+  .icon-btn.active{ border-color:var(--accent); color:var(--accent); box-shadow:0 0 16px rgba(0,212,255,0.35); }
+  .icon-btn.stop{ border-color:var(--danger); color:var(--danger); }
+  .icon-btn.stop:hover{ background:rgba(255,85,71,0.1); }
+
+  .warn-banner{
+    max-width:640px; margin:16px auto 0; padding:10px 16px; border-radius:8px;
+    background:rgba(255,85,71,0.1); border:1px solid var(--danger); color:#ffb3ac;
+    font-size:.82rem; display:none;
+  }
+  .warn-banner.show{ display:block; }
+
+  /* ============ SECOND BRAIN ============ */
+  .brain-section{ max-width:1100px; margin:50px auto 0; padding:0 16px; }
+  .brain-bar{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    padding:14px 18px; border:1px solid var(--panel-border); border-radius:10px 10px 0 0;
+    background:var(--panel);
+  }
+  .brain-title{ font-weight:700; font-size:1rem; }
+  .brain-sub{ font-size:.75rem; color:var(--text-dim); }
+  .brain-meta{ margin-left:auto; font-size:.78rem; color:var(--text-dim); }
+  .brain-btn{
+    width:34px; height:34px; border-radius:8px; border:1px solid var(--panel-border);
+    background:transparent; color:var(--text); font-size:1rem;
+  }
+  .brain-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  #graph-container{
+    border:1px solid var(--panel-border); border-top:none;
+    background:radial-gradient(ellipse at 50% 40%, rgba(139,92,255,0.05), transparent 60%), var(--bg2);
+    padding:6px;
+  }
+  #graph-container svg{ width:100%; height:auto; display:block; }
+
+  .node-label{ font-size:11px; fill:var(--text); font-family:inherit; pointer-events:none; }
+  .node-circle{ cursor:pointer; }
+
+  .legend{
+    display:flex; flex-wrap:wrap; gap:14px; align-items:center;
+    padding:14px 18px; border:1px solid var(--panel-border); border-top:none; border-radius:0 0 10px 10px;
+    background:var(--panel); font-size:.78rem;
+  }
+  .legend-item{ display:flex; align-items:center; gap:6px; color:var(--text-dim); }
+  .legend-dot{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+  .legend-injected{ margin-left:auto; color:var(--ok); font-weight:600; }
+
+  /* ============ MODAL ============ */
+  .modal-overlay{
+    position:fixed; inset:0; z-index:200; background:rgba(0,0,0,0.6);
+    display:none; align-items:center; justify-content:center; padding:20px;
+    backdrop-filter:blur(3px);
+  }
+  .modal-overlay.show{ display:flex; }
+  .modal{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:12px;
+    width:min(440px,100%); padding:22px; box-shadow:0 20px 60px rgba(0,0,0,0.5);
+  }
+  .modal h3{ font-size:1rem; margin-bottom:16px; letter-spacing:.05em; }
+  .modal label{ display:block; font-size:.72rem; color:var(--text-dim); margin:12px 0 4px; letter-spacing:.08em; }
+  .modal input[type=text], .modal select, .modal textarea{
+    width:100%; background:var(--bg2); border:1px solid var(--panel-border); color:var(--text);
+    padding:10px 12px; border-radius:6px; font-size:.88rem; outline:none; resize:vertical;
+  }
+  .modal input:focus, .modal select:focus, .modal textarea:focus{ border-color:var(--accent); }
+  .modal-actions{ display:flex; gap:10px; margin-top:20px; }
+  .btn{ padding:10px 16px; border-radius:6px; border:1px solid var(--panel-border); background:transparent; color:var(--text); font-size:.82rem; }
+  .btn.primary{ border-color:var(--accent); color:var(--accent); }
+  .btn.primary:hover{ background:rgba(0,212,255,0.1); }
+  .btn.danger{ border-color:var(--danger); color:var(--danger); margin-left:auto; }
+  .btn.danger:hover{ background:rgba(255,85,71,0.1); }
+
+  @media (max-width:560px){
+    .orb-wrap{ width:170px; height:170px; }
+    .assistant-name{ font-size:1.1rem; }
+    #text-input{ width:60vw; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- ============ TELA 1: BOOT ============ -->
+  <div id="boot-screen">
+    <div class="boot-name">JARVIS</div>
+    <div class="boot-line"></div>
+    <div class="boot-status">SINCRONIZANDO DADOS...</div>
+    <div class="boot-version">v5.0 · REBUILD</div>
+  </div>
+
+  <!-- ============ TELA 2: ATIVAÇÃO ============ -->
+  <div id="activation-screen">
+    <div class="act-name">JARVIS</div>
+    <button id="activate-btn">► ATIVAR SISTEMA</button>
+    <div class="act-hint">CLIQUE PARA INICIAR</div>
+  </div>
+
+  <!-- ============ APP ============ -->
+  <div id="app">
+    <div class="topbar">
+      <div class="brand">JARVIS // NEURAL CORE</div>
+      <input type="password" id="apikey-input" placeholder="Cole sua API key da Anthropic aqui">
+      <button id="apikey-save">SALVAR</button>
+      <span class="key-status" id="key-status">sem chave</span>
+    </div>
+
+    <main class="stage">
+      <div class="orb-wrap" id="orb-wrap">
+        <div id="orb-container"></div>
+      </div>
+
+      <div class="assistant-name">JARVIS</div>
+      <div class="line user" id="line-user">&nbsp;</div>
+      <div class="line assistant" id="line-assistant">&nbsp;</div>
+      <div class="status-text" id="status-text">OCIOSO</div>
+
+      <div class="warn-banner" id="warn-banner"></div>
+
+      <div class="controls">
+        <button class="icon-btn" id="mic-btn" title="Ativar microfone">🎤</button>
+        <input type="text" id="text-input" placeholder="ou digite e tecle Enter">
+        <button class="icon-btn stop" id="stop-btn" title="Interromper fala">⏹</button>
+      </div>
+    </main>
+
+    <section class="brain-section">
+      <div class="brain-bar">
+        <div>
+          <div class="brain-title">🧠 SECOND BRAIN</div>
+          <div class="brain-sub">memória viva de Pedro, sincronizada com o Jarvis</div>
+        </div>
+        <div class="brain-meta" id="brain-meta">0 notas · 0 áreas</div>
+        <button class="brain-btn" id="add-note-btn" title="Nova nota">+</button>
+        <button class="brain-btn" id="reload-btn" title="Recarregar grafo">⟳</button>
+      </div>
+      <div id="graph-container"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+  </div>
+
+  <!-- ============ MODAL: EDITOR DE NOTA ============ -->
+  <div class="modal-overlay" id="modal-overlay">
+    <div class="modal">
+      <h3 id="modal-title">Editar nota</h3>
+      <input type="hidden" id="note-id">
+      <label>Título</label>
+      <input type="text" id="note-title" maxlength="40">
+      <label>Área</label>
+      <select id="note-area"></select>
+      <label>Conteúdo</label>
+      <textarea id="note-body" rows="4"></textarea>
+      <div class="modal-actions">
+        <button class="btn danger" id="note-delete">Excluir</button>
+        <button class="btn" id="note-cancel">Cancelar</button>
+        <button class="btn primary" id="note-save">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ============================================================
+     CONFIG — respostas da entrevista do Pedro
+  ============================================================ */
+  var CONFIG = {
+    name: "Jarvis",
+    address: "senhor",
+    themeColor: "#00d4ff",
+    persona: "formal britânico",
+    wakeWord: "ei jarvis",
+    voiceGender: "masculina",
+    model: "claude-sonnet-5"
+  };
+
+  var AREA = {
+    metas:       { label: "Metas",       color: "#fbbf24" },
+    trabalho:    { label: "Carreira",    color: "#ff5547" },
+    projetos:    { label: "Projetos",    color: "#8b7cff" },
+    financas:    { label: "Finanças",    color: "#f7931a" },
+    aprendizado: { label: "Aprendizado", color: "#2dd4ff" },
+    saude:       { label: "Saúde",       color: "#10b981" },
+    relacoes:    { label: "Relações",    color: "#ec4899" },
+    meta:        { label: "Sobre",       color: "#8a90a6" }
+  };
+
+  var DEFAULT_NOTES = [
+    { id:"n1",  area:"meta",        title:"Pedro Litwinski",   body:"19 anos, social media e videomaker, estudante de Direito (3ª fase), mora em Lages-SC." },
+    { id:"n2",  area:"metas",       title:"Crescimento",       body:"Foco em crescimento e autodesenvolvimento pessoal e econômico." },
+    { id:"n3",  area:"trabalho",    title:"Leoas da Serra",    body:"Trabalha como videomaker e social media da equipe de futsal feminina Leoas da Serra." },
+    { id:"n4",  area:"trabalho",    title:"Freelas com Drone", body:"Faz vídeos, social media e captações com drone para outras empresas e clientes." },
+    { id:"n5",  area:"trabalho",    title:"Direito",           body:"Cursando Direito, atualmente na 3ª fase." },
+    { id:"n6",  area:"projetos",    title:"Sistema Goleiras",  body:"Desenvolvendo um sistema voltado para goleiras de futsal." },
+    { id:"n7",  area:"projetos",    title:"Edição CapCut",     body:"Estudando edição de vídeo no CapCut." },
+    { id:"n8",  area:"projetos",    title:"Novos Negócios",    body:"Explorando outros modelos de negócio." },
+    { id:"n9",  area:"financas",    title:"Independência",     body:"Quer crescer financeiramente até conseguir morar sozinho no centro." },
+    { id:"n10", area:"financas",    title:"BMW 320i",          body:"Meta de conquistar uma BMW 320i do ano." },
+    { id:"n11", area:"financas",    title:"Expandir Negócios", body:"Quer aumentar a empresa e os negócios, incluindo sistemas e negócios digitais." },
+    { id:"n12", area:"aprendizado", title:"Direito e Edição",  body:"Estuda Direito e edição de vídeo/imagem." },
+    { id:"n13", area:"aprendizado", title:"Ganhar Dinheiro",   body:"Quer aprender a ganhar mais dinheiro e a aumentar a produtividade." },
+    { id:"n14", area:"saude",       title:"Treino",            body:"Treina quase todos os dias quando o tempo permite e corre nos finais de semana; queria correr mais, mas o horário de trabalho limita." },
+    { id:"n15", area:"saude",       title:"Rotina",            body:"Saúde geral boa; alimentação e sono um pouco desregulados por causa dos horários de trabalho." },
+    { id:"n16", area:"relacoes",    title:"Amigos e Família",  body:"Relação boa com amigos, amigas e família." },
+    { id:"n17", area:"relacoes",    title:"Vida Amorosa",      body:"Está solteiro, gostaria de ter uma namorada mas sente dificuldade em desenvolver esse tipo de relação." }
+  ];
+
+  var DEFAULT_REL = [
+    ["n1","n2"],["n1","n3"],["n1","n5"],["n1","n12"],["n1","n16"],["n1","n14"],
+    ["n2","n3"],["n2","n4"],["n2","n9"],["n2","n10"],["n2","n11"],["n2","n6"],["n2","n7"],["n2","n8"],["n2","n13"],["n2","n14"],
+    ["n3","n4"],
+    ["n4","n11"],
+    ["n5","n12"],
+    ["n6","n7"],
+    ["n7","n12"],
+    ["n8","n11"],
+    ["n9","n10"],
+    ["n9","n11"],
+    ["n13","n11"],
+    ["n13","n9"],
+    ["n14","n15"],
+    ["n16","n17"]
+  ];
+
+  var REL = DEFAULT_REL;
+
+  /* ============================================================
+     ESTADO
+  ============================================================ */
+  var NOTES = loadNotes();
+  var apiKey = localStorage.getItem("anthropic_key") || "";
+  var sessionHistory = [];
+  var busy = false;             // true enquanto pensando OU falando
+  var activated = false;        // wake word já disparou, aguardando comando
+  var systemActivated = false;  // sistema ligado (pós clique ATIVAR)
+  var recognition = null;
+  var recognitionRunning = false;
+  var voices = [];
+  var chosenVoice = null;
+  var state = "idle";           // idle | listening | thinking | speaking
+
+  function loadNotes(){
+    try{
+      var raw = localStorage.getItem("jarvis_notes");
+      if(raw){
+        var parsed = JSON.parse(raw);
+        if(Array.isArray(parsed) && parsed.length) return parsed;
+      }
+    }catch(e){}
+    return DEFAULT_NOTES.slice();
+  }
+  function saveNotes(){
+    localStorage.setItem("jarvis_notes", JSON.stringify(NOTES));
+  }
+
+  /* ============================================================
+     BOOT -> ATIVAÇÃO
+  ============================================================ */
+  var bootScreen = document.getElementById("boot-screen");
+  var actScreen = document.getElementById("activation-screen");
+  var appEl = document.getElementById("app");
+
+  setTimeout(function(){
+    bootScreen.classList.add("fade-out");
+    setTimeout(function(){
+      bootScreen.style.display = "none";
+      actScreen.classList.add("show");
+    }, 800);
+  }, 2200);
+
+  document.getElementById("activate-btn").addEventListener("click", function(){
+    actScreen.classList.remove("show");
+    appEl.classList.add("show");
+    systemActivated = true;
+    initVoices();
+    setupRecognition();
+    var greeting = "Sistemas online. Estou ouvindo, " + CONFIG.address + ".";
+    setAssistantLine(greeting);
+    speak(greeting, function(){
+      startListening();
+    });
+  });
+
+  /* ============================================================
+     API KEY
+  ============================================================ */
+  var apiKeyInput = document.getElementById("apikey-input");
+  var keyStatus = document.getElementById("key-status");
+  apiKeyInput.value = apiKey;
+  updateKeyStatus();
+
+  document.getElementById("apikey-save").addEventListener("click", function(){
+    apiKey = apiKeyInput.value.trim();
+    localStorage.setItem("anthropic_key", apiKey);
+    updateKeyStatus();
+  });
+
+  function updateKeyStatus(){
+    if(apiKey){
+      keyStatus.textContent = "chave salva";
+      keyStatus.classList.add("ok");
+    }else{
+      keyStatus.textContent = "sem chave";
+      keyStatus.classList.remove("ok");
+    }
+  }
+
+  /* ============================================================
+     ORB (SVG)
+  ============================================================ */
+  var orbContainer = document.getElementById("orb-container");
+  var orbWrap = document.getElementById("orb-wrap");
+
+  function renderOrb(){
+    var c = CONFIG.themeColor;
+    var svg =
+      '<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+        '<radialGradient id="orbGrad" cx="50%" cy="45%" r="60%">' +
+          '<stop offset="0%" stop-color="#ffffff"/>' +
+          '<stop offset="35%" stop-color="'+c+'"/>' +
+          '<stop offset="100%" stop-color="#7a3cff"/>' +
+        '</radialGradient>' +
+        '<filter id="orbGlow" x="-100%" y="-100%" width="300%" height="300%">' +
+          '<feGaussianBlur stdDeviation="8" result="blur"/>' +
+          '<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+        '</filter>' +
+      '</defs>' +
+      '<circle class="orb-ring" cx="110" cy="110" r="95" stroke="'+c+'" stroke-width="1" opacity="0.35"/>' +
+      '<circle class="orb-ring" cx="110" cy="110" r="80" stroke="'+c+'" stroke-width="1" opacity="0.25"/>' +
+      '<circle id="orb-core" class="orb-core" cx="110" cy="110" r="55" fill="url(#orbGrad)" filter="url(#orbGlow)"/>' +
+      '</svg>';
+    orbContainer.innerHTML = svg;
+  }
+  renderOrb();
+
+  var orbPulsePhase = 0;
+  function animateOrb(){
+    orbPulsePhase += 0.03;
+    var core = document.getElementById("orb-core");
+    var speedMap = { idle:1, listening:2.2, thinking:4, speaking:2.6 };
+    var ampMap = { idle:0.04, listening:0.11, thinking:0.09, speaking:0.09 };
+    var sp = speedMap[state] || 1;
+    var amp = ampMap[state] || 0.04;
+    if(core){
+      var scale = 1 + Math.sin(orbPulsePhase * sp) * amp;
+      core.setAttribute("transform", "translate(110 110) scale(" + scale.toFixed(3) + ") translate(-110 -110)");
+    }
+    var rings = document.querySelectorAll(".orb-ring");
+    rings.forEach(function(r, i){
+      var rs = 1 + Math.sin(orbPulsePhase * sp * 0.6 + i) * (amp * 0.6);
+      r.setAttribute("transform", "translate(110 110) scale(" + rs.toFixed(3) + ") translate(-110 -110)");
+    });
+    requestAnimationFrame(animateOrb);
+  }
+  requestAnimationFrame(animateOrb);
+
+  orbWrap.addEventListener("click", function(){
+    if(!systemActivated) return;
+    startListening();
+  });
+
+  function setState(s){
+    state = s;
+    document.getElementById("status-text").textContent =
+      s === "idle" ? "OCIOSO" :
+      s === "listening" ? "OUVINDO..." :
+      s === "thinking" ? "PROCESSANDO..." :
+      "FALANDO...";
+  }
+
+  function setUserLine(t){ document.getElementById("line-user").textContent = t ? ("Você: " + t) : " "; }
+  function setAssistantLine(t){ document.getElementById("line-assistant").textContent = t ? (CONFIG.name + ": " + t) : " "; }
+
+  /* ============================================================
+     VOZ — RECONHECIMENTO (STT)
+  ============================================================ */
+  var warnBanner = document.getElementById("warn-banner");
+  function showWarn(msg){
+    warnBanner.textContent = msg;
+    warnBanner.classList.add("show");
+  }
+  function hideWarn(){ warnBanner.classList.remove("show"); }
+
+  function setupRecognition(){
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){
+      showWarn("Este navegador não suporta reconhecimento de voz. Use o campo de texto.");
+      return;
+    }
+    recognition = new SR();
+    recognition.lang = "pt-BR";
+    recognition.continuous = true;
+    recognition.interimResults = false;
+
+    recognition.onstart = function(){
+      recognitionRunning = true;
+    };
+
+    recognition.onresult = function(evt){
+      var lastResult = evt.results[evt.results.length - 1];
+      var transcript = lastResult[0].transcript.trim();
+      if(!transcript) return;
+      handleHeardSpeech(transcript);
+    };
+
+    recognition.onerror = function(evt){
+      if(evt.error === "not-allowed" || evt.error === "permission-denied"){
+        showWarn("Permissão de microfone negada. Habilite o microfone nas configurações do navegador.");
+        recognitionRunning = false;
+        return;
+      }
+      // "no-speech", "aborted" etc — silenciosamente deixa o onend reiniciar
+    };
+
+    recognition.onend = function(){
+      recognitionRunning = false;
+      if(systemActivated && !busy){
+        safeStartRecognition();
+      }
+    };
+  }
+
+  function safeStartRecognition(){
+    if(!recognition) return;
+    try{
+      recognition.start();
+    }catch(e){
+      // "already started" ou similar — ignora
+    }
+  }
+
+  function startListening(){
+    if(!recognition) return;
+    hideWarn();
+    setState("listening");
+    document.getElementById("mic-btn").classList.add("active");
+    if(!recognitionRunning){
+      safeStartRecognition();
+    }
+  }
+
+  function stopListeningVisual(){
+    document.getElementById("mic-btn").classList.remove("active");
+  }
+
+  document.getElementById("mic-btn").addEventListener("click", function(){
+    startListening();
+  });
+
+  function normalize(s){
+    return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  }
+
+  function handleHeardSpeech(rawTranscript){
+    if(busy) return; // ignora enquanto pensa/fala
+    var norm = normalize(rawTranscript);
+    var wake = CONFIG.wakeWord;
+
+    if(!activated){
+      if(norm.indexOf(wake) !== -1){
+        activated = true;
+        var rest = norm.split(wake).slice(1).join(wake).trim();
+        var originalRest = extractAfterWake(rawTranscript, wake);
+        if(rest.length > 2){
+          activated = false;
+          processCommand(originalRest || rawTranscript);
+        }else{
+          setState("listening");
+          setAssistantLine("Pois não, " + CONFIG.address + "?");
+          speak("Pois não, " + CONFIG.address + "?");
+        }
+      }
+      // sem wake word -> ignora
+    }else{
+      activated = false;
+      processCommand(rawTranscript);
+    }
+  }
+
+  function extractAfterWake(raw, wakeNorm){
+    var normRaw = normalize(raw);
+    var idx = normRaw.indexOf(wakeNorm);
+    if(idx === -1) return raw;
+    return raw.slice(idx + wakeNorm.length).trim();
+  }
+
+  /* ============================================================
+     VOZ — SÍNTESE (TTS)
+  ============================================================ */
+  function initVoices(){
+    function load(){
+      voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+      chosenVoice = pickVoice();
+    }
+    load();
+    if(window.speechSynthesis){
+      window.speechSynthesis.onvoiceschanged = load;
+    }
+  }
+
+  function pickVoice(){
+    if(!voices || !voices.length) return null;
+    var ptVoices = voices.filter(function(v){ return /pt-BR|pt_BR/i.test(v.lang); });
+    if(!ptVoices.length) ptVoices = voices.filter(function(v){ return /^pt/i.test(v.lang); });
+    if(!ptVoices.length) return voices[0];
+
+    var wantMale = CONFIG.voiceGender === "masculina";
+    var scored = ptVoices.map(function(v){
+      var n = v.name.toLowerCase();
+      var isFemaleName = /female|feminin|maria|luciana|ana|francisca|vitoria|vitória|camila/i.test(n);
+      var isMaleName = /male|masculin|daniel|ricardo|felipe|bruno|antonio|joao|joão/i.test(n);
+      var score = 0;
+      if(wantMale && isMaleName) score += 2;
+      if(!wantMale && isFemaleName) score += 2;
+      if(wantMale && isFemaleName) score -= 1;
+      if(!wantMale && isMaleName) score -= 1;
+      return { v: v, score: score };
+    });
+    scored.sort(function(a,b){ return b.score - a.score; });
+    return scored[0].v;
+  }
+
+  function speak(text, onDone){
+    if(!window.speechSynthesis){ if(onDone) onDone(); return; }
+    window.speechSynthesis.cancel();
+    var utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "pt-BR";
+    if(chosenVoice) utter.voice = chosenVoice;
+    utter.rate = 1;
+    utter.pitch = CONFIG.voiceGender === "masculina" ? 0.95 : 1.1;
+
+    busy = true;
+    setState("speaking");
+    stopListeningVisual();
+
+    utter.onend = function(){
+      busy = false;
+      setState("idle");
+      if(systemActivated) startListening();
+      if(onDone) onDone();
+    };
+    utter.onerror = function(){
+      busy = false;
+      setState("idle");
+      if(systemActivated) startListening();
+      if(onDone) onDone();
+    };
+    window.speechSynthesis.speak(utter);
+  }
+
+  document.getElementById("stop-btn").addEventListener("click", function(){
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    busy = false;
+    setState("idle");
+    if(systemActivated) startListening();
+  });
+
+  /* ============================================================
+     TEXTO (alternativa à voz)
+  ============================================================ */
+  var textInput = document.getElementById("text-input");
+  textInput.addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+      var val = textInput.value.trim();
+      if(!val) return;
+      textInput.value = "";
+      processCommand(val);
+    }
+  });
+
+  /* ============================================================
+     CÉREBRO — SYSTEM PROMPT + CHAMADA ANTHROPIC
+  ============================================================ */
+  function buildSystemPrompt(){
+    var identity =
+      "Você é " + CONFIG.name + ", um assistente de voz pessoal com personalidade " + CONFIG.persona +
+      ". Trate o usuário sempre por \"" + CONFIG.address + "\". Você é leal, atencioso e conhece profundamente a vida dele.";
+
+    var responseRule =
+      "Responda SEMPRE em português do Brasil, em 2 a 4 frases curtas, em tom falado natural (a resposta será lida em voz alta). " +
+      "NUNCA use emojis, markdown, asteriscos, listas ou formatação — apenas texto corrido.";
+
+    var brainLines = [];
+    var byArea = {};
+    NOTES.forEach(function(n){
+      if(!byArea[n.area]) byArea[n.area] = [];
+      byArea[n.area].push(n);
+    });
+    Object.keys(AREA).forEach(function(key){
+      if(byArea[key] && byArea[key].length){
+        brainLines.push(AREA[key].label.toUpperCase() + ":");
+        byArea[key].forEach(function(n){
+          brainLines.push("- " + n.title + ": " + n.body);
+        });
+      }
+    });
+    var brain = "SECOND BRAIN (contexto pessoal e permanente do usuário):\n" + brainLines.join("\n");
+
+    var memoryProtocol =
+      "PROTOCOLO DE MEMÓRIA VIVA: se durante a conversa o usuário revelar algo novo e duradouro sobre a vida dele " +
+      "(uma meta, projeto, informação de carreira, finanças, aprendizado, saúde ou relação), TERMINE sua resposta em uma nova linha " +
+      "no formato EXATO [[SAVE:area|titulo|texto]], onde area é uma destas: metas, trabalho, projetos, financas, aprendizado, saude, relacoes, meta. " +
+      "Se já existir uma nota com esse título, ela será atualizada; senão uma nova nasce. " +
+      "Inclua essa linha SOMENTE quando houver algo realmente novo para lembrar — não repita a cada resposta.";
+
+    return identity + "\n\n" + responseRule + "\n\n" + brain + "\n\n" + memoryProtocol;
+  }
+
+  function processCommand(text){
+    if(!text || !text.trim()) return;
+    setUserLine(text);
+
+    if(!apiKey){
+      var msg = "Não encontrei uma chave de API, " + CONFIG.address + ". Por favor cole sua chave da Anthropic no campo do topo.";
+      setAssistantLine(msg);
+      speak(msg);
+      return;
+    }
+
+    busy = true;
+    setState("thinking");
+    stopListeningVisual();
+
+    sessionHistory.push({ role: "user", content: text });
+
+    fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+        "content-type": "application/json"
+      },
+      body: JSON.stringify({
+        model: CONFIG.model,
+        max_tokens: 400,
+        system: buildSystemPrompt(),
+        messages: sessionHistory
+      })
+    })
+    .then(function(res){
+      if(!res.ok){
+        return res.text().then(function(t){
+          throw new Error("HTTP " + res.status + ": " + t);
+        });
+      }
+      return res.json();
+    })
+    .then(function(data){
+      var raw = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : "";
+      if(!raw){
+        var emptyMsg = "Não recebi uma resposta válida, " + CONFIG.address + ". Pode repetir?";
+        busy = false;
+        setAssistantLine(emptyMsg);
+        speak(emptyMsg);
+        return;
+      }
+      sessionHistory.push({ role: "assistant", content: raw });
+
+      var clean = applySaveDirectives(raw);
+      busy = false;
+      setAssistantLine(clean);
+      speak(clean);
+    })
+    .catch(function(err){
+      busy = false;
+      var netMsg = "Não consegui me conectar aos meus servidores, " + CONFIG.address + ". Verifique sua chave de API e a conexão.";
+      setAssistantLine(netMsg);
+      speak(netMsg);
+      console.error(err);
+    });
+  }
+
+  var SAVE_RE = /\[\[SAVE:([a-z_]+)\|([^|]+)\|([\s\S]+?)\]\]/g;
+
+  function applySaveDirectives(text){
+    var changed = false;
+    var newNodeIds = [];
+    var out = text.replace(SAVE_RE, function(match, area, title, body){
+      changed = true;
+      area = area.trim();
+      title = title.trim();
+      body = body.trim();
+      if(!AREA[area]) area = "meta";
+
+      var existing = NOTES.find(function(n){
+        return n.title.toLowerCase() === title.toLowerCase();
+      });
+      if(existing){
+        existing.area = area;
+        existing.body = body;
+        newNodeIds.push(existing.id);
+      }else{
+        var id = "n" + Date.now() + Math.floor(Math.random()*1000);
+        NOTES.push({ id:id, area:area, title:title, body:body });
+        newNodeIds.push(id);
+      }
+      return "";
+    });
+
+    if(changed){
+      saveNotes();
+      renderGraph();
+      newNodeIds.forEach(function(id){ pulseFlashNode(id); });
+      updateBrainMeta();
+    }
+    return out.trim();
+  }
+
+  /* ============================================================
+     SECOND BRAIN — GRAFO SVG
+  ============================================================ */
+  var graphContainer = document.getElementById("graph-container");
+  var GW = 1000, GH = 540;
+  var nodePositions = {};
+  var synapses = [];
+
+  function computeDegree(){
+    var deg = {};
+    NOTES.forEach(function(n){ deg[n.id] = 0; });
+    REL.forEach(function(pair){
+      if(deg[pair[0]] !== undefined) deg[pair[0]]++;
+      if(deg[pair[1]] !== undefined) deg[pair[1]]++;
+    });
+    return deg;
+  }
+
+  function layoutNodes(){
+    var cx = GW/2, cy = GH/2 + 10;
+    var rx = GW * 0.40, ry = GH * 0.38;
+    var n = NOTES.length;
+    nodePositions = {};
+    NOTES.forEach(function(note, i){
+      var angle = (i / n) * Math.PI * 2 - Math.PI/2;
+      var x = cx + Math.cos(angle) * rx;
+      var y = cy + Math.sin(angle) * ry;
+      nodePositions[note.id] = { x:x, y:y };
+    });
+    return { cx:cx, cy:cy };
+  }
+
+  function quadPoint(A, C, B, t){
+    var mt = 1 - t;
+    var x = mt*mt*A.x + 2*mt*t*C.x + t*t*B.x;
+    var y = mt*mt*A.y + 2*mt*t*C.y + t*t*B.y;
+    return { x:x, y:y };
+  }
+
+  function controlPoint(A, B, center){
+    var mx = (A.x + B.x) / 2;
+    var my = (A.y + B.y) / 2;
+    var cx = mx + (center.x - mx) * 0.35;
+    var cy = my + (center.y - my) * 0.35;
+    return { x:cx, y:cy };
+  }
+
+  var flashNodeIds = {};
+  function pulseFlashNode(id){
+    flashNodeIds[id] = performance.now();
+  }
+
+  function renderGraph(){
+    var center = layoutNodes();
+    var deg = computeDegree();
+    var maxDeg = Math.max.apply(null, Object.keys(deg).map(function(k){ return deg[k]; }).concat([1]));
+
+    var svgParts = [];
+    svgParts.push(
+      '<defs>' +
+        '<linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">' +
+          '<stop offset="0%" stop-color="#8b5cff"/>' +
+          '<stop offset="100%" stop-color="#00d4ff"/>' +
+        '</linearGradient>' +
+        '<radialGradient id="coreGrad" cx="45%" cy="40%" r="65%">' +
+          '<stop offset="0%" stop-color="#ffffff"/>' +
+          '<stop offset="40%" stop-color="#b98bff"/>' +
+          '<stop offset="100%" stop-color="#5b2fbf"/>' +
+        '</radialGradient>' +
+        '<filter id="glow" x="-120%" y="-120%" width="340%" height="340%">' +
+          '<feGaussianBlur stdDeviation="5" result="b"/>' +
+          '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+        '</filter>' +
+      '</defs>'
+    );
+
+    // raios do núcleo até cada nó
+    NOTES.forEach(function(note){
+      var p = nodePositions[note.id];
+      var color = (AREA[note.area] || AREA.meta).color;
+      svgParts.push('<line x1="'+center.cx+'" y1="'+center.cy+'" x2="'+p.x+'" y2="'+p.y+'" stroke="'+color+'" stroke-width="1" opacity="0.15"/>');
+    });
+
+    // arestas densas entre notas
+    REL.forEach(function(pair, idx){
+      var A = nodePositions[pair[0]], B = nodePositions[pair[1]];
+      if(!A || !B) return;
+      var C = controlPoint(A, B, center);
+      var d = 'M '+A.x+' '+A.y+' Q '+C.x+' '+C.y+' '+B.x+' '+B.y;
+      svgParts.push('<path class="edge" data-idx="'+idx+'" d="'+d+'" fill="none" stroke="url(#edgeGrad)" stroke-width="1.4" opacity="0.45" stroke-dasharray="4 6"/>');
+    });
+
+    // núcleo central
+    svgParts.push(
+      '<circle id="brain-core-ring" cx="'+center.cx+'" cy="'+center.cy+'" r="46" fill="none" stroke="#8b5cff" stroke-width="1.5" opacity="0.4"/>' +
+      '<circle id="brain-core" cx="'+center.cx+'" cy="'+center.cy+'" r="34" fill="url(#coreGrad)" filter="url(#glow)"/>' +
+      '<text x="'+center.cx+'" y="'+(center.cy+8)+'" text-anchor="middle" font-size="26">🧠</text>'
+    );
+
+    // nós
+    NOTES.forEach(function(note){
+      var p = nodePositions[note.id];
+      var color = (AREA[note.area] || AREA.meta).color;
+      var d = deg[note.id] || 0;
+      var r = 10 + (d / maxDeg) * 14;
+      svgParts.push(
+        '<g class="node-group" data-id="'+note.id+'">' +
+          '<circle class="node-breath" cx="'+p.x+'" cy="'+p.y+'" r="'+(r+7)+'" fill="none" stroke="'+color+'" stroke-width="1.2" opacity="0.35"/>' +
+          '<circle class="node-circle" data-id="'+note.id+'" cx="'+p.x+'" cy="'+p.y+'" r="'+r+'" fill="'+color+'" opacity="0.9" filter="url(#glow)"/>' +
+          '<text class="node-label" x="'+p.x+'" y="'+(p.y + r + 16)+'" text-anchor="middle">'+escapeXml(note.title)+'</text>' +
+        '</g>'
+      );
+    });
+
+    var svgString = '<svg viewBox="0 0 '+GW+' '+GH+'" xmlns="http://www.w3.org/2000/svg">' + svgParts.join("") + '</svg>';
+    graphContainer.innerHTML = svgString;
+
+    // bind clicks
+    var circles = graphContainer.querySelectorAll(".node-circle");
+    circles.forEach(function(c){
+      c.addEventListener("click", function(){
+        openNoteEditor(c.getAttribute("data-id"));
+      });
+    });
+
+    setupSynapses();
+    renderLegend();
+    updateBrainMeta();
+  }
+
+  function escapeXml(s){
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function setupSynapses(){
+    synapses = [];
+    var count = Math.min(12, Math.max(4, REL.length));
+    for(var i=0;i<count;i++){
+      synapses.push({
+        edgeIdx: Math.floor(Math.random() * REL.length),
+        t: Math.random(),
+        speed: 0.003 + Math.random()*0.004
+      });
+    }
+  }
+
+  var breathPhase = 0;
+  function animateGraph(){
+    breathPhase += 0.02;
+
+    // respiração dos anéis dos nós + núcleo
+    var breaths = graphContainer.querySelectorAll(".node-breath");
+    breaths.forEach(function(el, i){
+      var s = 1 + Math.sin(breathPhase + i*0.5) * 0.08;
+      var op = 0.2 + Math.sin(breathPhase + i*0.5) * 0.15;
+      el.style.transformBox = "fill-box";
+      el.style.transformOrigin = "center";
+      el.setAttribute("transform", "");
+      el.style.transform = "scale("+s.toFixed(3)+")";
+      el.setAttribute("opacity", Math.max(0.1, op).toFixed(2));
+    });
+    var core = document.getElementById("brain-core");
+    var coreRing = document.getElementById("brain-core-ring");
+    if(core){
+      var cs = 1 + Math.sin(breathPhase*1.4) * 0.06;
+      core.style.transformBox = "fill-box";
+      core.style.transformOrigin = "center";
+      core.style.transform = "scale("+cs.toFixed(3)+")";
+    }
+    if(coreRing){
+      var rs = 1 + Math.sin(breathPhase*1.4 + 1) * 0.1;
+      coreRing.style.transformBox = "fill-box";
+      coreRing.style.transformOrigin = "center";
+      coreRing.style.transform = "scale("+rs.toFixed(3)+")";
+    }
+
+    // dash offset das arestas (fluxo)
+    var edges = graphContainer.querySelectorAll(".edge");
+    edges.forEach(function(e, i){
+      var off = -(breathPhase * 40 + i*3) % 200;
+      e.setAttribute("stroke-dashoffset", off);
+    });
+
+    // flash de nós recém-salvos
+    var now = performance.now();
+    Object.keys(flashNodeIds).forEach(function(id){
+      var elapsed = now - flashNodeIds[id];
+      if(elapsed < 1200){
+        var el = graphContainer.querySelector('.node-circle[data-id="'+id+'"]');
+        if(el){
+          var flashAmt = Math.max(0, 1 - elapsed/1200);
+          el.setAttribute("opacity", (0.9 + flashAmt*0.6).toFixed(2));
+          el.setAttribute("r", (parseFloat(el.getAttribute("r")) ));
+          el.style.filter = "url(#glow) brightness(" + (1 + flashAmt*1.5) + ")";
+        }
+      }else{
+        delete flashNodeIds[id];
+        var el2 = graphContainer.querySelector('.node-circle[data-id="'+id+'"]');
+        if(el2) el2.style.filter = "url(#glow)";
+      }
+    });
+
+    // pulsos de sinapse
+    drawSynapses();
+
+    requestAnimationFrame(animateGraph);
+  }
+  requestAnimationFrame(animateGraph);
+
+  var synapseLayer = null;
+  function drawSynapses(){
+    if(!synapses.length || !REL.length) return;
+    var svgEl = graphContainer.querySelector("svg");
+    if(!svgEl) return;
+
+    if(!synapseLayer || !svgEl.contains(synapseLayer)){
+      synapseLayer = document.createElementNS("http://www.w3.org/2000/svg", "g");
+      synapseLayer.setAttribute("id", "synapse-layer");
+      svgEl.appendChild(synapseLayer);
+    }
+    while(synapseLayer.firstChild) synapseLayer.removeChild(synapseLayer.firstChild);
+
+    synapses.forEach(function(s){
+      var pair = REL[s.edgeIdx];
+      if(!pair) return;
+      var A = nodePositions[pair[0]], B = nodePositions[pair[1]];
+      if(!A || !B) return;
+      var center = { x: GW/2, y: GH/2 + 10 };
+      var C = controlPoint(A, B, center);
+      var pos = quadPoint(A, C, B, s.t);
+
+      s.t += s.speed;
+      if(s.t >= 1){
+        s.t = 0;
+        s.edgeIdx = Math.floor(Math.random() * REL.length);
+      }
+
+      var op = Math.sin(s.t * Math.PI); // sobe e desce
+      var dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("cx", pos.x);
+      dot.setAttribute("cy", pos.y);
+      dot.setAttribute("r", 2.6);
+      dot.setAttribute("fill", "#ffffff");
+      dot.setAttribute("opacity", Math.max(0.15, op).toFixed(2));
+      dot.setAttribute("filter", "url(#glow)");
+      synapseLayer.appendChild(dot);
+    });
+  }
+
+  function renderLegend(){
+    var legend = document.getElementById("legend");
+    var present = {};
+    NOTES.forEach(function(n){ present[n.area] = true; });
+    var parts = [];
+    Object.keys(AREA).forEach(function(key){
+      if(present[key]){
+        parts.push(
+          '<span class="legend-item"><span class="legend-dot" style="background:'+AREA[key].color+'"></span>'+AREA[key].label+'</span>'
+        );
+      }
+    });
+    parts.push('<span class="legend-injected">✓ contexto injetado em todos os comandos do '+CONFIG.name+'</span>');
+    legend.innerHTML = parts.join("");
+  }
+
+  function updateBrainMeta(){
+    var areas = {};
+    NOTES.forEach(function(n){ areas[n.area] = true; });
+    document.getElementById("brain-meta").textContent =
+      NOTES.length + " notas · " + Object.keys(areas).length + " áreas";
+  }
+
+  /* ============================================================
+     MODAL — EDITOR DE NOTA
+  ============================================================ */
+  var modalOverlay = document.getElementById("modal-overlay");
+  var noteIdInput = document.getElementById("note-id");
+  var noteTitleInput = document.getElementById("note-title");
+  var noteAreaSelect = document.getElementById("note-area");
+  var noteBodyInput = document.getElementById("note-body");
+  var noteDeleteBtn = document.getElementById("note-delete");
+  var modalTitle = document.getElementById("modal-title");
+
+  Object.keys(AREA).forEach(function(key){
+    var opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = AREA[key].label;
+    noteAreaSelect.appendChild(opt);
+  });
+
+  function openNoteEditor(id){
+    var note = NOTES.find(function(n){ return n.id === id; });
+    if(!note) return;
+    modalTitle.textContent = "Editar nota";
+    noteIdInput.value = note.id;
+    noteTitleInput.value = note.title;
+    noteAreaSelect.value = note.area;
+    noteBodyInput.value = note.body;
+    noteDeleteBtn.style.display = "inline-block";
+    modalOverlay.classList.add("show");
+  }
+
+  function openNewNote(){
+    modalTitle.textContent = "Nova nota";
+    noteIdInput.value = "";
+    noteTitleInput.value = "";
+    noteAreaSelect.value = "meta";
+    noteBodyInput.value = "";
+    noteDeleteBtn.style.display = "none";
+    modalOverlay.classList.add("show");
+  }
+
+  document.getElementById("add-note-btn").addEventListener("click", openNewNote);
+  document.getElementById("reload-btn").addEventListener("click", renderGraph);
+  document.getElementById("note-cancel").addEventListener("click", closeModal);
+  modalOverlay.addEventListener("click", function(e){
+    if(e.target === modalOverlay) closeModal();
+  });
+
+  function closeModal(){ modalOverlay.classList.remove("show"); }
+
+  document.getElementById("note-save").addEventListener("click", function(){
+    var title = noteTitleInput.value.trim();
+    var area = noteAreaSelect.value;
+    var body = noteBodyInput.value.trim();
+    if(!title || !body) return;
+
+    var id = noteIdInput.value;
+    if(id){
+      var existing = NOTES.find(function(n){ return n.id === id; });
+      if(existing){
+        existing.title = title;
+        existing.area = area;
+        existing.body = body;
+      }
+    }else{
+      var newId = "n" + Date.now() + Math.floor(Math.random()*1000);
+      NOTES.push({ id:newId, area:area, title:title, body:body });
+    }
+    saveNotes();
+    renderGraph();
+    closeModal();
+  });
+
+  noteDeleteBtn.addEventListener("click", function(){
+    var id = noteIdInput.value;
+    if(!id) return;
+    NOTES = NOTES.filter(function(n){ return n.id !== id; });
+    REL = REL.filter(function(pair){ return pair[0] !== id && pair[1] !== id; });
+    saveNotes();
+    renderGraph();
+    closeModal();
+  });
+
+  /* ============================================================
+     INIT
+  ============================================================ */
+  renderGraph();
+})();
+</script>
+</body>
+</html>
