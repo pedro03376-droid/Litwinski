@@ -287,7 +287,7 @@
   <div id="app">
     <div class="topbar">
       <div class="brand">JARVIS // NEURAL CORE</div>
-      <input type="password" id="apikey-input" placeholder="Cole sua API key da Anthropic aqui">
+      <input type="password" id="apikey-input" placeholder="Cole sua API key do Google AI Studio (Gemini) aqui">
       <button id="apikey-save">SALVAR</button>
       <span class="key-status" id="key-status">sem chave</span>
     </div>
@@ -359,7 +359,7 @@
     persona: "formal britânico",
     wakeWord: "ei jarvis",
     voiceGender: "masculina",
-    model: "claude-sonnet-5"
+    model: "gemini-2.5-flash"
   };
 
   var AREA = {
@@ -416,8 +416,8 @@
      ESTADO
   ============================================================ */
   var NOTES = loadNotes();
-  var apiKey = localStorage.getItem("anthropic_key") || "";
-  var sessionHistory = [];
+  var apiKey = localStorage.getItem("gemini_key") || "";
+  var sessionHistory = []; // { role: "user"|"model", text: "..." }
   var busy = false;             // true enquanto pensando OU falando
   var activated = false;        // wake word já disparou, aguardando comando
   var systemActivated = false;  // sistema ligado (pós clique ATIVAR)
@@ -479,7 +479,7 @@
 
   document.getElementById("apikey-save").addEventListener("click", function(){
     apiKey = apiKeyInput.value.trim();
-    localStorage.setItem("anthropic_key", apiKey);
+    localStorage.setItem("gemini_key", apiKey);
     updateKeyStatus();
   });
 
@@ -758,7 +758,7 @@
   });
 
   /* ============================================================
-     CÉREBRO — SYSTEM PROMPT + CHAMADA ANTHROPIC
+     CÉREBRO — SYSTEM PROMPT + CHAMADA GEMINI
   ============================================================ */
   function buildSystemPrompt(){
     var identity =
@@ -800,7 +800,7 @@
     setUserLine(text);
 
     if(!apiKey){
-      var msg = "Não encontrei uma chave de API, " + CONFIG.address + ". Por favor cole sua chave da Anthropic no campo do topo.";
+      var msg = "Não encontrei uma chave de API, " + CONFIG.address + ". Por favor cole sua chave do Gemini no campo do topo.";
       setAssistantLine(msg);
       speak(msg);
       return;
@@ -810,21 +810,21 @@
     setState("thinking");
     stopListeningVisual();
 
-    sessionHistory.push({ role: "user", content: text });
+    sessionHistory.push({ role: "user", text: text });
 
-    fetch("https://api.anthropic.com/v1/messages", {
+    var contents = sessionHistory.map(function(turn){
+      return { role: turn.role, parts: [{ text: turn.text }] };
+    });
+
+    fetch("https://generativelanguage.googleapis.com/v1beta/models/" + CONFIG.model + ":generateContent?key=" + encodeURIComponent(apiKey), {
       method: "POST",
       headers: {
-        "x-api-key": apiKey,
-        "anthropic-version": "2023-06-01",
-        "anthropic-dangerous-direct-browser-access": "true",
         "content-type": "application/json"
       },
       body: JSON.stringify({
-        model: CONFIG.model,
-        max_tokens: 400,
-        system: buildSystemPrompt(),
-        messages: sessionHistory
+        systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
+        contents: contents,
+        generationConfig: { maxOutputTokens: 400 }
       })
     })
     .then(function(res){
@@ -836,7 +836,9 @@
       return res.json();
     })
     .then(function(data){
-      var raw = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : "";
+      var candidate = data.candidates && data.candidates[0];
+      var parts = candidate && candidate.content && candidate.content.parts;
+      var raw = (parts && parts.length) ? parts.map(function(p){ return p.text || ""; }).join("") : "";
       if(!raw){
         var emptyMsg = "Não recebi uma resposta válida, " + CONFIG.address + ". Pode repetir?";
         busy = false;
@@ -844,7 +846,7 @@
         speak(emptyMsg);
         return;
       }
-      sessionHistory.push({ role: "assistant", content: raw });
+      sessionHistory.push({ role: "model", text: raw });
 
       var clean = applySaveDirectives(raw);
       busy = false;
