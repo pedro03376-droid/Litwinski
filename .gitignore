@@ -45,3 +45,7 @@ coverage/
 *.tgz
 *.tar.gz
 __pycache__/
+
+# Backups locais (a versão anterior já está no histórico do git)
+*.bak
+*.bak-*
