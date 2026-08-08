@@ -483,6 +483,309 @@
     .mail-when{ margin-left:0; }
   }
 </style>
+
+<!-- ═══════════ DESIGN LAYER · fontes ═══════════ -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Share+Tech+Mono&display=swap">
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     DESIGN LAYER — entra por ÚLTIMO, vence o cascade, não apaga nada.
+     Trocar a paleta inteira = mudar --primary e --accent-2 aqui embaixo.
+     ═══════════════════════════════════════════════════════════════════ -->
+<style id="design-layer">
+
+/* ─────────── A. TOKENS ─────────── */
+:root{
+  /* superfícies */
+  --bg:            #04060c;
+  --bg-elev:       #070a12;
+  --surface:       #090d17;
+  --card:          rgba(20,27,45,.55);
+  --card-solid:    #0c111d;
+  --border:        rgba(150,180,225,.11);
+  --border-strong: rgba(0,212,255,.34);
+
+  /* marca — TROQUE AQUI PARA RE-TEMATIZAR TUDO */
+  --primary:     #00d4ff;
+  --primary-dim: #0a86a6;
+  --accent-2:    #8b5cff;
+  --accent-2-dim:#5b3fbf;
+
+  /* texto */
+  --txt:  #e8eefa;
+  --txt2: #9fb1cb;
+  --txt3: #66768f;
+
+  /* semânticas */
+  --green:#10b981;  --red:#ff5547;  --yellow:#fbbf24;
+
+  /* gradiente de marca — usar com parcimônia */
+  --grad: linear-gradient(120deg, var(--primary), var(--accent-2));
+
+  /* escala de espaçamento */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px; --s6:32px; --s7:52px;
+
+  /* forma & movimento */
+  --radius:12px; --radius-sm:8px; --radius-lg:18px; --radius-pill:999px;
+  --ease:cubic-bezier(.22,1,.36,1);
+  --dur:.22s; --dur-slow:.5s;
+
+  /* material */
+  --shadow:      0 8px 26px rgba(0,0,0,.34);
+  --shadow-lg:   0 18px 48px rgba(0,0,0,.46);
+  --inset-top:   inset 0 1px 0 rgba(255,255,255,.06);
+  --glow:        0 0 24px rgba(0,212,255,.22);
+
+  /* tipografia */
+  --font-display:'Orbitron','Segoe UI',system-ui,sans-serif;
+  --font-mono:'Share Tech Mono',ui-monospace,'SF Mono',Consolas,monospace;
+  --font-ui:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+
+  /* ── compat com a Parte 1: --accent continua CIANO de propósito.
+        ~40 regras antigas dependem disso. O violeta é --accent-2. ── */
+  --accent:       var(--primary);
+  --accent-dim:   var(--primary-dim);
+  --violet:       var(--accent-2);
+  --bg2:          var(--surface);
+  --panel:        var(--card-solid);
+  --panel-border: var(--border);
+  --text:         var(--txt);
+  --text-dim:     var(--txt2);
+  --danger:       var(--red);
+  --ok:           var(--green);
+}
+
+/* ─────────── B. PROFUNDIDADE & MATERIAL ─────────── */
+body{
+  font-family:var(--font-ui);
+  background:
+    radial-gradient(1100px 620px at 50% -12%, rgba(0,212,255,.10), transparent 62%),
+    radial-gradient(900px 560px at 92% 108%, rgba(139,92,255,.09), transparent 58%),
+    radial-gradient(700px 460px at 4% 42%,  rgba(0,212,255,.05), transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+/* micro dot-grid — dá textura sem virar poluição */
+body::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:radial-gradient(rgba(150,180,225,.055) 1px, transparent 1px);
+  background-size:26px 26px;
+}
+#app, #boot-screen, #activation-screen{ position:relative; z-index:1; }
+
+::selection{ background:var(--primary); color:#02121a; }
+::-webkit-scrollbar{ width:9px; height:9px; }
+::-webkit-scrollbar-track{ background:transparent; }
+::-webkit-scrollbar-thumb{
+  background:linear-gradient(var(--primary-dim),var(--accent-2-dim));
+  border-radius:var(--radius-pill); border:2px solid transparent; background-clip:content-box;
+}
+::-webkit-scrollbar-thumb:hover{ background:linear-gradient(var(--primary),var(--accent-2)); background-clip:content-box; }
+*{ scrollbar-width:thin; scrollbar-color:var(--primary-dim) transparent; }
+
+:focus-visible{
+  outline:2px solid var(--primary); outline-offset:2px; border-radius:var(--radius-sm);
+}
+
+/* ─────────── C. TIPOGRAFIA ─────────── */
+.boot-name, .act-name, .assistant-name{
+  font-family:var(--font-display) !important; font-weight:900;
+}
+.boot-status, .boot-version, .act-hint, .status-text, .topbar .brand{
+  font-family:var(--font-mono) !important;
+}
+.ev-time, .mail-when, .hl-meta, .brain-meta, .key-status,
+.chip, .tier .t-model, .digest-meta, .ev-count, .day-label{
+  font-family:var(--font-mono) !important; font-variant-numeric:tabular-nums;
+}
+.panel-head h4, .cfg-title, .topic-name, .bucket-head, .tab{
+  font-family:var(--font-display) !important; font-weight:700;
+}
+.line.assistant{ font-size:1rem; line-height:1.55; letter-spacing:.005em; }
+.line.user{ letter-spacing:.01em; }
+
+/* ─────────── material dos cards ─────────── */
+.panel, .brain-bar, .legend, #graph-container, .modal, .weather-strip, .digest-box{
+  background:var(--card) !important;
+  backdrop-filter:blur(16px) saturate(140%);
+  -webkit-backdrop-filter:blur(16px) saturate(140%);
+  border-color:var(--border) !important;
+  box-shadow:var(--shadow), var(--inset-top);
+}
+.panel{ border-radius:0 0 var(--radius-lg) var(--radius-lg); }
+.brain-bar{ border-radius:var(--radius-lg) var(--radius-lg) 0 0; }
+.legend{ border-radius:0 0 var(--radius-lg) var(--radius-lg); }
+.modal{ border-radius:var(--radius-lg); box-shadow:var(--shadow-lg), var(--inset-top); }
+
+.topbar{
+  background:rgba(7,10,18,.72) !important;
+  backdrop-filter:blur(18px) saturate(140%);
+  -webkit-backdrop-filter:blur(18px) saturate(140%);
+  border-bottom:1px solid var(--border);
+  box-shadow:0 1px 0 rgba(255,255,255,.03), 0 10px 30px rgba(0,0,0,.28);
+}
+.topbar .brand{
+  background:var(--grad); -webkit-background-clip:text; background-clip:text;
+  color:transparent; font-weight:700; letter-spacing:.22em;
+}
+
+/* ─────────── superfícies internas ─────────── */
+.ev, .mail, .headline, .cfg-row, .tier, .mail-full{
+  background:rgba(255,255,255,.022) !important;
+  border-radius:var(--radius) !important;
+  transition:background var(--dur) var(--ease), border-color var(--dur) var(--ease),
+             transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.ev:hover, .mail:hover, .headline:hover, .tier:hover{
+  background:rgba(255,255,255,.045) !important;
+  border-color:var(--border-strong) !important;
+  box-shadow:0 4px 18px rgba(0,0,0,.28);
+}
+.ev.next{
+  box-shadow:0 0 0 1px var(--border-strong), 0 0 26px rgba(0,212,255,.14), var(--inset-top) !important;
+}
+.tier.active{
+  border-color:var(--border-strong) !important;
+  box-shadow:0 0 0 1px var(--border-strong), 0 0 22px rgba(0,212,255,.13);
+}
+
+/* ─────────── abas ─────────── */
+.tab{
+  border-radius:var(--radius) var(--radius) 0 0 !important;
+  letter-spacing:.14em; font-size:.7rem;
+  transition:all var(--dur) var(--ease);
+  background:rgba(255,255,255,.02) !important;
+}
+.tab.active{
+  background:var(--card) !important;
+  box-shadow:inset 0 2px 0 0 var(--primary), 0 -6px 20px rgba(0,212,255,.10);
+}
+.tab .tab-badge{
+  background:var(--grad); color:#02121a; font-weight:900;
+  box-shadow:0 0 12px rgba(0,212,255,.4);
+}
+
+/* ─────────── botões & inputs ─────────── */
+.mini-btn, .brain-btn, .btn, #apikey-save, .cfg-del{
+  border-radius:var(--radius-sm) !important;
+  transition:all var(--dur) var(--ease);
+}
+.mini-btn:hover, .brain-btn:hover, .btn:hover, #apikey-save:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 14px rgba(0,0,0,.3);
+}
+.icon-btn{
+  transition:all var(--dur) var(--ease);
+  box-shadow:var(--inset-top);
+}
+.icon-btn:hover{ transform:translateY(-2px); box-shadow:0 6px 20px rgba(0,0,0,.34); }
+.icon-btn.active{ box-shadow:0 0 0 1px var(--primary), var(--glow); }
+
+#apikey-input, #text-input, .modal input, .modal select, .modal textarea, .cfg-row input{
+  border-radius:var(--radius-sm) !important;
+  background:rgba(4,6,12,.6) !important;
+  transition:border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+#apikey-input:focus, #text-input:focus, .modal input:focus,
+.modal select:focus, .modal textarea:focus, .cfg-row input:focus{
+  border-color:var(--primary) !important;
+  box-shadow:0 0 0 3px rgba(0,212,255,.13);
+}
+#text-input{ border-radius:var(--radius-pill) !important; }
+
+/* ─────────── labels de seção ─────────── */
+.panel-head h4, .cfg-title{ letter-spacing:.2em; font-size:.72rem; }
+.day-label, .bucket-head, .topic-name{ letter-spacing:.2em; }
+.ev-count{
+  border-radius:var(--radius-pill); background:rgba(0,212,255,.12);
+  box-shadow:0 0 14px rgba(0,212,255,.16);
+}
+.chip{ border-radius:var(--radius-pill); box-shadow:var(--inset-top); }
+
+/* ─────────── boot & ativação ─────────── */
+#activate-btn{
+  border-radius:var(--radius) !important;
+  font-family:var(--font-display); font-weight:700; letter-spacing:.18em;
+  transition:all var(--dur-slow) var(--ease);
+}
+.digest-box{ border-radius:var(--radius-lg) !important; }
+
+/* ─────────── D. MOVIMENTO COM PROPÓSITO ─────────── */
+@keyframes dl-rise{ from{ opacity:0; transform:translateY(10px); } to{ opacity:1; transform:none; } }
+.panel.active{ animation:dl-rise .34s var(--ease) both; }
+.modules, .brain-section, main.stage{ animation:dl-rise .45s var(--ease) both; }
+.brain-section{ animation-delay:.06s; }
+.ev, .mail, .headline, .topic-block{ animation:dl-rise .3s var(--ease) both; }
+
+/* Luz ambiente de fundo — ESTÁTICA de propósito (perfil "equilibrado").
+   PERF, medido neste arquivo com o baseline pré-redesign como controle:
+     · aurora com filter:blur(28px) animada em transform ....... 16 fps
+     · aurora sem blur, animando só opacity ..................... 44 fps
+     · aurora estática (esta) ................................... 61 fps  ← baseline
+   O custo não era só o blur: qualquer animação de fundo em tela cheia
+   invalida o backdrop-filter da topbar e dos cards a cada frame, forçando
+   o vidro a ser recalculado. Parada, ela é rasterizada uma vez e some do
+   orçamento de frame — e o visual em repouso é idêntico. */
+body::after{
+  content:""; position:fixed; inset:-10%; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(48% 40% at 20% 16%, rgba(0,212,255,.085), transparent 68%),
+    radial-gradient(44% 38% at 82% 78%, rgba(139,92,255,.08), transparent 68%),
+    radial-gradient(36% 30% at 60% 46%, rgba(0,212,255,.035), transparent 70%);
+}
+
+/* ─────────── E. DETALHES ─────────── */
+.empty-state{ line-height:1.75; }
+.empty-state code{ border-radius:var(--radius-sm); font-family:var(--font-mono); }
+.err-row{ border-radius:var(--radius) !important; box-shadow:var(--inset-top); }
+.mail-dot, .legend-dot{ box-shadow:0 0 8px currentColor; }
+.cfg-help, .cfg-warn{ border-radius:var(--radius-sm) !important; line-height:1.65; }
+
+/* ─────────── acessibilidade ─────────── */
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration:.001ms !important; animation-iteration-count:1 !important;
+    transition-duration:.001ms !important; scroll-behavior:auto !important;
+  }
+  body::after{ animation:none; opacity:.6; }
+}
+
+/* ─────────── mobile 390px ─────────── */
+@media (max-width:430px){
+  /* topbar em 2 linhas limpas:
+     linha 1 → marca + chips + ⚙   ·   linha 2 → campo + SALVAR + status
+     (sem isso o "chave salva" vazava pra fora da tela) */
+  .topbar{ padding:10px 12px; gap:8px 6px; }
+  .topbar .brand{
+    order:1; flex:0 1 auto; margin-right:auto;
+    font-size:.6rem; letter-spacing:.1em; white-space:nowrap;
+  }
+  .hud-chips{ order:2; margin-left:auto; gap:5px; flex:0 0 auto; }
+  .chip{ font-size:.58rem; padding:4px 8px; gap:5px; }
+  .brain-btn{ width:30px; height:30px; font-size:.9rem; }
+  #apikey-input{ order:3; flex:1 1 auto; width:auto; min-width:0; font-size:.74rem; }
+  #apikey-save{ order:4; flex:0 0 auto; padding:8px 11px; font-size:.68rem; }
+  .key-status{ order:5; flex:0 0 auto; font-size:.6rem; white-space:nowrap; }
+  main.stage{ padding:26px 14px 6px; }
+  .modules, .brain-section{ padding:0 10px; }
+  /* abas quebram em 2 linhas no mobile — viram chips, senão a aba ativa
+     fica "colada" numa linha que não é a do painel e parece defeito */
+  .tabs{ gap:6px; }
+  .tab{
+    letter-spacing:.06em; border-radius:var(--radius) !important;
+    border-bottom:1px solid var(--border);
+  }
+  .tab.active{ box-shadow:inset 0 0 0 1px var(--primary), 0 0 18px rgba(0,212,255,.12); }
+  .panel{ border-radius:var(--radius-lg) !important; margin-top:8px; }
+  .panel-head{ gap:6px; }
+  .panel-head .sub{ width:100%; order:5; }
+  .mail-top{ flex-wrap:wrap; }
+  .cfg-row{ flex-direction:column; align-items:stretch; }
+  .cfg-row input[type=color]{ width:100%; height:30px; }
+  .digest-box{ padding:16px; font-size:.9rem; }
+}
+</style>
 </head>
 <body>
 
@@ -3050,6 +3353,57 @@
   });
 
   /* ============================================================
+     PONTE READ-ONLY PARA A TELA FACE
+     Só LÊ o estado interno e avisa mudanças. Nada aqui altera lógica.
+  ============================================================ */
+  var __faceStateHooks = [];
+
+  var __origSetState = setState;
+  setState = function(s){
+    __origSetState(s);
+    for(var i = 0; i < __faceStateHooks.length; i++){
+      try{ __faceStateHooks[i](s); }catch(e){}
+    }
+  };
+
+  var __origSetAssistantLine = setAssistantLine;
+  setAssistantLine = function(t){
+    __origSetAssistantLine(t);
+    try{ if(window.JARVIS && window.JARVIS._onSay) window.JARVIS._onSay(t || ""); }catch(e){}
+  };
+
+  window.JARVIS = {
+    nome: CONFIG.name,
+    tratamento: CONFIG.address,
+    onState: function(fn){ if(typeof fn === "function") __faceStateHooks.push(fn); },
+    estado: function(){ return state; },
+    toggleListening: function(){ if(systemActivated) startListening(); },
+    ativo: function(){ return systemActivated; },
+    antena: function(){ return antennaOnline; },
+    agendaHoje: function(){
+      return todayEvents().map(function(e){
+        return { hora: e.allDay ? "DIA TODO" : hhmm(e.start), titulo: e.title, cor: e.color };
+      });
+    },
+    proximo: function(){
+      var n = nextEvent();
+      return n ? { titulo: n.title, falta: countdown(n.start), hora: hhmm(n.start) } : null;
+    },
+    emails: function(){ return { total: MAILS.length, acao: actionMails().length }; },
+    manchetes: function(){
+      var out = [];
+      TOPICS.forEach(function(t){
+        (NEWS[t.name] || []).slice(0, 2).forEach(function(h){
+          out.push({ tema: t.name, titulo: h.title });
+        });
+      });
+      return out;
+    },
+    notas: function(){ return NOTES.length; },
+    _onSay: null
+  };
+
+  /* ============================================================
      INIT
   ============================================================ */
   renderGraph();
@@ -3060,6 +3414,577 @@
     '<div class="empty-state">Diga <b>"bom dia"</b> para o ' + CONFIG.name +
     ', ou clique em <b>▶ gerar agora</b>.</div>';
   pingAntenna();
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     TELA FACE 🛰 — cockpit em tela cheia. Componente NOVO e isolado.
+     Usa os mesmos tokens do design-layer. Degrada com elegância:
+     se window.JARVIS não existir, roda em modo demo sem quebrar.
+     ═══════════════════════════════════════════════════════════════════ -->
+<style id="face-layer">
+#faceMode{
+  position:fixed; inset:0; z-index:9000; display:none;
+  background:
+    radial-gradient(1200px 800px at 50% 42%, rgba(10,18,34,.9), transparent 70%),
+    radial-gradient(900px 600px at 50% 120%, rgba(139,92,255,.10), transparent 70%),
+    var(--bg);
+  color:var(--txt); overflow:hidden;
+  font-family:var(--font-mono);
+  opacity:0; transition:opacity var(--dur-slow) var(--ease);
+}
+#faceMode.on{ display:block; opacity:1; }
+
+/* scanlines */
+#faceMode .fm-scan{
+  position:absolute; inset:0; pointer-events:none; opacity:.15; z-index:2;
+  background:repeating-linear-gradient(0deg, rgba(180,220,255,.16) 0 1px, transparent 1px 3px);
+}
+/* aurora cônica girando devagar */
+/* PERF: sem filter:blur(). Um blur de 90px num elemento de 170vmax que gira
+   é re-borrado a cada frame e mata o FPS. Sem o filtro, a rotação é um
+   transform puramente composited — rasteriza uma vez e a GPU gira.
+   A suavidade vem de paradas de cor bem largas + opacidade baixa. */
+#faceMode .fm-aurora{
+  position:absolute; left:50%; top:50%; width:170vmax; height:170vmax;
+  transform:translate(-50%,-50%); pointer-events:none; z-index:0; opacity:.16;
+  background:conic-gradient(from 0deg,
+    rgba(0,212,255,0) 0deg, rgba(0,212,255,.55) 60deg, rgba(0,212,255,0) 140deg,
+    rgba(139,92,255,0) 170deg, rgba(139,92,255,.5) 235deg, rgba(139,92,255,0) 305deg,
+    rgba(0,212,255,0) 330deg, rgba(0,212,255,.3) 350deg, rgba(0,212,255,0) 360deg);
+  will-change:transform;
+  animation:fm-spin 90s linear infinite;
+}
+@keyframes fm-spin{ to{ transform:translate(-50%,-50%) rotate(360deg); } }
+
+/* cantoneiras */
+#faceMode .fm-corner{ position:absolute; width:34px; height:34px; z-index:6; pointer-events:none; }
+#faceMode .fm-corner::before, #faceMode .fm-corner::after{
+  content:""; position:absolute; background:var(--accent-2); opacity:.75;
+}
+#faceMode .fm-corner::before{ width:100%; height:1px; }
+#faceMode .fm-corner::after{ width:1px; height:100%; }
+#faceMode .c-tl{ top:18px; left:18px; }
+#faceMode .c-tr{ top:18px; right:18px; }
+#faceMode .c-tr::before{ right:0; } #faceMode .c-tr::after{ right:0; }
+#faceMode .c-bl{ bottom:18px; left:18px; }
+#faceMode .c-bl::before{ bottom:0; } #faceMode .c-bl::after{ bottom:0; }
+#faceMode .c-br{ bottom:18px; right:18px; }
+#faceMode .c-br::before{ bottom:0; right:0; } #faceMode .c-br::after{ bottom:0; right:0; }
+
+/* topo */
+#faceMode .fm-top{
+  position:absolute; top:34px; left:0; right:0; z-index:7;
+  display:flex; align-items:flex-start; justify-content:space-between;
+  padding:0 46px; pointer-events:none;
+}
+#faceMode .fm-brand{
+  font-family:var(--font-display); font-weight:900; font-size:1.5rem; letter-spacing:.42em;
+  background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 0 18px rgba(0,212,255,.45));
+}
+#faceMode .fm-sub{ font-size:.6rem; letter-spacing:.3em; color:var(--txt3); margin-top:5px; }
+#faceMode .fm-clock{
+  font-family:var(--font-display); font-weight:700; font-size:2.1rem; letter-spacing:.1em;
+  font-variant-numeric:tabular-nums; color:var(--txt); text-align:right; line-height:1;
+  text-shadow:0 0 22px rgba(0,212,255,.3);
+}
+#faceMode .fm-date{ font-size:.64rem; letter-spacing:.2em; color:var(--txt3); margin-top:7px; text-align:right; }
+
+/* orb central */
+#faceMode .fm-stage{
+  position:absolute; inset:0; z-index:4;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+#faceMode .fm-orb{ position:relative; width:330px; height:330px; cursor:pointer; }
+#faceMode .fm-ring{
+  position:absolute; inset:0; border-radius:50%;
+  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+          mask:radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px));
+}
+#faceMode .r1{
+  background:conic-gradient(from 0deg, transparent 0 55%, var(--primary) 72%, transparent 84%);
+  animation:fm-spin2 9s linear infinite;
+}
+#faceMode .r2{
+  inset:26px;
+  background:conic-gradient(from 180deg, transparent 0 62%, var(--accent-2) 78%, transparent 90%);
+  animation:fm-spin2 15s linear infinite reverse;
+}
+#faceMode .r3{
+  inset:52px;
+  background:conic-gradient(from 90deg, transparent 0 68%, var(--primary) 82%, transparent 92%);
+  animation:fm-spin2 24s linear infinite;
+}
+@keyframes fm-spin2{ to{ transform:rotate(360deg); } }
+
+#faceMode .fm-core{
+  position:absolute; inset:96px; border-radius:50%;
+  background:radial-gradient(circle at 40% 36%, #fff 0%, var(--primary) 38%, var(--accent-2) 100%);
+  box-shadow:0 0 60px rgba(0,212,255,.5), 0 0 120px rgba(139,92,255,.28), inset 0 0 30px rgba(255,255,255,.22);
+  animation:fm-breathe 4.5s ease-in-out infinite;
+}
+@keyframes fm-breathe{
+  0%,100%{ transform:scale(1);    filter:brightness(1); }
+  50%    { transform:scale(1.07); filter:brightness(1.28); }
+}
+#faceMode .fm-globe{ position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+
+/* estados */
+#faceMode[data-s="listening"] .r1{ animation-duration:3.4s; }
+#faceMode[data-s="listening"] .r2{ animation-duration:5.5s; }
+#faceMode[data-s="listening"] .fm-core{
+  animation-duration:1.5s;
+  box-shadow:0 0 78px rgba(0,212,255,.75), 0 0 150px rgba(0,212,255,.35), inset 0 0 34px rgba(255,255,255,.3);
+}
+#faceMode[data-s="thinking"] .r1{ animation-duration:1.5s; }
+#faceMode[data-s="thinking"] .r2{ animation-duration:2.4s; }
+#faceMode[data-s="thinking"] .r3{ animation-duration:3.6s; }
+#faceMode[data-s="thinking"] .fm-core{
+  animation-duration:.85s;
+  background:radial-gradient(circle at 40% 36%, #fff 0%, var(--accent-2) 42%, var(--primary) 100%);
+}
+#faceMode[data-s="speaking"] .fm-core{ animation-duration:2.1s; }
+#faceMode[data-s="speaking"] .r2{ animation-duration:8s; }
+
+#faceMode .fm-state{
+  margin-top:34px; font-family:var(--font-display); font-weight:700;
+  font-size:.86rem; letter-spacing:.55em; color:var(--primary);
+  text-shadow:0 0 20px rgba(0,212,255,.55);
+}
+#faceMode .fm-caption{
+  margin-top:16px; max-width:640px; text-align:center; min-height:1.4em;
+  font-size:.92rem; line-height:1.6; color:var(--txt2); padding:0 24px;
+}
+
+/* painéis HUD */
+#faceMode .fm-panel{
+  position:absolute; z-index:7; width:236px;
+  background:rgba(12,18,32,.44);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(139,92,255,.26); border-radius:var(--radius);
+  padding:13px 15px; box-shadow:var(--shadow), var(--inset-top);
+}
+#faceMode .fm-panel h5{
+  font-family:var(--font-display); font-weight:700; font-size:.6rem;
+  letter-spacing:.28em; color:var(--accent-2); margin-bottom:10px;
+}
+#faceMode .fm-row{
+  display:flex; align-items:center; gap:8px; font-size:.68rem;
+  color:var(--txt2); margin-bottom:7px; letter-spacing:.05em;
+}
+#faceMode .fm-row .k{ color:var(--txt3); min-width:52px; }
+#faceMode .fm-row .v{ margin-left:auto; color:var(--txt); font-variant-numeric:tabular-nums; }
+#faceMode .fm-bar{ flex:1; height:3px; border-radius:2px; background:rgba(255,255,255,.08); overflow:hidden; }
+#faceMode .fm-bar i{ display:block; height:100%; width:0%; background:var(--grad); transition:width .4s var(--ease); }
+#faceMode .fm-dot{ width:7px; height:7px; border-radius:50%; background:var(--txt3); box-shadow:0 0 8px currentColor; flex:none; }
+#faceMode .fm-dot.g{ background:var(--green); color:var(--green); }
+#faceMode .fm-dot.y{ background:var(--yellow); color:var(--yellow); }
+#faceMode .fm-dot.r{ background:var(--red); color:var(--red); }
+
+#faceMode .p-vitals{ left:46px; top:132px; }
+#faceMode .p-status{ left:46px; top:330px; }
+#faceMode .p-logs  { right:46px; top:132px; }
+#faceMode .p-feeds { right:46px; top:330px; }
+
+#faceMode .fm-log{
+  font-size:.62rem; color:var(--txt3); line-height:1.75; max-height:132px; overflow:hidden;
+}
+#faceMode .fm-log b{ color:var(--primary); font-weight:400; }
+#faceMode .fm-feed{ font-size:.66rem; color:var(--txt2); line-height:1.5; margin-bottom:8px; }
+#faceMode .fm-feed span{ color:var(--accent-2); letter-spacing:.14em; font-size:.56rem; display:block; }
+
+/* ticker */
+#faceMode .fm-ticker{
+  position:absolute; left:0; right:0; bottom:52px; z-index:7;
+  display:flex; gap:30px; justify-content:center; flex-wrap:wrap;
+  font-size:.66rem; letter-spacing:.16em; color:var(--txt3);
+}
+#faceMode .fm-ticker b{ color:var(--primary); font-weight:400; }
+#faceMode .fm-hint{
+  position:absolute; bottom:22px; left:0; right:0; z-index:7; text-align:center;
+  font-size:.58rem; letter-spacing:.24em; color:var(--txt3); opacity:.65;
+}
+
+@media (max-width:1100px){
+  #faceMode .fm-panel{ display:none; }
+  #faceMode .fm-orb{ width:250px; height:250px; }
+  #faceMode .fm-core{ inset:72px; }
+}
+@media (max-width:430px){
+  #faceMode .fm-top{ padding:0 22px; top:26px; }
+  #faceMode .fm-brand{ font-size:1.05rem; letter-spacing:.3em; }
+  #faceMode .fm-clock{ font-size:1.4rem; }
+  #faceMode .fm-orb{ width:200px; height:200px; }
+  #faceMode .fm-core{ inset:58px; }
+  #faceMode .r2{ inset:18px; } #faceMode .r3{ inset:36px; }
+  #faceMode .fm-state{ font-size:.7rem; letter-spacing:.36em; margin-top:24px; }
+  #faceMode .fm-caption{ font-size:.82rem; }
+}
+@media (prefers-reduced-motion: reduce){
+  #faceMode .fm-aurora, #faceMode .fm-ring, #faceMode .fm-core{ animation:none !important; }
+}
+</style>
+
+<div id="faceMode" data-s="idle">
+  <div class="fm-aurora"></div>
+  <div class="fm-scan"></div>
+  <div class="fm-corner c-tl"></div><div class="fm-corner c-tr"></div>
+  <div class="fm-corner c-bl"></div><div class="fm-corner c-br"></div>
+
+  <div class="fm-top">
+    <div>
+      <div class="fm-brand">JARVIS</div>
+      <div class="fm-sub">NEURAL CORE · v6.0</div>
+    </div>
+    <div>
+      <div class="fm-clock" id="fmClock">--:--:--</div>
+      <div class="fm-date" id="fmDate">—</div>
+    </div>
+  </div>
+
+  <div class="fm-panel p-vitals">
+    <h5>VITALS</h5>
+    <div class="fm-row"><span class="k">FPS</span><span class="fm-bar"><i id="fmFpsBar"></i></span><span class="v" id="fmFps">—</span></div>
+    <div class="fm-row" id="fmHeapRow"><span class="k">HEAP</span><span class="fm-bar"><i id="fmHeapBar"></i></span><span class="v" id="fmHeap">—</span></div>
+    <div class="fm-row"><span class="k">ÁUDIO</span><span class="fm-bar"><i id="fmAudioBar"></i></span><span class="v" id="fmAudio">—</span></div>
+    <div class="fm-row"><span class="k">AGENDA</span><span class="v" id="fmEvents">—</span></div>
+    <div class="fm-row"><span class="k">AÇÃO</span><span class="v" id="fmAction">—</span></div>
+    <div class="fm-row"><span class="k">NOTAS</span><span class="v" id="fmNotes">—</span></div>
+  </div>
+
+  <div class="fm-panel p-status">
+    <h5>STATUS</h5>
+    <div class="fm-row"><span class="fm-dot" id="fmDotAntenna"></span><span>ANTENA</span><span class="v" id="fmAntenna">—</span></div>
+    <div class="fm-row"><span class="fm-dot" id="fmDotVoice"></span><span>VOZ</span><span class="v" id="fmVoice">—</span></div>
+    <div class="fm-row"><span class="fm-dot" id="fmDotBrain"></span><span>CÉREBRO</span><span class="v" id="fmBrain">—</span></div>
+    <div class="fm-row"><span class="fm-dot"></span><span>CANAIS</span><span class="v">STANDBY</span></div>
+  </div>
+
+  <div class="fm-panel p-logs">
+    <h5>LOGS</h5>
+    <div class="fm-log" id="fmLogs"></div>
+  </div>
+
+  <div class="fm-panel p-feeds">
+    <h5>FEEDS</h5>
+    <div id="fmFeeds"><div class="fm-feed">aguardando sync</div></div>
+  </div>
+
+  <div class="fm-stage">
+    <div class="fm-orb" id="fmOrb">
+      <div class="fm-ring r1"></div>
+      <div class="fm-ring r2"></div>
+      <div class="fm-ring r3"></div>
+      <div class="fm-core"></div>
+      <canvas class="fm-globe" id="fmGlobe"></canvas>
+    </div>
+    <div class="fm-state" id="fmState">ONLINE</div>
+    <div class="fm-caption" id="fmCaption"></div>
+  </div>
+
+  <div class="fm-ticker" id="fmTicker"></div>
+  <div class="fm-hint">F alterna · ESC sai · clique no orbe para ouvir</div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var faceMode = document.getElementById("faceMode");
+  if(!faceMode) return;
+
+  /* GOTCHA: reparenta pro body — se nascer dentro de algo oculto, some. */
+  if(faceMode.parentNode !== document.body) document.body.appendChild(faceMode);
+
+  var $ = function(id){ return document.getElementById(id); };
+  var J = function(){ return (typeof window !== "undefined" && window.JARVIS) || null; };
+  var reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var LABELS = { idle:"ONLINE", listening:"OUVINDO", thinking:"PROCESSANDO", speaking:"FALANDO" };
+
+  /* ---------- relógio ---------- */
+  var DIAS_F = ["domingo","segunda-feira","terça-feira","quarta-feira","quinta-feira","sexta-feira","sábado"];
+  var MESES_F = ["janeiro","fevereiro","março","abril","maio","junho",
+                 "julho","agosto","setembro","outubro","novembro","dezembro"];
+  function tickClock(){
+    var d = new Date(), p = function(n){ return String(n).padStart(2,"0"); };
+    var c = $("fmClock"), dt = $("fmDate");
+    if(c) c.textContent = p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+    if(dt) dt.textContent = (DIAS_F[d.getDay()] + " · " + d.getDate() + " de " +
+                             MESES_F[d.getMonth()] + " de " + d.getFullYear()).toUpperCase();
+  }
+
+  /* ---------- logs ---------- */
+  var logs = [];
+  function pushLog(msg){
+    var d = new Date(), p = function(n){ return String(n).padStart(2,"0"); };
+    logs.unshift("<b>" + p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds()) + "</b> " + msg);
+    if(logs.length > 7) logs.pop();
+    var el = $("fmLogs");
+    if(el) el.innerHTML = logs.join("<br>");
+  }
+
+  /* ---------- canvas: globo de pontos (fibonacci) ---------- */
+  var canvas = $("fmGlobe"), ctx = canvas ? canvas.getContext("2d") : null;
+  var pts = [], N = 800, rafId = null, spin = 0, pulse = 0;
+
+  (function buildSphere(){
+    var golden = Math.PI * (3 - Math.sqrt(5));
+    for(var i = 0; i < N; i++){
+      var y = 1 - (i / (N - 1)) * 2;
+      var r = Math.sqrt(Math.max(0, 1 - y * y));
+      var th = golden * i;
+      pts.push({ x: Math.cos(th) * r, y: y, z: Math.sin(th) * r });
+    }
+  })();
+
+  function sizeCanvas(){
+    if(!canvas) return;
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    var rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, rect.width * dpr);
+    canvas.height = Math.max(1, rect.height * dpr);
+    if(ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function audioLevel(){
+    /* usa amplitude real se o app expuser; senão pulsa em demo */
+    try{
+      if(typeof window._jarvisAudioLevel === "function") return window._jarvisAudioLevel();
+      if(typeof window._micLevel === "number") return window._micLevel;
+    }catch(e){}
+    var st = faceMode.getAttribute("data-s");
+    var base = (st === "listening") ? .62 : (st === "speaking") ? .48 : (st === "thinking") ? .34 : .18;
+    return Math.max(0, Math.min(1, base + Math.sin(pulse * 2.1) * .14));
+  }
+
+  function drawGlobe(){
+    if(!ctx || !canvas) return;
+    var w = canvas.clientWidth, h = canvas.clientHeight;
+    if(!w || !h) return;
+    ctx.clearRect(0, 0, w, h);
+
+    var lvl = audioLevel();
+    var cx = w / 2, cy = h / 2;
+    var R = Math.min(w, h) * (0.40 + lvl * 0.045);
+    var cosS = Math.cos(spin), sinS = Math.sin(spin);
+
+    for(var i = 0; i < pts.length; i++){
+      var p = pts[i];
+      var x = p.x * cosS - p.z * sinS;
+      var z = p.x * sinS + p.z * cosS;
+      var depth = (z + 1) / 2;                 /* 0 atrás · 1 na frente */
+      if(depth < 0.12) continue;
+      var sx = cx + x * R, sy = cy + p.y * R;
+      var alpha = 0.06 + depth * 0.4 * (0.55 + lvl * 0.6);
+      var size = 0.5 + depth * 1.25;
+      ctx.beginPath();
+      ctx.arc(sx, sy, size, 0, 6.2832);
+      ctx.fillStyle = (i % 7 === 0)
+        ? "rgba(139,92,255," + alpha.toFixed(3) + ")"
+        : "rgba(0,212,255," + alpha.toFixed(3) + ")";
+      ctx.fill();
+    }
+  }
+
+  function loop(){
+    if(!faceMode.classList.contains("on")){ rafId = null; return; }
+    spin  += reduced ? 0 : 0.0022;
+    pulse += 0.016;
+    drawGlobe();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  /* ---------- vitals ---------- */
+  var frames = 0, lastFps = performance.now(), fps = 0;
+  (function countFrames(){
+    frames++;
+    var now = performance.now();
+    if(now - lastFps >= 1000){
+      fps = Math.round(frames * 1000 / (now - lastFps));
+      frames = 0; lastFps = now;
+    }
+    requestAnimationFrame(countFrames);
+  })();
+
+  function setBar(id, pct){
+    var el = $(id);
+    if(el) el.style.width = Math.max(0, Math.min(100, pct)) + "%";
+  }
+
+  function tickVitals(){
+    if(!faceMode.classList.contains("on")) return;
+
+    $("fmFps").textContent = fps || "—";
+    setBar("fmFpsBar", (fps / 60) * 100);
+
+    /* performance.memory só existe em Chromium — esconde a linha se faltar */
+    try{
+      var m = performance.memory;
+      if(m && m.usedJSHeapSize){
+        var mb = m.usedJSHeapSize / 1048576;
+        $("fmHeap").textContent = mb.toFixed(0) + "MB";
+        setBar("fmHeapBar", (m.usedJSHeapSize / m.jsHeapSizeLimit) * 100);
+      }else{
+        $("fmHeapRow").style.display = "none";
+      }
+    }catch(e){ try{ $("fmHeapRow").style.display = "none"; }catch(e2){} }
+
+    var lvl = audioLevel();
+    $("fmAudio").textContent = Math.round(lvl * 100) + "%";
+    setBar("fmAudioBar", lvl * 100);
+
+    var j = J();
+    try{ $("fmEvents").textContent = j ? j.agendaHoje().length : "—"; }catch(e){ $("fmEvents").textContent = "—"; }
+    try{ $("fmAction").textContent = j ? j.emails().acao : "—"; }catch(e){ $("fmAction").textContent = "—"; }
+    try{ $("fmNotes").textContent  = j ? j.notas() : "—"; }catch(e){ $("fmNotes").textContent = "—"; }
+  }
+
+  function dot(id, cls){
+    var el = $(id);
+    if(el) el.className = "fm-dot " + (cls || "");
+  }
+
+  function tickStatus(){
+    if(!faceMode.classList.contains("on")) return;
+    var j = J();
+
+    var ant = null;
+    try{ ant = j ? j.antena() : null; }catch(e){}
+    $("fmAntenna").textContent = ant === true ? "ONLINE" : ant === false ? "OFFLINE" : "—";
+    dot("fmDotAntenna", ant === true ? "g" : ant === false ? "r" : "y");
+
+    var voz = false;
+    try{ voz = j ? j.ativo() : false; }catch(e){}
+    $("fmVoice").textContent = voz ? "ATIVA" : "STANDBY";
+    dot("fmDotVoice", voz ? "g" : "y");
+
+    var temChave = false;
+    try{ temChave = !!localStorage.getItem("gemini_key"); }catch(e){}
+    $("fmBrain").textContent = temChave ? "PRONTO" : "SEM CHAVE";
+    dot("fmDotBrain", temChave ? "g" : "r");
+  }
+
+  function tickFeeds(){
+    if(!faceMode.classList.contains("on")) return;
+    var j = J(), box = $("fmFeeds");
+    if(!box) return;
+    var list = [];
+    try{ list = j ? j.manchetes() : []; }catch(e){ list = []; }
+    if(!list.length){ box.innerHTML = '<div class="fm-feed">aguardando sync</div>'; return; }
+    box.innerHTML = list.slice(0, 4).map(function(h){
+      var t = String(h.titulo || "");
+      return '<div class="fm-feed"><span>' + String(h.tema || "").toUpperCase() + '</span>' +
+             (t.length > 62 ? t.slice(0, 62) + "…" : t) + '</div>';
+    }).join("");
+  }
+
+  function tickTicker(){
+    if(!faceMode.classList.contains("on")) return;
+    var j = J(), parts = [];
+    try{
+      if(j){
+        var p = j.proximo();
+        parts.push("PRÓXIMO <b>" + (p ? p.titulo + " · " + p.falta : "livre") + "</b>");
+        var m = j.emails();
+        parts.push("E-MAILS <b>" + m.total + "</b> · AÇÃO <b>" + m.acao + "</b>");
+        parts.push("SECOND BRAIN <b>" + j.notas() + "</b> notas");
+      }
+    }catch(e){}
+    if(!parts.length) parts.push("MODO DEMO · <b>aguardando o núcleo</b>");
+    var el = $("fmTicker");
+    if(el) el.innerHTML = parts.join("");
+  }
+
+  function tickAll(){ tickVitals(); tickStatus(); tickFeeds(); tickTicker(); }
+
+  /* ---------- intervalos: só rodam com a FACE aberta ---------- */
+  setInterval(tickClock, 1000);
+  setInterval(tickVitals, 1000);
+  setInterval(function(){ tickStatus(); tickFeeds(); tickTicker(); }, 15000);
+  tickClock();
+
+  /* ---------- espelha o estado do núcleo ---------- */
+  (function bindState(){
+    var j = J();
+    if(j && typeof j.onState === "function"){
+      j.onState(function(s){
+        faceMode.setAttribute("data-s", s);
+        var el = $("fmState");
+        if(el) el.textContent = LABELS[s] || "ONLINE";
+        if(s === "listening") pushLog("captação de voz aberta");
+        if(s === "thinking")  pushLog("consultando o núcleo…");
+      });
+      j._onSay = function(t){
+        var el = $("fmCaption");
+        if(!el) return;
+        var txt = String(t || "").replace(/^.*?:\s*/, "");
+        el.textContent = txt.length > 220 ? txt.slice(0, 220) + "…" : txt;
+      };
+      return;
+    }
+    /* sem ponte: fica em ONLINE, sem quebrar */
+    var cap = $("fmCaption");
+    if(cap) cap.textContent = "modo demonstração · núcleo não conectado";
+  })();
+
+  /* ---------- orbe clicável ---------- */
+  var orb = $("fmOrb");
+  if(orb) orb.addEventListener("click", function(){
+    var j = J();
+    try{
+      if(j && typeof j.toggleListening === "function"){ j.toggleListening(); pushLog("escuta acionada pelo orbe"); }
+      else if(typeof window.toggleListening === "function"){ window.toggleListening(); }
+    }catch(e){}
+  });
+
+  /* ---------- abrir / fechar ---------- */
+  window.faceModeToggle = function(on){
+    var abrir = (typeof on === "boolean") ? on : !faceMode.classList.contains("on");
+    faceMode.classList.toggle("on", abrir);
+    document.body.style.overflow = abrir ? "hidden" : "";
+    if(abrir){
+      sizeCanvas();
+      tickClock(); tickAll();
+      pushLog("núcleo sincronizado");
+      pushLog("varredura de sensores ok");
+      if(!rafId) rafId = requestAnimationFrame(loop);
+    }else if(rafId){
+      cancelAnimationFrame(rafId); rafId = null;
+    }
+  };
+
+  document.addEventListener("keydown", function(e){
+    var t = e.target, tag = t && t.tagName;
+    if(tag === "INPUT" || tag === "TEXTAREA" || (t && t.isContentEditable)) return;
+    if(e.key === "f" || e.key === "F"){ e.preventDefault(); window.faceModeToggle(); }
+    else if(e.key === "Escape" && faceMode.classList.contains("on")){ window.faceModeToggle(false); }
+  });
+
+  window.addEventListener("resize", function(){
+    if(faceMode.classList.contains("on")) sizeCanvas();
+  });
+
+  /* ---------- botão na topbar (injetado, sem tocar no HTML original) ---------- */
+  (function injectButton(){
+    var host = document.querySelector(".hud-chips");
+    if(!host || document.getElementById("faceBtn")) return;
+    var b = document.createElement("button");
+    b.id = "faceBtn";
+    b.className = "brain-btn";
+    b.title = "Abrir a tela FACE (F)";
+    b.textContent = "🛰";
+    b.addEventListener("click", function(){ window.faceModeToggle(true); });
+    host.insertBefore(b, host.firstChild);
+  })();
+
+  /* ---------- ?face=1 abre direto ---------- */
+  try{
+    if(/[?&]face=1\b/.test(location.search)){
+      window.faceModeToggle(true);
+    }
+  }catch(e){}
 })();
 </script>
 </body>
