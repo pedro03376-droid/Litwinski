@@ -259,10 +259,228 @@
   .btn.danger{ border-color:var(--danger); color:var(--danger); margin-left:auto; }
   .btn.danger:hover{ background:rgba(255,85,71,0.1); }
 
+  /* ============ UPGRADE v6 · HUD / PAINÉIS ============ */
+  .hud-chips{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .chip{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:5px 10px; border-radius:20px; font-size:.68rem; letter-spacing:.08em;
+    border:1px solid var(--panel-border); background:var(--panel); color:var(--text-dim);
+  }
+  .chip .dot{ width:7px; height:7px; border-radius:50%; background:var(--text-dim); }
+  .chip.on{ border-color:var(--ok); color:var(--ok); }
+  .chip.on .dot{ background:var(--ok); box-shadow:0 0 8px var(--ok); }
+  .chip.off{ border-color:var(--danger); color:#ffb3ac; }
+  .chip.off .dot{ background:var(--danger); }
+  .chip.action{ border-color:var(--accent); color:var(--accent); }
+  .chip.action .dot{ background:var(--accent); box-shadow:0 0 8px var(--accent); }
+
+  .modules{ max-width:1100px; margin:34px auto 0; padding:0 16px; }
+  .tabs{ display:flex; gap:6px; flex-wrap:wrap; }
+  .tab{
+    flex:1 1 130px;
+    padding:11px 14px; border-radius:10px 10px 0 0; font-size:.76rem; letter-spacing:.12em;
+    border:1px solid var(--panel-border); border-bottom:none;
+    background:var(--bg2); color:var(--text-dim); transition:all .2s ease;
+    display:flex; align-items:center; justify-content:center; gap:7px;
+  }
+  .tab:hover{ color:var(--text); border-color:var(--accent); }
+  .tab.active{
+    background:var(--panel); color:var(--accent); border-color:var(--accent);
+    box-shadow:inset 0 2px 0 var(--accent);
+  }
+  .tab .tab-badge{
+    min-width:18px; height:18px; padding:0 5px; border-radius:9px;
+    background:var(--accent); color:#04121a; font-size:.62rem; font-weight:700;
+    display:none; align-items:center; justify-content:center;
+  }
+  .tab .tab-badge.show{ display:inline-flex; }
+
+  .panel{
+    display:none;
+    border:1px solid var(--accent); border-radius:0 0 12px 12px;
+    background:linear-gradient(180deg, rgba(0,212,255,0.035), transparent 40%), var(--panel);
+    padding:18px; min-height:150px;
+  }
+  .panel.active{ display:block; animation:panelIn .32s cubic-bezier(.2,.8,.3,1); }
+  @keyframes panelIn{
+    from{ opacity:0; transform:translateY(-8px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .panel-head{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding-bottom:12px; margin-bottom:14px; border-bottom:1px solid var(--panel-border);
+  }
+  .panel-head h4{ font-size:.82rem; letter-spacing:.16em; color:var(--accent); font-weight:700; }
+  .panel-head .sub{ font-size:.7rem; color:var(--text-dim); }
+  .panel-head .spacer{ margin-left:auto; }
+  .mini-btn{
+    padding:6px 12px; border-radius:6px; font-size:.7rem; letter-spacing:.08em;
+    border:1px solid var(--panel-border); background:transparent; color:var(--text-dim);
+  }
+  .mini-btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  .empty-state{
+    padding:26px 16px; text-align:center; color:var(--text-dim); font-size:.84rem; line-height:1.6;
+  }
+  .empty-state code{
+    background:var(--bg2); border:1px solid var(--panel-border); border-radius:4px;
+    padding:2px 8px; color:var(--accent); font-family:"Courier New",monospace;
+  }
+  .err-row{
+    padding:9px 12px; margin-bottom:8px; border-radius:6px; font-size:.76rem;
+    background:rgba(255,85,71,0.08); border:1px solid rgba(255,85,71,0.4); color:#ffb3ac;
+  }
+
+  /* ---- AGENDA ---- */
+  .day-group{ margin-bottom:18px; }
+  .day-label{
+    font-family:"Courier New",monospace; font-size:.68rem; letter-spacing:.22em;
+    color:var(--text-dim); padding-bottom:7px; margin-bottom:9px;
+    border-bottom:1px dashed var(--panel-border);
+  }
+  .day-label.today{ color:var(--accent); }
+  .ev{
+    display:flex; align-items:flex-start; gap:12px;
+    padding:10px 12px; margin-bottom:6px; border-radius:8px;
+    background:var(--bg2); border-left:3px solid var(--text-dim);
+    transition:transform .15s ease;
+  }
+  .ev:hover{ transform:translateX(3px); }
+  .ev.next{ box-shadow:0 0 0 1px var(--accent), 0 0 18px rgba(0,212,255,0.15); }
+  .ev-time{
+    font-family:"Courier New",monospace; font-size:.78rem; color:var(--text);
+    min-width:52px; padding-top:1px;
+  }
+  .ev-body{ flex:1; min-width:0; }
+  .ev-title{ font-size:.88rem; color:var(--text); }
+  .ev-meta{ font-size:.7rem; color:var(--text-dim); margin-top:2px; }
+  .ev-count{
+    font-size:.68rem; letter-spacing:.1em; color:var(--accent);
+    background:rgba(0,212,255,0.1); border:1px solid var(--accent);
+    padding:3px 8px; border-radius:12px; white-space:nowrap;
+  }
+
+  /* ---- E-MAILS ---- */
+  .bucket{ margin-bottom:16px; }
+  .bucket-head{
+    display:flex; align-items:center; gap:8px; cursor:pointer;
+    font-size:.72rem; letter-spacing:.16em; color:var(--text-dim); margin-bottom:9px;
+  }
+  .bucket-head .count{ font-size:.68rem; opacity:.8; }
+  .bucket.acao .bucket-head{ color:var(--accent); }
+  .bucket-body.collapsed{ display:none; }
+  .mail{
+    display:flex; align-items:flex-start; gap:10px;
+    padding:10px 12px; margin-bottom:6px; border-radius:8px;
+    background:var(--bg2); border:1px solid transparent; cursor:pointer;
+  }
+  .mail:hover{ border-color:var(--panel-border); }
+  .bucket.acao .mail{ border-left:3px solid var(--accent); }
+  .mail-dot{ width:9px; height:9px; border-radius:50%; margin-top:5px; flex:none; }
+  .mail-body{ flex:1; min-width:0; }
+  .mail-top{ display:flex; gap:8px; align-items:baseline; }
+  .mail-from{ font-size:.8rem; color:var(--text); font-weight:600; }
+  .mail-when{ font-size:.66rem; color:var(--text-dim); margin-left:auto; white-space:nowrap; }
+  .mail-sum{ font-size:.78rem; color:var(--text-dim); margin-top:3px; line-height:1.45; }
+  .mail-full{
+    display:none; margin-top:9px; padding:9px 11px; border-radius:6px;
+    background:var(--bg); border:1px solid var(--panel-border);
+    font-size:.74rem; color:var(--text-dim); white-space:pre-wrap; line-height:1.5;
+    max-height:200px; overflow:auto;
+  }
+  .mail.open .mail-full{ display:block; }
+  .triage-tag{
+    font-size:.62rem; letter-spacing:.1em; color:var(--text-dim);
+    border:1px solid var(--panel-border); border-radius:4px; padding:2px 6px;
+  }
+
+  /* ---- NOTÍCIAS ---- */
+  .topic-block{ margin-bottom:18px; }
+  .topic-name{
+    font-size:.72rem; letter-spacing:.18em; color:var(--accent); margin-bottom:9px;
+    display:flex; align-items:center; gap:8px;
+  }
+  .topic-name::after{ content:""; flex:1; height:1px; background:var(--panel-border); }
+  .headline{
+    display:block; padding:9px 12px; margin-bottom:5px; border-radius:8px;
+    background:var(--bg2); text-decoration:none; border-left:2px solid var(--violet);
+    transition:all .15s ease;
+  }
+  .headline:hover{ border-left-color:var(--accent); transform:translateX(3px); }
+  .headline .hl-title{ font-size:.83rem; color:var(--text); line-height:1.4; }
+  .headline .hl-meta{ font-size:.66rem; color:var(--text-dim); margin-top:3px; }
+
+  /* ---- DIGEST ---- */
+  .digest-box{
+    padding:22px; border-radius:12px; line-height:1.75; font-size:.95rem;
+    background:
+      radial-gradient(ellipse at 0% 0%, rgba(139,92,255,0.1), transparent 55%),
+      radial-gradient(ellipse at 100% 100%, rgba(0,212,255,0.08), transparent 55%),
+      var(--bg2);
+    border:1px solid var(--panel-border); white-space:pre-wrap;
+  }
+  .digest-meta{ margin-top:12px; font-size:.68rem; color:var(--text-dim); letter-spacing:.1em; }
+  .weather-strip{
+    display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+    padding:12px 16px; margin-bottom:14px; border-radius:10px;
+    background:var(--bg2); border:1px solid var(--panel-border); font-size:.82rem;
+  }
+  .weather-strip .big{ font-size:1.5rem; color:var(--accent); font-weight:700; }
+
+  /* ---- CONFIG (⚙) ---- */
+  .modal.wide{ width:min(680px,100%); max-height:88vh; overflow-y:auto; }
+  .cfg-section{ margin-bottom:24px; padding-bottom:20px; border-bottom:1px solid var(--panel-border); }
+  .cfg-section:last-child{ border-bottom:none; margin-bottom:0; }
+  .cfg-title{ font-size:.78rem; letter-spacing:.16em; color:var(--accent); margin-bottom:6px; }
+  .cfg-help{
+    font-size:.72rem; color:var(--text-dim); line-height:1.6; margin-bottom:12px;
+    background:var(--bg2); border-left:2px solid var(--panel-border);
+    padding:9px 12px; border-radius:0 6px 6px 0;
+  }
+  .cfg-help b{ color:var(--text); }
+  .cfg-warn{
+    font-size:.7rem; color:#ffd9a0; line-height:1.55; margin-bottom:12px;
+    background:rgba(251,191,36,0.07); border:1px solid rgba(251,191,36,0.3);
+    padding:9px 12px; border-radius:6px;
+  }
+  .cfg-row{
+    display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+    padding:10px; margin-bottom:8px; border-radius:8px;
+    background:var(--bg2); border:1px solid var(--panel-border);
+  }
+  .cfg-row input[type=text], .cfg-row input[type=password], .cfg-row input[type=number]{
+    background:var(--bg); border:1px solid var(--panel-border); color:var(--text);
+    padding:8px 10px; border-radius:6px; font-size:.8rem; outline:none; flex:1; min-width:120px;
+  }
+  .cfg-row input:focus{ border-color:var(--accent); }
+  .cfg-row input.grow{ flex:3; min-width:200px; }
+  .cfg-row input[type=color]{
+    width:38px; height:34px; padding:2px; border-radius:6px; flex:none;
+    background:var(--bg); border:1px solid var(--panel-border); cursor:pointer;
+  }
+  .cfg-del{
+    border:1px solid var(--panel-border); background:transparent; color:var(--danger);
+    width:32px; height:32px; border-radius:6px; flex:none; font-size:.9rem;
+  }
+  .cfg-del:hover{ background:rgba(255,85,71,0.1); border-color:var(--danger); }
+  .tier-group{ display:flex; gap:8px; flex-wrap:wrap; }
+  .tier{
+    flex:1 1 150px; padding:12px; border-radius:8px; text-align:left;
+    border:1px solid var(--panel-border); background:var(--bg2); color:var(--text-dim);
+  }
+  .tier.active{ border-color:var(--accent); color:var(--accent); background:rgba(0,212,255,0.07); }
+  .tier .t-name{ font-size:.74rem; letter-spacing:.12em; font-weight:700; }
+  .tier .t-model{ font-size:.66rem; margin-top:4px; opacity:.85; font-family:"Courier New",monospace; }
+  .switch-row{ display:flex; align-items:center; gap:10px; font-size:.82rem; }
+  .switch-row input{ width:16px; height:16px; accent-color:var(--accent); cursor:pointer; }
+
   @media (max-width:560px){
     .orb-wrap{ width:170px; height:170px; }
     .assistant-name{ font-size:1.1rem; }
     #text-input{ width:60vw; }
+    .tab{ flex:1 1 44%; font-size:.68rem; padding:10px 6px; }
+    .panel{ padding:14px 12px; }
+    .mail-when{ margin-left:0; }
   }
 </style>
 </head>
@@ -290,6 +508,11 @@
       <input type="password" id="apikey-input" placeholder="Cole sua API key do Google AI Studio (Gemini) aqui">
       <button id="apikey-save">SALVAR</button>
       <span class="key-status" id="key-status">sem chave</span>
+      <div class="hud-chips">
+        <span class="chip" id="chip-antenna"><span class="dot"></span>ANTENA</span>
+        <span class="chip" id="chip-action" style="display:none"><span class="dot"></span><span id="chip-action-n">0</span> AÇÃO</span>
+        <button class="brain-btn" id="cfg-btn" title="Configurações">⚙</button>
+      </div>
     </div>
 
     <main class="stage">
@@ -310,6 +533,56 @@
         <button class="icon-btn stop" id="stop-btn" title="Interromper fala">⏹</button>
       </div>
     </main>
+
+    <!-- ============ MÓDULOS: AGENDA · E-MAILS · NOTÍCIAS · DIGEST ============ -->
+    <section class="modules">
+      <div class="tabs">
+        <button class="tab active" data-panel="agenda">📅 AGENDA</button>
+        <button class="tab" data-panel="emails">📧 E-MAILS <span class="tab-badge" id="tab-badge-mail">0</span></button>
+        <button class="tab" data-panel="noticias">📡 NOTÍCIAS</button>
+        <button class="tab" data-panel="digest">🌅 DIGEST</button>
+      </div>
+
+      <div class="panel active" id="panel-agenda">
+        <div class="panel-head">
+          <h4>LINHA DO TEMPO</h4>
+          <span class="sub" id="agenda-sub">hoje + próximos 7 dias</span>
+          <span class="spacer"></span>
+          <button class="mini-btn" id="agenda-refresh">↻ atualizar</button>
+        </div>
+        <div id="agenda-body"></div>
+      </div>
+
+      <div class="panel" id="panel-emails">
+        <div class="panel-head">
+          <h4>TRIAGEM</h4>
+          <span class="sub" id="emails-sub">—</span>
+          <span class="spacer"></span>
+          <button class="mini-btn" id="emails-refresh">↻ atualizar</button>
+        </div>
+        <div id="emails-body"></div>
+      </div>
+
+      <div class="panel" id="panel-noticias">
+        <div class="panel-head">
+          <h4>RADAR</h4>
+          <span class="sub" id="news-sub">—</span>
+          <span class="spacer"></span>
+          <button class="mini-btn" id="news-refresh">↻ atualizar</button>
+        </div>
+        <div id="news-body"></div>
+      </div>
+
+      <div class="panel" id="panel-digest">
+        <div class="panel-head">
+          <h4>MORNING DIGEST</h4>
+          <span class="sub" id="digest-sub">briefing do seu dia</span>
+          <span class="spacer"></span>
+          <button class="mini-btn" id="digest-run">▶ gerar agora</button>
+        </div>
+        <div id="digest-body"></div>
+      </div>
+    </section>
 
     <section class="brain-section">
       <div class="brain-bar">
@@ -341,6 +614,85 @@
         <button class="btn danger" id="note-delete">Excluir</button>
         <button class="btn" id="note-cancel">Cancelar</button>
         <button class="btn primary" id="note-save">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: CONFIGURAÇÕES (⚙) ============ -->
+  <div class="modal-overlay" id="cfg-overlay">
+    <div class="modal wide">
+      <h3>⚙ CONFIGURAÇÕES DO JARVIS</h3>
+
+      <div class="cfg-section">
+        <div class="cfg-title">📅 AGENDAS DO GOOGLE</div>
+        <div class="cfg-help">
+          Google Agenda no computador → <b>⚙ Configurações</b> → clique na agenda na lista à esquerda
+          → <b>"Integrar agenda"</b> → copie o <b>"Endereço secreto em formato iCal"</b> e cole abaixo.
+        </div>
+        <div class="cfg-warn">
+          ⚠ Este link dá acesso de leitura à sua agenda. Ele fica salvo só no seu navegador
+          e nunca é enviado para a IA.
+        </div>
+        <div id="cfg-cal-list"></div>
+        <button class="mini-btn" id="cfg-cal-add">+ adicionar agenda</button>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-title">📧 CONTAS DE E-MAIL</div>
+        <div class="cfg-help">
+          <b>(a)</b> Ative a verificação em 2 etapas em <b>myaccount.google.com/security</b> —
+          sem ela o Google não deixa criar senha de app.<br>
+          <b>(b)</b> Vá em <b>myaccount.google.com/apppasswords</b>, crie um app chamado <b>"Jarvis"</b>
+          e copie a senha de 16 letras.<br>
+          <b>(c)</b> Cole essa senha aqui. <b>NÃO</b> é a sua senha normal do Gmail.
+        </div>
+        <div class="cfg-warn">
+          ⚠ Sua senha de app fica salva só no seu navegador e viaja apenas até a antena local
+          e o seu provedor. Para a triagem, remetente, assunto e um trecho do e-mail são enviados
+          à API do Gemini. O Jarvis só LÊ: nunca envia, responde, apaga ou marca nada.
+        </div>
+        <div id="cfg-mail-list"></div>
+        <button class="mini-btn" id="cfg-mail-add">+ adicionar conta</button>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-title">📡 ASSUNTOS DO RADAR</div>
+        <div class="cfg-help">
+          Manchetes do Google News, de graça e sem chave nenhuma.
+          Recomendo de 2 a 5 assuntos.
+        </div>
+        <div id="cfg-topic-list"></div>
+        <button class="mini-btn" id="cfg-topic-add">+ adicionar assunto</button>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-title">🌅 DIGEST &amp; CLIMA</div>
+        <div class="cfg-row">
+          <span style="font-size:.76rem;color:var(--text-dim)">Cidade do clima</span>
+          <input type="text" id="cfg-city" class="grow" placeholder="Lages, SC">
+        </div>
+        <div class="switch-row" style="margin-top:10px">
+          <input type="checkbox" id="cfg-digest-speak">
+          <label for="cfg-digest-speak">Ler o digest em voz alta</label>
+        </div>
+        <div class="switch-row" style="margin-top:8px">
+          <input type="checkbox" id="cfg-digest-auto">
+          <label for="cfg-digest-auto">Disparar automaticamente na 1ª ativação do dia</label>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-title">⚙️ MOTOR</div>
+        <div class="tier-group" id="cfg-tiers"></div>
+        <div class="switch-row" style="margin-top:14px">
+          <input type="checkbox" id="cfg-econ">
+          <label for="cfg-econ">Modo economia (comandos locais sem gastar token, cache de triagem)</label>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn" id="cfg-close">Fechar</button>
+        <button class="btn primary" id="cfg-save">Salvar tudo</button>
       </div>
     </div>
   </div>
@@ -714,7 +1066,8 @@
     window.speechSynthesis.cancel();
     var utter = new SpeechSynthesisUtterance(text);
     utter.lang = "pt-BR";
-    if(chosenVoice) utter.voice = chosenVoice;
+    /* alguns webviews devolvem objetos de voz estranhos — não deixar o Jarvis mudo por isso */
+    try{ if(chosenVoice) utter.voice = chosenVoice; }catch(e){}
     utter.rate = 1;
     utter.pitch = CONFIG.voiceGender === "masculina" ? 0.95 : 1.1;
 
@@ -927,7 +1280,8 @@
       var y = cy + Math.sin(angle) * ry;
       nodePositions[note.id] = { x:x, y:y };
     });
-    return { cx:cx, cy:cy };
+    /* x/y são o que controlPoint() consome — cx/cy ficam para os atributos SVG */
+    return { x:cx, y:cy, cx:cx, cy:cy };
   }
 
   function quadPoint(A, C, B, t){
@@ -1252,10 +1606,1460 @@
     closeModal();
   });
 
+  /* ############################################################
+     ##                                                        ##
+     ##   UPGRADE v6 — AGENDA · E-MAILS · NOTÍCIAS · DIGEST     ##
+     ##   Tudo abaixo ADICIONA. Nada da Parte 1 foi removido.   ##
+     ##                                                        ##
+     ############################################################ */
+
+  var ANTENNA = "http://127.0.0.1:4242";
+
+  var TZ = (function(){
+    try{ return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Sao_Paulo"; }
+    catch(e){ return "America/Sao_Paulo"; }
+  })();
+
+  var LS = {
+    calendars:  "jarvis_calendars",
+    emails:     "jarvis_emails",
+    triage:     "jarvis_email_triage",
+    topics:     "jarvis_topics",
+    newsCache:  "jarvis_news_cache",
+    lastDigest: "jarvis_last_digest",
+    tier:       "jarvis_model_tier",
+    econ:       "jarvis_econ",
+    geo:        "jarvis_geo",
+    city:       "jarvis_city",
+    digestCfg:  "jarvis_digest_cfg"
+  };
+
+  var MODEL_TIERS = {
+    economico:   { label:"ECONÔMICO",   model:"gemini-2.5-flash-lite", hint:"rápido e barato" },
+    equilibrado: { label:"EQUILIBRADO", model:"gemini-2.5-flash",      hint:"meio-termo ideal" },
+    maximo:      { label:"MÁXIMO",      model:"gemini-2.5-pro",        hint:"o mais afiado" }
+  };
+
+  var DEFAULT_CALENDARS = [
+    { id:"c1", name:"Agenda 1", color:"#00d4ff", url:"" },
+    { id:"c2", name:"Agenda 2", color:"#8b5cff", url:"" }
+  ];
+  var DEFAULT_MAILBOXES = [
+    { id:"m1", nick:"Principal", color:"#00d4ff", host:"imap.gmail.com", user:"", pass:"", count:20 }
+  ];
+  var DEFAULT_TOPICS = [
+    { id:"t1", name:"tecnologia" },
+    { id:"t2", name:"economia" }
+  ];
+
+  var NEWS_PER_TOPIC   = 5;
+  var CAL_REFRESH_MS   = 10 * 60 * 1000;
+  var MAIL_REFRESH_MS  = 15 * 60 * 1000;
+  var NEWS_REFRESH_MS  = 30 * 60 * 1000;
+  var DIGEST_MAX_TOKENS = 500;               /* CURTO (~30s de fala) */
+
+  function lsGet(key, fallback){
+    try{
+      var raw = localStorage.getItem(key);
+      if(raw === null) return fallback;
+      return JSON.parse(raw);
+    }catch(e){ return fallback; }
+  }
+  function lsSet(key, val){
+    try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){}
+  }
+
+  var CALENDARS = lsGet(LS.calendars, DEFAULT_CALENDARS);
+  var MAILBOXES = lsGet(LS.emails,    DEFAULT_MAILBOXES);
+  var TOPICS    = lsGet(LS.topics,    DEFAULT_TOPICS);
+  var TRIAGE    = lsGet(LS.triage,    {});
+  var TIER      = lsGet(LS.tier,      "equilibrado");
+  var ECON      = lsGet(LS.econ,      true);
+  var CITY      = lsGet(LS.city,      "Lages, SC");
+  var DIGEST_CFG= lsGet(LS.digestCfg, { speak:true, auto:true });
+
+  if(!MODEL_TIERS[TIER]) TIER = "equilibrado";
+  CONFIG.model = MODEL_TIERS[TIER].model;   /* reutiliza a MESMA referência da Parte 1 */
+
+  /* estado ao vivo */
+  var CAL_EVENTS = [];
+  var CAL_ERRORS = [];
+  var CAL_LOADED = 0;
+  var MAILS = [];
+  var MAIL_ERRORS = [];
+  var MAIL_LOADED = 0;
+  var NEWS = {};
+  var NEWS_LOADED = 0;
+  var WEATHER = null;
+  var antennaOnline = null;
+  var lastDigestText = "";
+
+  /* ============================================================
+     ANTENA
+  ============================================================ */
+  function pingAntenna(){
+    return fetch(ANTENNA + "/ping", { cache:"no-store" })
+      .then(function(r){ return r.ok; })
+      .catch(function(){ return false; })
+      .then(function(ok){
+        antennaOnline = ok;
+        var chip = document.getElementById("chip-antenna");
+        chip.classList.toggle("on", ok);
+        chip.classList.toggle("off", !ok);
+        chip.lastChild.nodeValue = ok ? "ANTENA" : "ANTENA OFF";
+        return ok;
+      });
+  }
+
+  function viaAntenna(url){
+    return fetch(ANTENNA + "/proxy?url=" + encodeURIComponent(url), { cache:"no-store" });
+  }
+
+  function offlineNotice(){
+    return '<div class="empty-state">📡 <b>ANTENA OFFLINE</b><br><br>' +
+           'Abra um terminal na pasta do Jarvis e rode:<br><br><code>node server.js</code>' +
+           '<br><br>Deixe esse terminal aberto e clique em ↻ aqui.</div>';
+  }
+
+  /* ============================================================
+     UTILIDADES DE DATA / TEXTO
+  ============================================================ */
+  var DIAS = ["DOMINGO","SEGUNDA","TERÇA","QUARTA","QUINTA","SEXTA","SÁBADO"];
+
+  function startOfDay(d){ var x = new Date(d.getTime()); x.setHours(0,0,0,0); return x; }
+  function sameDay(a,b){
+    return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate();
+  }
+  function hhmm(d){
+    return String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0");
+  }
+  function ddmm(d){
+    return String(d.getDate()).padStart(2,"0") + "/" + String(d.getMonth()+1).padStart(2,"0");
+  }
+  function relTime(date){
+    if(!date) return "";
+    var diff = Date.now() - date.getTime();
+    var min = Math.round(diff/60000);
+    if(min < 1) return "agora";
+    if(min < 60) return "há " + min + " min";
+    var h = Math.round(min/60);
+    if(h < 24) return "há " + h + " h";
+    var d = Math.round(h/24);
+    return "há " + d + (d === 1 ? " dia" : " dias");
+  }
+  function countdown(date){
+    var ms = date.getTime() - Date.now();
+    if(ms <= 0) return "agora";
+    var min = Math.round(ms/60000);
+    if(min < 60) return "em " + min + " min";
+    var h = Math.floor(min/60), m = min % 60;
+    if(h < 24) return "em " + h + "h" + (m ? " " + m + "min" : "");
+    return "em " + Math.round(h/24) + " dias";
+  }
+  function esc(s){
+    return String(s == null ? "" : s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;");
+  }
+
+  /* ============================================================
+     PARSER ICS
+  ============================================================ */
+  function icsUnfold(t){
+    return String(t).replace(/\r\n/g,"\n").replace(/\r/g,"\n").replace(/\n[ \t]/g,"");
+  }
+  function unescapeIcs(s){
+    return String(s).replace(/\\n/gi,"\n").replace(/\\,/g,",")
+                    .replace(/\\;/g,";").replace(/\\\\/g,"\\");
+  }
+
+  /* Converte uma hora "de parede" num fuso qualquer para Date real, sem lib. */
+  function tzOffsetMs(tz, d){
+    var dtf = new Intl.DateTimeFormat("en-US", {
+      timeZone: tz, hour12:false,
+      year:"numeric", month:"2-digit", day:"2-digit",
+      hour:"2-digit", minute:"2-digit", second:"2-digit"
+    });
+    var p = {};
+    dtf.formatToParts(d).forEach(function(x){ p[x.type] = x.value; });
+    var asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, (+p.hour) % 24, +p.minute, +p.second);
+    return asUTC - d.getTime();
+  }
+  function wallToDate(y, mo, da, h, mi, s, tz){
+    if(!tz) return new Date(y, mo - 1, da, h, mi, s);
+    try{
+      var guess = Date.UTC(y, mo - 1, da, h, mi, s);
+      var off = tzOffsetMs(tz, new Date(guess));
+      off = tzOffsetMs(tz, new Date(guess - off));
+      return new Date(guess - off);
+    }catch(e){
+      return new Date(y, mo - 1, da, h, mi, s);
+    }
+  }
+
+  function parseIcsDate(val, params){
+    val = String(val || "").trim();
+    var m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(val);
+    if(!m) return null;
+    var y = +m[1], mo = +m[2], da = +m[3];
+    var h = +(m[4] || 0), mi = +(m[5] || 0), s = +(m[6] || 0);
+    var isAllDay = (params.VALUE || "").toUpperCase() === "DATE" || !m[4];
+    if(isAllDay) return { date: new Date(y, mo - 1, da, 0, 0, 0), allDay:true };
+    if(m[7] === "Z") return { date: new Date(Date.UTC(y, mo - 1, da, h, mi, s)), allDay:false };
+    if(params.TZID) return { date: wallToDate(y, mo, da, h, mi, s, params.TZID), allDay:false };
+    return { date: new Date(y, mo - 1, da, h, mi, s), allDay:false };
+  }
+
+  function parseICS(text){
+    var lines = icsUnfold(text).split("\n");
+    var out = [], cur = null;
+    for(var i = 0; i < lines.length; i++){
+      var line = lines[i];
+      if(!line) continue;
+      if(/^BEGIN:VEVENT/i.test(line)){ cur = { exdates: [] }; continue; }
+      if(/^END:VEVENT/i.test(line)){ if(cur && cur.start) out.push(cur); cur = null; continue; }
+      if(!cur) continue;
+
+      var ci = line.indexOf(":");
+      if(ci === -1) continue;
+      var left = line.slice(0, ci), val = line.slice(ci + 1);
+      var segs = left.split(";");
+      var key = segs[0].toUpperCase();
+      var params = {};
+      for(var j = 1; j < segs.length; j++){
+        var e = segs[j].indexOf("=");
+        if(e > -1) params[segs[j].slice(0, e).toUpperCase()] = segs[j].slice(e + 1);
+      }
+
+      if(key === "SUMMARY")       cur.title = unescapeIcs(val);
+      else if(key === "LOCATION") cur.location = unescapeIcs(val);
+      else if(key === "UID")      cur.uid = val;
+      else if(key === "RRULE")    cur.rrule = val;
+      else if(key === "DTSTART"){
+        var ds = parseIcsDate(val, params);
+        if(ds){ cur.start = ds.date; cur.allDay = ds.allDay; }
+      }
+      else if(key === "DTEND"){
+        var de = parseIcsDate(val, params);
+        if(de) cur.end = de.date;
+      }
+      else if(key === "EXDATE"){
+        val.split(",").forEach(function(v){
+          var dd = parseIcsDate(v, params);
+          if(dd) cur.exdates.push(dd.date.getTime());
+        });
+      }
+    }
+    return out;
+  }
+
+  var WEEKDAY_MAP = { SU:0, MO:1, TU:2, WE:3, TH:4, FR:5, SA:6 };
+
+  /* Expande RRULE (FREQ DAILY/WEEKLY/MONTHLY/YEARLY + BYDAY/COUNT/UNTIL/INTERVAL) */
+  function expandEvent(ev, winStart, winEnd){
+    var dur = (ev.end && ev.start)
+      ? (ev.end.getTime() - ev.start.getTime())
+      : (ev.allDay ? 86400000 : 3600000);
+    if(dur <= 0) dur = ev.allDay ? 86400000 : 3600000;
+
+    if(!ev.rrule){
+      if(ev.start.getTime() < winEnd && ev.start.getTime() + dur > winStart){
+        return [{ start: ev.start, dur: dur }];
+      }
+      return [];
+    }
+
+    var r = {};
+    ev.rrule.split(";").forEach(function(p){
+      var e = p.indexOf("=");
+      if(e > -1) r[p.slice(0, e).toUpperCase()] = p.slice(e + 1);
+    });
+
+    var freq     = (r.FREQ || "").toUpperCase();
+    var interval = parseInt(r.INTERVAL, 10) || 1;
+    var count    = r.COUNT ? parseInt(r.COUNT, 10) : null;
+    var until    = null;
+    if(r.UNTIL){
+      var u = parseIcsDate(r.UNTIL, {});
+      if(u) until = u.date.getTime();
+    }
+    var byday = r.BYDAY
+      ? r.BYDAY.split(",").map(function(x){ return x.replace(/^[-+]?\d+/, "").toUpperCase(); })
+      : null;
+
+    var occ = [], emitted = 0, guard = 0;
+
+    function tryEmit(d){
+      var t = d.getTime();
+      if(until && t > until) return false;
+      if(count && emitted >= count) return false;
+      emitted++;
+      if(ev.exdates.indexOf(t) === -1 && t < winEnd && t + dur > winStart){
+        occ.push({ start: new Date(t), dur: dur });
+      }
+      return true;
+    }
+
+    if(freq === "WEEKLY" && byday && byday.length){
+      var weekStart = new Date(ev.start.getTime());
+      weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+      var stopped = false;
+      while(!stopped && guard++ < 1000){
+        for(var k = 0; k < byday.length; k++){
+          var wd = WEEKDAY_MAP[byday[k]];
+          if(wd === undefined) continue;
+          var d = new Date(weekStart.getTime());
+          d.setDate(d.getDate() + wd);
+          d.setHours(ev.start.getHours(), ev.start.getMinutes(), ev.start.getSeconds(), 0);
+          if(d.getTime() < ev.start.getTime()) continue;
+          if(!tryEmit(d)){ stopped = true; break; }
+        }
+        if(stopped) break;
+        weekStart.setDate(weekStart.getDate() + 7 * interval);
+        if(weekStart.getTime() > winEnd) break;
+      }
+    }else{
+      var cur = new Date(ev.start.getTime());
+      while(guard++ < 1000){
+        if(!tryEmit(cur)) break;
+        if(cur.getTime() > winEnd) break;
+        if(freq === "DAILY")        cur.setDate(cur.getDate() + interval);
+        else if(freq === "WEEKLY")  cur.setDate(cur.getDate() + 7 * interval);
+        else if(freq === "MONTHLY") cur.setMonth(cur.getMonth() + interval);
+        else if(freq === "YEARLY")  cur.setFullYear(cur.getFullYear() + interval);
+        else break;
+      }
+    }
+    return occ;
+  }
+
+  /* ============================================================
+     MÓDULO AGENDA
+  ============================================================ */
+  function calWindow(){
+    var s = startOfDay(new Date());
+    var e = new Date(s.getTime());
+    e.setDate(e.getDate() + 8);          /* hoje + 7 dias */
+    return { start: s.getTime(), end: e.getTime() };
+  }
+
+  function loadCalendars(){
+    var configured = CALENDARS.filter(function(c){ return c.url && c.url.trim(); });
+    CAL_ERRORS = [];
+    if(!configured.length){ CAL_EVENTS = []; renderAgenda(); return Promise.resolve(); }
+
+    return pingAntenna().then(function(ok){
+      if(!ok){ renderAgenda(); return; }
+      var win = calWindow();
+
+      return Promise.all(configured.map(function(cal){
+        return viaAntenna(cal.url.trim())
+          .then(function(r){
+            if(!r.ok) throw new Error("HTTP " + r.status);
+            return r.text();
+          })
+          .then(function(txt){
+            if(txt.indexOf("BEGIN:VCALENDAR") === -1){
+              throw new Error("o link não devolveu um arquivo iCal válido");
+            }
+            var out = [];
+            parseICS(txt).forEach(function(ev){
+              if(!ev.start) return;
+              expandEvent(ev, win.start, win.end).forEach(function(o){
+                out.push({
+                  start: o.start,
+                  end: new Date(o.start.getTime() + o.dur),
+                  allDay: !!ev.allDay,
+                  title: ev.title || "(sem título)",
+                  location: ev.location || "",
+                  calName: cal.name,
+                  color: cal.color
+                });
+              });
+            });
+            return out;
+          })
+          .catch(function(e){
+            /* uma agenda quebrada não derruba as outras */
+            CAL_ERRORS.push({ name: cal.name, msg: e.message });
+            return [];
+          });
+      })).then(function(lists){
+        CAL_EVENTS = [].concat.apply([], lists).sort(function(a,b){ return a.start - b.start; });
+        CAL_LOADED = Date.now();
+        renderAgenda();
+      });
+    });
+  }
+
+  function todayEvents(){
+    var now = new Date();
+    return CAL_EVENTS.filter(function(e){ return sameDay(e.start, now); });
+  }
+  function nextEvent(){
+    var now = Date.now();
+    for(var i = 0; i < CAL_EVENTS.length; i++){
+      if(CAL_EVENTS[i].start.getTime() > now) return CAL_EVENTS[i];
+    }
+    return null;
+  }
+
+  function renderAgenda(){
+    var box = document.getElementById("agenda-body");
+    var configured = CALENDARS.filter(function(c){ return c.url && c.url.trim(); });
+
+    if(!configured.length){
+      box.innerHTML = '<div class="empty-state">Nenhuma agenda configurada ainda.<br><br>' +
+        'Clique em <b>⚙</b> no topo e cole o <b>endereço secreto em formato iCal</b> ' +
+        'da sua agenda do Google.</div>';
+      return;
+    }
+    if(antennaOnline === false){ box.innerHTML = offlineNotice(); return; }
+
+    var html = "";
+    CAL_ERRORS.forEach(function(err){
+      html += '<div class="err-row">⚠ <b>' + esc(err.name) + '</b>: ' + esc(err.msg) + '</div>';
+    });
+
+    if(!CAL_EVENTS.length){
+      box.innerHTML = html + '<div class="empty-state">Nenhum evento nos próximos 7 dias. Agenda livre. 🎉</div>';
+      return;
+    }
+
+    var nxt = nextEvent();
+    var groups = [];
+    CAL_EVENTS.forEach(function(ev){
+      var key = startOfDay(ev.start).getTime();
+      var g = groups.filter(function(x){ return x.key === key; })[0];
+      if(!g){ g = { key: key, date: startOfDay(ev.start), items: [] }; groups.push(g); }
+      g.items.push(ev);
+    });
+
+    var today = startOfDay(new Date()).getTime();
+    var tomorrow = today + 86400000;
+
+    groups.forEach(function(g){
+      var label;
+      if(g.key === today)         label = "HOJE · " + ddmm(g.date);
+      else if(g.key === tomorrow) label = "AMANHÃ · " + ddmm(g.date);
+      else                        label = DIAS[g.date.getDay()] + " · " + ddmm(g.date);
+
+      html += '<div class="day-group">';
+      html += '<div class="day-label' + (g.key === today ? " today" : "") + '">' + esc(label) + '</div>';
+
+      g.items.forEach(function(ev){
+        var isNext = nxt && ev.start.getTime() === nxt.start.getTime() && ev.title === nxt.title;
+        html += '<div class="ev' + (isNext ? " next" : "") + '" style="border-left-color:' + esc(ev.color) + '">';
+        html += '<div class="ev-time">' + (ev.allDay ? "DIA<br>TODO" : esc(hhmm(ev.start))) + '</div>';
+        html += '<div class="ev-body"><div class="ev-title">' + esc(ev.title) + '</div>';
+        html += '<div class="ev-meta">' + esc(ev.calName) +
+                (ev.location ? " · " + esc(ev.location) : "") + '</div></div>';
+        if(isNext) html += '<span class="ev-count">' + esc(countdown(ev.start)) + '</span>';
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+
+    box.innerHTML = html;
+    document.getElementById("agenda-sub").textContent =
+      CAL_EVENTS.length + " eventos · hoje + 7 dias" +
+      (CAL_LOADED ? " · atualizado " + hhmm(new Date(CAL_LOADED)) : "");
+  }
+
+  /* ============================================================
+     MÓDULO E-MAILS
+  ============================================================ */
+  function loadEmails(){
+    var configured = MAILBOXES.filter(function(m){ return m.user && m.pass; });
+    MAIL_ERRORS = [];
+    if(!configured.length){ MAILS = []; renderEmails(); return Promise.resolve(); }
+
+    return pingAntenna().then(function(ok){
+      if(!ok){ renderEmails(); return; }
+
+      return Promise.all(configured.map(function(acc){
+        return fetch(ANTENNA + "/emails", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            host: acc.host || "imap.gmail.com",
+            usuario: acc.user,
+            senhaApp: acc.pass,
+            quantidade: acc.count || 20
+          })
+        })
+        .then(function(r){
+          return r.json().then(function(d){
+            if(!r.ok) throw new Error(d.erro || ("HTTP " + r.status));
+            return d;
+          });
+        })
+        .then(function(d){
+          return (d.emails || []).map(function(m){
+            return {
+              id: m.id, conta: acc.nick, cor: acc.color,
+              remetente: m.remetente, assunto: m.assunto,
+              data: m.data ? new Date(m.data) : null,
+              trecho: m.trecho || "", lido: m.lido
+            };
+          });
+        })
+        .catch(function(e){
+          MAIL_ERRORS.push({ name: acc.nick, msg: e.message });
+          return [];
+        });
+      })).then(function(lists){
+        MAILS = [].concat.apply([], lists).sort(function(a,b){
+          return (b.data ? b.data.getTime() : 0) - (a.data ? a.data.getTime() : 0);
+        });
+        MAIL_LOADED = Date.now();
+        renderEmails();
+        return triageEmails();
+      });
+    });
+  }
+
+  /* Heurística local — usada quando não há chave de API. Custo zero. */
+  function heuristicTriage(mail){
+    var hay = (mail.remetente + " " + mail.assunto + " " + mail.trecho).toLowerCase();
+    if(/no-?reply|newsletter|unsubscribe|descadastr|promo|oferta|desconto|cupom|black friday|marketing/.test(hay)){
+      return { balde:"ruido", resumo: mail.assunto.slice(0,90) };
+    }
+    if(/\?|prazo|urgente|vencimento|fatura|boleto|reuni[ãa]o|confirma|por favor|aguardo|assinar|pend[êe]nte|resposta/.test(hay)){
+      return { balde:"acao", resumo: mail.assunto.slice(0,90) };
+    }
+    return { balde:"info", resumo: mail.assunto.slice(0,90) };
+  }
+
+  function triageEmails(){
+    /* Só os INÉDITOS entram no lote — o cache por Message-ID nunca é reprocessado. */
+    var novos = MAILS.filter(function(m){ return !TRIAGE[m.id]; });
+    if(!novos.length){ renderEmails(); return Promise.resolve(); }
+
+    if(!apiKey){
+      novos.forEach(function(m){
+        var h = heuristicTriage(m);
+        TRIAGE[m.id] = { balde:h.balde, resumo:h.resumo, local:true };
+      });
+      lsSet(LS.triage, TRIAGE);
+      renderEmails();
+      return Promise.resolve();
+    }
+
+    var lote = novos.slice(0, 40).map(function(m, i){
+      return (i+1) + ") id=" + m.id +
+             " | de: " + m.remetente +
+             " | assunto: " + m.assunto +
+             " | trecho: " + (m.trecho || "").slice(0, 200).replace(/\n/g, " ");
+    }).join("\n");
+
+    var sys =
+      "Você é um triador de e-mails. Classifique cada e-mail em exatamente um balde:\n" +
+      "acao  = pede resposta, tarefa, decisão ou tem prazo: alguém está esperando o usuário.\n" +
+      "info  = vale a pena saber, mas não exige nada: confirmação, recibo, atualização.\n" +
+      "ruido = promoção, newsletter, notificação automática: pode ignorar.\n" +
+      "Responda APENAS com um array JSON válido, sem markdown, sem cercas de código, no formato:\n" +
+      '[{"id":"...","balde":"acao|info|ruido","resumo":"uma frase curta em português"}]';
+
+    /* UMA única chamada por lote de e-mails novos. */
+    return geminiOneShot(sys, lote, 1400)
+      .then(function(txt){
+        var arr = parseJsonLoose(txt);
+        if(!Array.isArray(arr)) throw new Error("resposta fora do formato");
+        arr.forEach(function(item){
+          if(!item || !item.id) return;
+          var balde = String(item.balde || "info").toLowerCase();
+          if(["acao","info","ruido"].indexOf(balde) === -1) balde = "info";
+          TRIAGE[item.id] = { balde: balde, resumo: String(item.resumo || "").slice(0,160) };
+        });
+        /* qualquer um que a IA tenha esquecido cai na heurística */
+        novos.forEach(function(m){
+          if(!TRIAGE[m.id]){
+            var h = heuristicTriage(m);
+            TRIAGE[m.id] = { balde:h.balde, resumo:h.resumo, local:true };
+          }
+        });
+        lsSet(LS.triage, TRIAGE);
+        renderEmails();
+      })
+      .catch(function(){
+        novos.forEach(function(m){
+          var h = heuristicTriage(m);
+          TRIAGE[m.id] = { balde:h.balde, resumo:h.resumo, local:true };
+        });
+        lsSet(LS.triage, TRIAGE);
+        renderEmails();
+      });
+  }
+
+  function parseJsonLoose(txt){
+    if(!txt) return null;
+    var t = String(txt).replace(/```json/gi,"").replace(/```/g,"").trim();
+    try{ return JSON.parse(t); }catch(e){}
+    var s = t.indexOf("["), e2 = t.lastIndexOf("]");
+    if(s > -1 && e2 > s){
+      try{ return JSON.parse(t.slice(s, e2 + 1)); }catch(e){}
+    }
+    return null;
+  }
+
+  function bucketOf(m){
+    var t = TRIAGE[m.id];
+    return t ? t.balde : "info";
+  }
+  function actionMails(){
+    return MAILS.filter(function(m){ return bucketOf(m) === "acao"; });
+  }
+
+  function renderEmails(){
+    var box = document.getElementById("emails-body");
+    var configured = MAILBOXES.filter(function(m){ return m.user && m.pass; });
+
+    if(!configured.length){
+      box.innerHTML = '<div class="empty-state">Nenhuma conta de e-mail configurada.<br><br>' +
+        'Clique em <b>⚙</b> no topo e cadastre seu e-mail + <b>senha de app</b> de 16 letras.</div>';
+      updateActionBadge();
+      return;
+    }
+    if(antennaOnline === false){ box.innerHTML = offlineNotice(); updateActionBadge(); return; }
+
+    var html = "";
+    MAIL_ERRORS.forEach(function(err){
+      html += '<div class="err-row">⚠ <b>' + esc(err.name) + '</b>: ' + esc(err.msg) + '</div>';
+    });
+
+    if(!MAILS.length){
+      box.innerHTML = html + '<div class="empty-state">Nenhum e-mail carregado ainda. Clique em ↻.</div>';
+      updateActionBadge();
+      return;
+    }
+
+    var buckets = {
+      acao:  { label:"⚡ AÇÃO",  items:[], collapsed:false },
+      info:  { label:"INFO",     items:[], collapsed:false },
+      ruido: { label:"RUÍDO",    items:[], collapsed:true  }
+    };
+    MAILS.forEach(function(m){ buckets[bucketOf(m)].items.push(m); });
+
+    ["acao","info","ruido"].forEach(function(key){
+      var b = buckets[key];
+      html += '<div class="bucket ' + key + '">';
+      html += '<div class="bucket-head" data-bucket="' + key + '">' +
+                '<span>' + b.label + '</span>' +
+                '<span class="count">(' + b.items.length + ')</span>' +
+                (b.collapsed ? '<span class="count">▸ clique para expandir</span>' : '') +
+              '</div>';
+      html += '<div class="bucket-body' + (b.collapsed ? " collapsed" : "") + '" data-body="' + key + '">';
+      if(!b.items.length){
+        html += '<div style="font-size:.76rem;color:var(--text-dim);padding:4px 2px">nada aqui</div>';
+      }
+      b.items.forEach(function(m){
+        var t = TRIAGE[m.id] || {};
+        html += '<div class="mail" data-mail="' + esc(m.id) + '">';
+        html += '<span class="mail-dot" style="background:' + esc(m.cor) + '"></span>';
+        html += '<div class="mail-body">';
+        html += '<div class="mail-top"><span class="mail-from">' + esc(m.remetente) + '</span>' +
+                '<span class="mail-when">' + esc(relTime(m.data)) + '</span></div>';
+        html += '<div class="mail-sum">' + esc(t.resumo || m.assunto) +
+                (t.local ? ' <span class="triage-tag">triagem local</span>' : '') + '</div>';
+        html += '<div class="mail-full"><b>' + esc(m.assunto) + '</b>\n\n' + esc(m.trecho) + '</div>';
+        html += '</div></div>';
+      });
+      html += '</div></div>';
+    });
+
+    box.innerHTML = html;
+
+    box.querySelectorAll(".bucket-head").forEach(function(h){
+      h.addEventListener("click", function(){
+        var body = box.querySelector('[data-body="' + h.getAttribute("data-bucket") + '"]');
+        if(body) body.classList.toggle("collapsed");
+      });
+    });
+    box.querySelectorAll(".mail").forEach(function(el){
+      el.addEventListener("click", function(){ el.classList.toggle("open"); });
+    });
+
+    document.getElementById("emails-sub").textContent =
+      MAILS.length + " e-mails · " + buckets.acao.items.length + " pedem ação" +
+      (MAIL_LOADED ? " · " + hhmm(new Date(MAIL_LOADED)) : "");
+
+    updateActionBadge();
+  }
+
+  function updateActionBadge(){
+    var n = actionMails().length;
+    var badge = document.getElementById("tab-badge-mail");
+    badge.textContent = n;
+    badge.classList.toggle("show", n > 0);
+
+    var chip = document.getElementById("chip-action");
+    document.getElementById("chip-action-n").textContent = n;
+    chip.style.display = n > 0 ? "inline-flex" : "none";
+    chip.classList.add("action");
+  }
+
+  /* ============================================================
+     MÓDULO NOTÍCIAS
+  ============================================================ */
+  function newsUrl(topic){
+    return "https://news.google.com/rss/search?q=" + encodeURIComponent(topic) +
+           "&hl=pt-BR&gl=BR&ceid=BR:pt-419";
+  }
+
+  function cleanHeadline(title){
+    /* o Google News gruda " - Fonte" no fim do título */
+    return String(title).replace(/\s+-\s+[^-]{2,40}$/, "").trim();
+  }
+
+  function loadNews(force){
+    if(!TOPICS.length){ NEWS = {}; renderNews(); return Promise.resolve(); }
+
+    var cache = lsGet(LS.newsCache, null);
+    if(!force && cache && cache.ts && (Date.now() - cache.ts < NEWS_REFRESH_MS) && cache.data){
+      NEWS = {};
+      Object.keys(cache.data).forEach(function(k){
+        NEWS[k] = cache.data[k].map(function(h){
+          return { title:h.title, source:h.source, link:h.link, date: h.date ? new Date(h.date) : null };
+        });
+      });
+      NEWS_LOADED = cache.ts;
+      renderNews();
+      return Promise.resolve();
+    }
+
+    return pingAntenna().then(function(ok){
+      if(!ok){ renderNews(); return; }
+
+      return Promise.all(TOPICS.map(function(t){
+        return viaAntenna(newsUrl(t.name))
+          .then(function(r){
+            if(!r.ok) throw new Error("HTTP " + r.status);
+            return r.text();
+          })
+          .then(function(xml){
+            var doc = new DOMParser().parseFromString(xml, "text/xml");
+            var items = Array.prototype.slice.call(doc.querySelectorAll("item")).slice(0, NEWS_PER_TOPIC);
+            return { topic: t.name, list: items.map(function(it){
+              function get(tag){
+                var el = it.querySelector(tag);
+                return el ? el.textContent : "";
+              }
+              var pub = get("pubDate");
+              return {
+                title: cleanHeadline(get("title")),
+                source: (it.getElementsByTagName("source")[0] || {}).textContent || "",
+                link: get("link"),
+                date: pub ? new Date(pub) : null
+              };
+            })};
+          })
+          .catch(function(){ return { topic: t.name, list: [] }; });
+      })).then(function(results){
+        NEWS = {};
+        results.forEach(function(r){ NEWS[r.topic] = r.list; });
+        NEWS_LOADED = Date.now();
+        lsSet(LS.newsCache, { ts: NEWS_LOADED, data: NEWS });
+        renderNews();
+      });
+    });
+  }
+
+  function renderNews(){
+    var box = document.getElementById("news-body");
+    if(!TOPICS.length){
+      box.innerHTML = '<div class="empty-state">Nenhum assunto no radar. Clique em <b>⚙</b> e adicione.</div>';
+      return;
+    }
+    if(antennaOnline === false && !Object.keys(NEWS).length){
+      box.innerHTML = offlineNotice();
+      return;
+    }
+
+    var html = "";
+    TOPICS.forEach(function(t){
+      var list = NEWS[t.name] || [];
+      html += '<div class="topic-block">';
+      html += '<div class="topic-name">' + esc(t.name.toUpperCase()) + '</div>';
+      if(!list.length){
+        html += '<div style="font-size:.76rem;color:var(--text-dim)">sem manchetes agora</div>';
+      }
+      list.forEach(function(h){
+        html += '<a class="headline" href="' + esc(h.link) + '" target="_blank" rel="noopener noreferrer">';
+        html += '<div class="hl-title">' + esc(h.title) + '</div>';
+        html += '<div class="hl-meta">' + esc(h.source || "") +
+                (h.date ? " · " + esc(relTime(h.date)) : "") + '</div>';
+        html += '</a>';
+      });
+      html += '</div>';
+    });
+
+    box.innerHTML = html;
+    document.getElementById("news-sub").textContent =
+      TOPICS.length + " assuntos" + (NEWS_LOADED ? " · atualizado " + hhmm(new Date(NEWS_LOADED)) : "");
+  }
+
+  /* ============================================================
+     CLIMA (Open-Meteo — grátis, sem chave, CORS liberado)
+  ============================================================ */
+  var WMO = {
+    0:"céu limpo", 1:"predominantemente limpo", 2:"parcialmente nublado", 3:"nublado",
+    45:"neblina", 48:"neblina com geada", 51:"garoa fraca", 53:"garoa", 55:"garoa forte",
+    61:"chuva fraca", 63:"chuva", 65:"chuva forte", 71:"neve fraca", 73:"neve", 75:"neve forte",
+    80:"pancadas de chuva", 81:"pancadas fortes", 82:"pancadas muito fortes",
+    95:"tempestade", 96:"tempestade com granizo", 99:"tempestade com granizo"
+  };
+
+  function loadWeather(){
+    if(!CITY || !CITY.trim()) return Promise.resolve(null);
+    var geo = lsGet(LS.geo, null);
+
+    var geoPromise;
+    if(geo && geo.city === CITY){
+      geoPromise = Promise.resolve(geo);
+    }else{
+      geoPromise = fetch("https://geocoding-api.open-meteo.com/v1/search?count=1&language=pt&name=" +
+                          encodeURIComponent(CITY))
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          if(!d.results || !d.results.length) throw new Error("cidade não encontrada");
+          var g = { city: CITY, lat: d.results[0].latitude, lon: d.results[0].longitude };
+          lsSet(LS.geo, g);
+          return g;
+        });
+    }
+
+    return geoPromise.then(function(g){
+      return fetch("https://api.open-meteo.com/v1/forecast?latitude=" + g.lat +
+                   "&longitude=" + g.lon +
+                   "&daily=temperature_2m_max,temperature_2m_min,weathercode" +
+                   "&current=temperature_2m&timezone=auto&forecast_days=1")
+        .then(function(r){ return r.json(); })
+        .then(function(d){
+          WEATHER = {
+            agora: d.current ? Math.round(d.current.temperature_2m) : null,
+            max: Math.round(d.daily.temperature_2m_max[0]),
+            min: Math.round(d.daily.temperature_2m_min[0]),
+            desc: WMO[d.daily.weathercode[0]] || "tempo variável"
+          };
+          return WEATHER;
+        });
+    }).catch(function(){ return null; });
+  }
+
+  /* ============================================================
+     CHAMADA GEMINI AVULSA (triagem e digest — fora do histórico)
+  ============================================================ */
+  function geminiOneShot(systemText, userText, maxTokens){
+    if(!apiKey) return Promise.reject(new Error("SEM_CHAVE"));
+    return fetch("https://generativelanguage.googleapis.com/v1beta/models/" + CONFIG.model +
+                 ":generateContent?key=" + encodeURIComponent(apiKey), {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemText }] },
+        contents: [{ role: "user", parts: [{ text: userText }] }],
+        generationConfig: { maxOutputTokens: maxTokens || 500 }
+      })
+    })
+    .then(function(r){
+      if(!r.ok) return r.text().then(function(t){ throw new Error("HTTP " + r.status + ": " + t); });
+      return r.json();
+    })
+    .then(function(d){
+      var c = d.candidates && d.candidates[0];
+      var p = c && c.content && c.content.parts;
+      return (p && p.length) ? p.map(function(x){ return x.text || ""; }).join("") : "";
+    });
+  }
+
+  /* ============================================================
+     MORNING DIGEST
+  ============================================================ */
+  function digestPackage(){
+    var now = new Date();
+    var lines = [];
+
+    lines.push("Data: " + DIAS[now.getDay()].toLowerCase() + ", " + now.getDate() + "/" +
+               (now.getMonth() + 1) + "/" + now.getFullYear());
+
+    if(WEATHER){
+      lines.push("Clima em " + CITY + ": " + WEATHER.desc + ", mínima " + WEATHER.min +
+                 "°C e máxima " + WEATHER.max + "°C" +
+                 (WEATHER.agora !== null ? " (agora " + WEATHER.agora + "°C)" : ""));
+    }
+
+    var hoje = todayEvents();
+    if(hoje.length){
+      lines.push("Agenda de hoje: " + hoje.slice(0, 15).map(function(e){
+        return (e.allDay ? "dia todo" : hhmm(e.start)) + " " + e.title;
+      }).join(" · "));
+    }else{
+      lines.push("Agenda de hoje: nenhum compromisso marcado.");
+    }
+
+    var acao = actionMails();
+    lines.push("E-mails carregados: " + MAILS.length + ". Pedem ação: " + acao.length + ".");
+    if(acao.length){
+      lines.push("E-mails de ação:");
+      acao.slice(0, 6).forEach(function(m){
+        var t = TRIAGE[m.id] || {};
+        lines.push("- " + m.remetente + ": " + (t.resumo || m.assunto));
+      });
+    }
+
+    var manchetes = [];
+    TOPICS.forEach(function(t){
+      (NEWS[t.name] || []).slice(0, 3).forEach(function(h){
+        manchetes.push(t.name + ": " + h.title);
+      });
+    });
+    if(manchetes.length) lines.push("Manchetes:\n" + manchetes.join("\n"));
+
+    var metas = NOTES.filter(function(n){ return n.area === "metas" || n.area === "projetos"; })
+                     .slice(0, 2)
+                     .map(function(n){ return n.title + " — " + n.body; });
+    if(metas.length) lines.push("Metas do Second Brain:\n" + metas.join("\n"));
+
+    return lines.join("\n");
+  }
+
+  function localDigest(){
+    var now = new Date();
+    var parts = [];
+    parts.push("Bom dia, " + CONFIG.address + ". Hoje é " + DIAS[now.getDay()].toLowerCase() +
+               ", " + now.getDate() + " de " +
+               ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto",
+                "setembro","outubro","novembro","dezembro"][now.getMonth()] + ".");
+
+    if(WEATHER){
+      parts.push("O tempo em " + CITY + " está " + WEATHER.desc +
+                 ", com mínima de " + WEATHER.min + " e máxima de " + WEATHER.max + " graus.");
+    }
+
+    var hoje = todayEvents();
+    if(hoje.length){
+      parts.push("Na sua agenda: " + hoje.map(function(e){
+        return (e.allDay ? e.title + ", o dia todo" : e.title + " às " + hhmm(e.start));
+      }).join("; ") + ".");
+    }else{
+      parts.push("Sua agenda de hoje está livre.");
+    }
+
+    var acao = actionMails();
+    if(acao.length){
+      parts.push(acao.length + (acao.length === 1 ? " e-mail pede" : " e-mails pedem") + " sua ação: " +
+                 acao.slice(0, 4).map(function(m){
+                   var t = TRIAGE[m.id] || {};
+                   return m.remetente + ", " + (t.resumo || m.assunto);
+                 }).join("; ") + ".");
+    }else if(MAILS.length){
+      parts.push("Nenhum e-mail pedindo ação no momento.");
+    }
+
+    var manchetes = [];
+    TOPICS.forEach(function(t){
+      var l = NEWS[t.name] || [];
+      if(l.length) manchetes.push("em " + t.name + ", " + l[0].title);
+    });
+    if(manchetes.length) parts.push("Nas notícias: " + manchetes.join("; ") + ".");
+
+    var meta = NOTES.filter(function(n){ return n.area === "metas"; })[0];
+    if(meta) parts.push("Foco do dia: " + meta.body);
+
+    return parts.join(" ");
+  }
+
+  function runDigest(fromAuto){
+    var panel = document.getElementById("digest-body");
+    /* o automático não rouba o painel se você já estiver navegando em outra aba */
+    if(!fromAuto || !userTouchedTabs) setPanel("digest");
+    panel.innerHTML = '<div class="empty-state">Montando seu briefing…</div>';
+
+    /* Junta tudo localmente ANTES de gastar qualquer token. */
+    return Promise.all([
+      loadWeather(),
+      CAL_LOADED ? Promise.resolve() : loadCalendars(),
+      MAIL_LOADED ? Promise.resolve() : loadEmails(),
+      NEWS_LOADED ? Promise.resolve() : loadNews(false)
+    ]).then(function(){
+      var pacote = digestPackage();
+
+      var sys = buildSystemPrompt() +
+        "\n\nTAREFA AGORA: monte o BRIEFING DA MANHÃ do usuário com os dados abaixo. " +
+        "Texto corrido, natural, para ser LIDO EM VOZ ALTA, com no máximo 6 frases. " +
+        "Sem listas, sem markdown, sem emojis. Comece cumprimentando com bom dia. " +
+        "Termine com UMA frase de foco do dia conectada às metas dele. " +
+        "NÃO use a diretiva [[SAVE:...]] neste briefing.";
+
+      return geminiOneShot(sys, pacote, DIGEST_MAX_TOKENS)
+        .then(function(txt){
+          if(!txt) throw new Error("vazio");
+          return { text: txt.replace(/\[\[SAVE:[\s\S]*?\]\]/g, "").trim(), fonte: "IA" };
+        })
+        .catch(function(){
+          return { text: localDigest(), fonte: "modo offline" };
+        });
+    }).then(function(res){
+      lastDigestText = res.text;
+      lsSet(LS.lastDigest, new Date().toDateString());
+
+      var html = "";
+      if(WEATHER){
+        html += '<div class="weather-strip">' +
+                  '<span class="big">' + (WEATHER.agora !== null ? WEATHER.agora + "°" : WEATHER.max + "°") + '</span>' +
+                  '<span>' + esc(CITY) + ' · ' + esc(WEATHER.desc) + '</span>' +
+                  '<span style="color:var(--text-dim)">mín ' + WEATHER.min + '° / máx ' + WEATHER.max + '°</span>' +
+                '</div>';
+      }
+      html += '<div class="digest-box">' + esc(res.text) + '</div>';
+      var nEv = todayEvents().length, nAc = actionMails().length;
+      html += '<div class="digest-meta">gerado ' + hhmm(new Date()) + ' · ' + esc(res.fonte) +
+              ' · ' + nEv + (nEv === 1 ? ' evento' : ' eventos') +
+              ' · ' + nAc + (nAc === 1 ? ' e-mail de ação' : ' e-mails de ação') + '</div>';
+      document.getElementById("digest-body").innerHTML = html;
+
+      setAssistantLine(res.text);
+      if(DIGEST_CFG.speak) speak(res.text);
+      return res.text;
+    }).catch(function(e){
+      document.getElementById("digest-body").innerHTML =
+        '<div class="err-row">Não consegui montar o digest: ' + esc(e.message) + '</div>';
+    });
+  }
+
+  function maybeAutoDigest(){
+    if(!DIGEST_CFG.auto) return;
+    var last = lsGet(LS.lastDigest, null);
+    if(last === new Date().toDateString()) return;   /* já rodou hoje */
+    setTimeout(function(){ runDigest(true); }, 3500);
+  }
+
+  /* ============================================================
+     ABAS
+  ============================================================ */
+  function setPanel(name){
+    document.querySelectorAll(".tab").forEach(function(t){
+      t.classList.toggle("active", t.getAttribute("data-panel") === name);
+    });
+    document.querySelectorAll(".panel").forEach(function(p){
+      p.classList.toggle("active", p.id === "panel-" + name);
+    });
+  }
+  var userTouchedTabs = false;
+  document.querySelectorAll(".tab").forEach(function(t){
+    t.addEventListener("click", function(){
+      userTouchedTabs = true;
+      setPanel(t.getAttribute("data-panel"));
+    });
+  });
+
+  document.getElementById("agenda-refresh").addEventListener("click", function(){ loadCalendars(); });
+  document.getElementById("emails-refresh").addEventListener("click", function(){ loadEmails(); });
+  document.getElementById("news-refresh").addEventListener("click", function(){ loadNews(true); });
+  document.getElementById("digest-run").addEventListener("click", function(){ runDigest(false); });
+
+  /* ============================================================
+     COMANDOS DE VOZ LOCAIS  (custo ZERO de API)
+  ============================================================ */
+  function say(text){
+    setAssistantLine(text);
+    speak(text);
+  }
+
+  /* Segunda pessoa + vocativo no fim: funciona com "senhor", "chefe" ou um nome. */
+  function voc(){ return ", " + CONFIG.address + "."; }
+
+  /* "no sábado" / "na segunda" — domingo e sábado são masculinos. */
+  function artigoDia(nome){
+    return (nome === "domingo" || nome === "sábado") ? "no " : "na ";
+  }
+
+  function falarEventos(lista, prefixo){
+    if(!lista.length) return prefixo + " nenhum compromisso" + voc();
+    return prefixo + " " + lista.map(function(e){
+      return e.allDay ? (e.title + ", o dia todo") : (e.title + " às " + hhmm(e.start));
+    }).join("; ") + ".";
+  }
+
+  function tryLocalCommand(raw){
+    var t = normalize(raw);
+    if(!t) return false;
+
+    /* ---- bom dia → digest ---- */
+    if(/\bbom dia\b/.test(t)){
+      setUserLine(raw);
+      runDigest(false);
+      return true;
+    }
+
+    /* ---- agenda ---- */
+    if(/\b(minha agenda|o que eu tenho hoje|compromissos de hoje|agenda de hoje)\b/.test(t)){
+      setUserLine(raw);
+      setPanel("agenda");
+      loadCalendars().then(function(){
+        say(falarEventos(todayEvents(), "Hoje você tem:"));
+      });
+      return true;
+    }
+    if(/\b(proximo compromisso|proxima reuniao|proximo evento)\b/.test(t)){
+      setUserLine(raw);
+      setPanel("agenda");
+      loadCalendars().then(function(){
+        var n = nextEvent();
+        if(!n) say("Não há nenhum compromisso à frente nos próximos sete dias, " + CONFIG.address + ".");
+        else say("Seu próximo compromisso é " + n.title + ", " + countdown(n.start) +
+                 ", às " + hhmm(n.start) + ".");
+      });
+      return true;
+    }
+    if(/\bagenda da semana\b/.test(t)){
+      setUserLine(raw);
+      setPanel("agenda");
+      loadCalendars().then(function(){
+        if(!CAL_EVENTS.length){ say("Sua semana está livre" + voc()); return; }
+        var porDia = {};
+        CAL_EVENTS.forEach(function(e){
+          var k = DIAS[e.start.getDay()].toLowerCase();
+          porDia[k] = (porDia[k] || 0) + 1;
+        });
+        say("Nos próximos sete dias você tem " + CAL_EVENTS.length +
+            (CAL_EVENTS.length === 1 ? " compromisso: " : " compromissos: ") +
+            Object.keys(porDia).map(function(k){
+              return porDia[k] + " " + artigoDia(k) + k;
+            }).join(", ") + voc());
+      });
+      return true;
+    }
+
+    /* ---- e-mails ---- */
+    if(/\b(atualizar emails|atualizar e-mails|atualizar meus emails)\b/.test(t)){
+      setUserLine(raw);
+      setPanel("emails");
+      say("Atualizando seus e-mails, " + CONFIG.address + ".");
+      loadEmails();
+      return true;
+    }
+    if(/\b(meus emails|meus e-mails|minha caixa de entrada|caixa de entrada)\b/.test(t)){
+      setUserLine(raw);
+      setPanel("emails");
+      loadEmails().then(function(){
+        var a = actionMails();
+        var info = MAILS.filter(function(m){ return bucketOf(m) === "info"; }).length;
+        var ruido = MAILS.filter(function(m){ return bucketOf(m) === "ruido"; }).length;
+        var msg = "Você tem " + MAILS.length + " e-mails: " + a.length + " pedindo ação, " +
+                  info + " informativos e " + ruido + " de ruído.";
+        if(a.length){
+          msg += " Os que pedem ação: " + a.slice(0, 5).map(function(m){
+            var tr = TRIAGE[m.id] || {};
+            return m.remetente + ", " + (tr.resumo || m.assunto);
+          }).join("; ") + ".";
+        }
+        say(msg);
+      });
+      return true;
+    }
+    if(/\b(tem email importante|tem e-mail importante|algo importante|email urgente)\b/.test(t)){
+      setUserLine(raw);
+      setPanel("emails");
+      loadEmails().then(function(){
+        var a = actionMails();
+        if(!a.length){ say("Nada urgente, " + CONFIG.address + ". Sua caixa está sob controle."); return; }
+        say(a.length + (a.length === 1 ? " e-mail pede" : " e-mails pedem") + " sua atenção: " +
+            a.slice(0, 5).map(function(m){
+              var tr = TRIAGE[m.id] || {};
+              return m.remetente + ", " + (tr.resumo || m.assunto);
+            }).join("; ") + ".");
+      });
+      return true;
+    }
+
+    /* ---- notícias ---- */
+    if(/\batualizar noticias\b/.test(t)){
+      setUserLine(raw);
+      setPanel("noticias");
+      say("Atualizando o radar de notícias, " + CONFIG.address + ".");
+      loadNews(true);
+      return true;
+    }
+    var mTopic = /\bnoticias (?:de|sobre|do|da) (.+)$/.exec(t);
+    if(mTopic){
+      var alvo = mTopic[1].trim();
+      var achado = TOPICS.filter(function(x){
+        return normalize(x.name).indexOf(alvo) !== -1 || alvo.indexOf(normalize(x.name)) !== -1;
+      })[0];
+      if(achado){
+        setUserLine(raw);
+        setPanel("noticias");
+        loadNews(false).then(function(){
+          var l = NEWS[achado.name] || [];
+          if(!l.length){ say("Não encontrei manchetes de " + achado.name + " agora."); return; }
+          say("Em " + achado.name + ": " + l.slice(0, 3).map(function(h){ return h.title; }).join("; ") + ".");
+        });
+        return true;
+      }
+    }
+    if(/\b(noticias|manchetes|novidades do dia)\b/.test(t)){
+      setUserLine(raw);
+      setPanel("noticias");
+      loadNews(false).then(function(){
+        var partes = [];
+        TOPICS.forEach(function(x){
+          var l = NEWS[x.name] || [];
+          if(l.length) partes.push("em " + x.name + ", " + l.slice(0, 2).map(function(h){ return h.title; }).join("; "));
+        });
+        if(!partes.length){ say("Não consegui manchetes agora, " + CONFIG.address + "."); return; }
+        say("Principais manchetes: " + partes.join(". ") + ".");
+      });
+      return true;
+    }
+
+    return false;
+  }
+
+  /* ============================================================
+     ENVELOPE 1 — ROTEADOR DE COMANDOS
+     Guarda a função original da Parte 1 e tenta o local primeiro.
+  ============================================================ */
+  var __originalProcessCommand = processCommand;
+  processCommand = function(text){
+    try{
+      if(text && tryLocalCommand(text)) return;   /* resolvido sem gastar API */
+    }catch(e){
+      console.error("comando local falhou:", e);
+    }
+    return __originalProcessCommand(text);        /* fluxo normal da Parte 1 */
+  };
+
+  /* ============================================================
+     ENVELOPE 2 — SYSTEM PROMPT
+     Mantém TODO o Second Brain e acrescenta o contexto ao vivo.
+  ============================================================ */
+  var __originalBuildSystemPrompt = buildSystemPrompt;
+  buildSystemPrompt = function(){
+    var base = __originalBuildSystemPrompt();
+    var extra = [];
+
+    var hoje = todayEvents();
+    extra.push("Agenda de hoje: " + (hoje.length
+      ? hoje.map(function(e){ return (e.allDay ? "dia todo" : hhmm(e.start)) + " " + e.title; }).join(" · ")
+      : "nenhum compromisso"));
+
+    extra.push("E-mails pedindo ação: " + actionMails().length);
+
+    var prox = nextEvent();
+    if(prox) extra.push("Próximo compromisso: " + prox.title + " " + countdown(prox.start));
+
+    extra.push(
+      "CAPACIDADES: além de conversar, você controla a agenda do usuário (várias agendas do Google " +
+      "mescladas), a caixa de e-mails triada em AÇÃO/INFO/RUÍDO, um radar de notícias por assunto e " +
+      "um briefing matinal. Se ele perguntar o que você sabe fazer, cite os comandos: \"minha agenda\", " +
+      "\"próximo compromisso\", \"agenda da semana\", \"meus e-mails\", \"tem e-mail importante?\", " +
+      "\"notícias\", \"notícias de <assunto>\", \"atualizar e-mails\", \"atualizar notícias\" e \"bom dia\" " +
+      "para o briefing completo."
+    );
+
+    return base + "\n\nCONTEXTO AO VIVO (" + new Date().toLocaleDateString("pt-BR") + "):\n" + extra.join("\n");
+  };
+
+  /* ============================================================
+     PAINEL ⚙ — CONFIGURAÇÕES
+  ============================================================ */
+  var cfgOverlay = document.getElementById("cfg-overlay");
+
+  function renderCfgCalendars(){
+    var box = document.getElementById("cfg-cal-list");
+    box.innerHTML = CALENDARS.map(function(c, i){
+      return '<div class="cfg-row" data-i="' + i + '">' +
+        '<input type="color" class="cal-color" value="' + esc(c.color) + '">' +
+        '<input type="text" class="cal-name" placeholder="nome" value="' + esc(c.name) + '">' +
+        '<input type="text" class="cal-url grow" placeholder="cole aqui o endereço secreto iCal (.ics)" value="' + esc(c.url) + '">' +
+        '<button class="cfg-del" data-del-cal="' + i + '">✕</button>' +
+      '</div>';
+    }).join("");
+    box.querySelectorAll("[data-del-cal]").forEach(function(b){
+      b.addEventListener("click", function(){
+        CALENDARS.splice(parseInt(b.getAttribute("data-del-cal"), 10), 1);
+        renderCfgCalendars();
+      });
+    });
+  }
+
+  function renderCfgMailboxes(){
+    var box = document.getElementById("cfg-mail-list");
+    box.innerHTML = MAILBOXES.map(function(m, i){
+      return '<div class="cfg-row" data-i="' + i + '">' +
+        '<input type="color" class="mb-color" value="' + esc(m.color) + '">' +
+        '<input type="text" class="mb-nick" placeholder="apelido" value="' + esc(m.nick) + '">' +
+        '<input type="text" class="mb-user grow" placeholder="seu@email.com" value="' + esc(m.user) + '">' +
+        '<input type="password" class="mb-pass" placeholder="senha de app (16 letras)" value="' + esc(m.pass) + '">' +
+        '<input type="text" class="mb-host" placeholder="imap.gmail.com" value="' + esc(m.host || "imap.gmail.com") + '">' +
+        '<input type="number" class="mb-count" min="5" max="50" style="max-width:70px" value="' + (m.count || 20) + '">' +
+        '<button class="cfg-del" data-del-mb="' + i + '">✕</button>' +
+      '</div>';
+    }).join("");
+    box.querySelectorAll("[data-del-mb]").forEach(function(b){
+      b.addEventListener("click", function(){
+        MAILBOXES.splice(parseInt(b.getAttribute("data-del-mb"), 10), 1);
+        renderCfgMailboxes();
+      });
+    });
+  }
+
+  function renderCfgTopics(){
+    var box = document.getElementById("cfg-topic-list");
+    box.innerHTML = TOPICS.map(function(t, i){
+      return '<div class="cfg-row" data-i="' + i + '">' +
+        '<input type="text" class="tp-name grow" placeholder="ex: inteligência artificial" value="' + esc(t.name) + '">' +
+        '<button class="cfg-del" data-del-tp="' + i + '">✕</button>' +
+      '</div>';
+    }).join("");
+    box.querySelectorAll("[data-del-tp]").forEach(function(b){
+      b.addEventListener("click", function(){
+        TOPICS.splice(parseInt(b.getAttribute("data-del-tp"), 10), 1);
+        renderCfgTopics();
+      });
+    });
+  }
+
+  function renderCfgTiers(){
+    var box = document.getElementById("cfg-tiers");
+    box.innerHTML = Object.keys(MODEL_TIERS).map(function(k){
+      var t = MODEL_TIERS[k];
+      return '<button class="tier' + (k === TIER ? " active" : "") + '" data-tier="' + k + '">' +
+        '<div class="t-name">' + t.label + '</div>' +
+        '<div class="t-model">' + t.model + '</div>' +
+        '<div class="t-model" style="opacity:.6">' + t.hint + '</div>' +
+      '</button>';
+    }).join("");
+    box.querySelectorAll("[data-tier]").forEach(function(b){
+      b.addEventListener("click", function(){
+        TIER = b.getAttribute("data-tier");
+        renderCfgTiers();
+      });
+    });
+  }
+
+  function openCfg(){
+    renderCfgCalendars();
+    renderCfgMailboxes();
+    renderCfgTopics();
+    renderCfgTiers();
+    document.getElementById("cfg-city").value = CITY;
+    document.getElementById("cfg-digest-speak").checked = !!DIGEST_CFG.speak;
+    document.getElementById("cfg-digest-auto").checked = !!DIGEST_CFG.auto;
+    document.getElementById("cfg-econ").checked = !!ECON;
+    cfgOverlay.classList.add("show");
+  }
+  function closeCfg(){ cfgOverlay.classList.remove("show"); }
+
+  document.getElementById("cfg-btn").addEventListener("click", openCfg);
+  document.getElementById("cfg-close").addEventListener("click", closeCfg);
+  cfgOverlay.addEventListener("click", function(e){ if(e.target === cfgOverlay) closeCfg(); });
+
+  document.getElementById("cfg-cal-add").addEventListener("click", function(){
+    CALENDARS.push({ id:"c" + Date.now(), name:"Agenda " + (CALENDARS.length + 1),
+                     color: CONFIG.themeColor, url:"" });
+    renderCfgCalendars();
+  });
+  document.getElementById("cfg-mail-add").addEventListener("click", function(){
+    MAILBOXES.push({ id:"m" + Date.now(), nick:"Conta " + (MAILBOXES.length + 1),
+                     color: CONFIG.themeColor, host:"imap.gmail.com", user:"", pass:"", count:20 });
+    renderCfgMailboxes();
+  });
+  document.getElementById("cfg-topic-add").addEventListener("click", function(){
+    TOPICS.push({ id:"t" + Date.now(), name:"" });
+    renderCfgTopics();
+  });
+
+  document.getElementById("cfg-save").addEventListener("click", function(){
+    var calRows = document.querySelectorAll("#cfg-cal-list .cfg-row");
+    CALENDARS = Array.prototype.map.call(calRows, function(row, i){
+      return {
+        id: (CALENDARS[i] && CALENDARS[i].id) || ("c" + i),
+        color: row.querySelector(".cal-color").value,
+        name:  row.querySelector(".cal-name").value.trim() || ("Agenda " + (i + 1)),
+        url:   row.querySelector(".cal-url").value.trim()
+      };
+    });
+
+    var mbRows = document.querySelectorAll("#cfg-mail-list .cfg-row");
+    MAILBOXES = Array.prototype.map.call(mbRows, function(row, i){
+      return {
+        id: (MAILBOXES[i] && MAILBOXES[i].id) || ("m" + i),
+        color: row.querySelector(".mb-color").value,
+        nick:  row.querySelector(".mb-nick").value.trim() || ("Conta " + (i + 1)),
+        user:  row.querySelector(".mb-user").value.trim(),
+        pass:  row.querySelector(".mb-pass").value.replace(/\s+/g, ""),
+        host:  row.querySelector(".mb-host").value.trim().toLowerCase() || "imap.gmail.com",
+        count: parseInt(row.querySelector(".mb-count").value, 10) || 20
+      };
+    });
+
+    var tpRows = document.querySelectorAll("#cfg-topic-list .cfg-row");
+    TOPICS = Array.prototype.map.call(tpRows, function(row){
+      return { id:"t" + Math.random().toString(36).slice(2,7),
+               name: row.querySelector(".tp-name").value.trim() };
+    }).filter(function(t){ return t.name; });
+
+    var novaCidade = document.getElementById("cfg-city").value.trim();
+    if(novaCidade !== CITY){ CITY = novaCidade; WEATHER = null; localStorage.removeItem(LS.geo); }
+
+    DIGEST_CFG = {
+      speak: document.getElementById("cfg-digest-speak").checked,
+      auto:  document.getElementById("cfg-digest-auto").checked
+    };
+    ECON = document.getElementById("cfg-econ").checked;
+    CONFIG.model = MODEL_TIERS[TIER].model;
+
+    lsSet(LS.calendars, CALENDARS);
+    lsSet(LS.emails,    MAILBOXES);
+    lsSet(LS.topics,    TOPICS);
+    lsSet(LS.city,      CITY);
+    lsSet(LS.digestCfg, DIGEST_CFG);
+    lsSet(LS.econ,      ECON);
+    lsSet(LS.tier,      TIER);
+    localStorage.removeItem(LS.newsCache);   /* assuntos podem ter mudado */
+
+    closeCfg();
+    refreshAll(true);
+  });
+
+  /* ============================================================
+     CICLO DE VIDA DOS MÓDULOS
+  ============================================================ */
+  function refreshAll(force){
+    pingAntenna().then(function(){
+      loadCalendars();
+      loadEmails();
+      loadNews(!!force);
+    });
+  }
+
+  setInterval(function(){ loadCalendars(); }, CAL_REFRESH_MS);
+  setInterval(function(){ loadEmails();    }, MAIL_REFRESH_MS);
+  setInterval(function(){ loadNews(true);  }, NEWS_REFRESH_MS);
+  setInterval(function(){ if(CAL_EVENTS.length) renderAgenda(); }, 60000); /* countdown vivo */
+
+  /* Quando o sistema é ativado (clique em ATIVAR), liga os módulos. */
+  document.getElementById("activate-btn").addEventListener("click", function(){
+    setTimeout(function(){
+      refreshAll(false);
+      maybeAutoDigest();
+    }, 600);
+  });
+
   /* ============================================================
      INIT
   ============================================================ */
   renderGraph();
+  renderAgenda();
+  renderEmails();
+  renderNews();
+  document.getElementById("digest-body").innerHTML =
+    '<div class="empty-state">Diga <b>"bom dia"</b> para o ' + CONFIG.name +
+    ', ou clique em <b>▶ gerar agora</b>.</div>';
+  pingAntenna();
 })();
 </script>
 </body>
