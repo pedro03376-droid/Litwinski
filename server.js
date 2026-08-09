@@ -25,9 +25,21 @@
 const http  = require("http");
 const https = require("https");
 const tls   = require("tls");
+const fs    = require("fs");
+const path  = require("path");
 
 const PORT = 4242;
 const HOST = "127.0.0.1";
+
+/* Arquivos que a antena serve pelo navegador. Allowlist fechada de
+   propósito: nada de montar caminho a partir da URL, então não existe
+   path traversal. Servir o próprio Jarvis daqui traz dois ganhos:
+     · o microfone fica autorizado para sempre (file:// esquece toda vez)
+     · as chamadas à antena viram mesma origem, sem CORS envolvido      */
+const STATIC_FILES = {
+  "/":            { file: "jarvis.html", type: "text/html" },
+  "/jarvis.html": { file: "jarvis.html", type: "text/html" }
+};
 
 /* Domínios liberados no /proxy. Qualquer outro devolve 403. */
 const PROXY_ALLOWLIST = [
@@ -601,6 +613,26 @@ const server = http.createServer((req, res) => {
     return sendJson(res, 400, { erro: "Requisição inválida." });
   }
 
+  /* Serve o próprio jarvis.html — abre em http://127.0.0.1:4242 */
+  var estatico = STATIC_FILES[urlObj.pathname];
+  if (req.method === "GET" && estatico) {
+    const alvo = path.join(__dirname, estatico.file);
+    return fs.readFile(alvo, (err, buf) => {
+      if (err) {
+        log("estático ✗ " + estatico.file + " não encontrado ao lado do server.js");
+        return sendText(res, 404,
+          "Não achei o " + estatico.file + " nesta pasta.\n\n" +
+          "Coloque o jarvis.html na MESMA pasta do server.js e recarregue.");
+      }
+      res.writeHead(200, {
+        "content-type": estatico.type + "; charset=utf-8",
+        "content-length": buf.length,
+        "cache-control": "no-store"
+      });
+      res.end(buf);
+    });
+  }
+
   if (req.method === "GET" && urlObj.pathname === "/ping") {
     return sendJson(res, 200, { antena: "online", versao: "1.0" });
   }
@@ -634,13 +666,20 @@ server.on("error", (e) => {
 });
 
 server.listen(PORT, HOST, () => {
+  const temHtml = fs.existsSync(path.join(__dirname, "jarvis.html"));
   console.log("");
-  console.log("  ⚡ ANTENA DO JARVIS ONLINE — porta " + PORT + ". Pode abrir o jarvis.html.");
+  console.log("  ⚡ ANTENA DO JARVIS ONLINE");
   console.log("");
-  console.log("     escutando em .... http://" + HOST + ":" + PORT + "  (só esta máquina)");
+  console.log("     ▶  ABRA NO NAVEGADOR:  http://" + HOST + ":" + PORT);
+  console.log("");
+  console.log("     jarvis.html ..... " + (temHtml ? "encontrado ✓" : "NÃO ENCONTRADO nesta pasta ✗"));
   console.log("     proxy liberado .. " + PROXY_ALLOWLIST.join(", "));
   console.log("     imap liberado ... " + IMAP_ALLOWLIST.join(", "));
   console.log("");
+  if (!temHtml) {
+    console.log("     ⚠  Coloque o jarvis.html na mesma pasta deste arquivo.");
+    console.log("");
+  }
   console.log("     Deixe este terminal aberto. Ctrl+C encerra a antena.");
   console.log("");
 });
