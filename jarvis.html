@@ -1519,10 +1519,13 @@ body::after{
       return { role: turn.role, parts: [{ text: turn.text }] };
     });
 
-    fetch("https://generativelanguage.googleapis.com/v1beta/models/" + CONFIG.model + ":generateContent?key=" + encodeURIComponent(apiKey), {
+    /* Chave vai no HEADER, não na URL: em query string ela acaba no
+       histórico do navegador, em logs e no cabeçalho Referer. */
+    fetch("https://generativelanguage.googleapis.com/v1beta/models/" + CONFIG.model + ":generateContent", {
       method: "POST",
       headers: {
-        "content-type": "application/json"
+        "content-type": "application/json",
+        "x-goog-api-key": apiKey
       },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: buildSystemPrompt() }] },
@@ -2032,11 +2035,15 @@ body::after{
     digestCfg:  "jarvis_digest_cfg"
   };
 
-  var MODEL_TIERS = {
-    economico:   { label:"ECONÔMICO",   model:"gemini-2.5-flash-lite", hint:"rápido e barato" },
-    equilibrado: { label:"EQUILIBRADO", model:"gemini-2.5-flash",      hint:"meio-termo ideal" },
-    maximo:      { label:"MÁXIMO",      model:"gemini-2.5-pro",        hint:"o mais afiado" }
-  };
+  /* Os aliases "-latest" acompanham o modelo mais novo de cada família,
+     então não quebram quando o Google aposenta uma versão numerada.
+     Ainda assim, o TESTAR CHAVE valida os três contra a lista real da
+     sua chave e corrige o que não existir. */
+  var MODEL_TIERS = lsGet("jarvis_model_tiers", {
+    economico:   { label:"ECONÔMICO",   model:"gemini-flash-lite-latest", hint:"rápido e barato" },
+    equilibrado: { label:"EQUILIBRADO", model:"gemini-flash-latest",      hint:"meio-termo ideal" },
+    maximo:      { label:"MÁXIMO",      model:"gemini-pro-latest",        hint:"o mais afiado" }
+  });
 
   var DEFAULT_CALENDARS = [
     { id:"c1", name:"Agenda 1", color:"#00d4ff", url:"" },
@@ -2856,9 +2863,9 @@ body::after{
   function geminiOneShot(systemText, userText, maxTokens){
     if(!apiKey) return Promise.reject(new Error("SEM_CHAVE"));
     return fetch("https://generativelanguage.googleapis.com/v1beta/models/" + CONFIG.model +
-                 ":generateContent?key=" + encodeURIComponent(apiKey), {
+                 ":generateContent", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemText }] },
         contents: [{ role: "user", parts: [{ text: userText }] }],
@@ -3451,6 +3458,43 @@ body::after{
   /* ============================================================
      DIAGNÓSTICO DA CHAVE — pergunta ao Google o que a chave pode fazer
   ============================================================ */
+
+  /* Troca o modelo de cada nível que não existir na chave pelo melhor
+     equivalente disponível. Devolve o que foi alterado, para exibir. */
+  function remapearNiveis(lista){
+    var preferencias = {
+      economico:   [/flash-lite.*latest/, /flash-lite/, /flash.*latest/, /flash/],
+      equilibrado: [/^gemini-flash-latest$/, /flash.*latest/, /2\.5-flash$/, /flash/],
+      maximo:      [/pro.*latest/, /2\.5-pro/, /pro/, /flash.*latest/]
+    };
+    var mudou = [];
+
+    Object.keys(preferencias).forEach(function(nivel){
+      var atual = MODEL_TIERS[nivel].model;
+      if(lista.indexOf(atual) !== -1) return;      /* já é válido */
+
+      var escolhido = null;
+      preferencias[nivel].some(function(padrao){
+        escolhido = lista.filter(function(m){
+          return padrao.test(m) && m.indexOf("thinking") === -1;   /* evita variantes lentas */
+        })[0];
+        return !!escolhido;
+      });
+      if(!escolhido) escolhido = lista[0];
+      if(!escolhido || escolhido === atual) return;
+
+      mudou.push({ label: MODEL_TIERS[nivel].label, de: atual, para: escolhido });
+      MODEL_TIERS[nivel].model = escolhido;
+    });
+
+    if(mudou.length){
+      lsSet("jarvis_model_tiers", MODEL_TIERS);
+      /* se não há override manual, o nível ativo passa a valer agora */
+      if(!lsGet("jarvis_model_override", null)) CONFIG.model = MODEL_TIERS[TIER].model;
+    }
+    return mudou;
+  }
+
   document.getElementById("cfg-test-key").addEventListener("click", function(){
     var out = document.getElementById("cfg-test-out");
     var chave = (apiKeyInput.value || apiKey || "").trim();
@@ -3464,7 +3508,9 @@ body::after{
 
     out.innerHTML = '<div class="empty-state" style="padding:12px">Consultando o Google…</div>';
 
-    fetch("https://generativelanguage.googleapis.com/v1beta/models?key=" + encodeURIComponent(chave))
+    fetch("https://generativelanguage.googleapis.com/v1beta/models", {
+      headers: { "x-goog-api-key": chave }
+    })
       .then(function(r){
         return r.text().then(function(t){ return { ok:r.ok, status:r.status, body:t }; });
       })
@@ -3479,10 +3525,25 @@ body::after{
           return (m.supportedGenerationMethods || []).indexOf("generateContent") !== -1;
         }).map(function(m){ return String(m.name).replace(/^models\//, ""); });
 
+        /* Conserta os três níveis contra a lista REAL desta chave.
+           Sem isso eu ficaria chutando nomes de modelo pra sempre. */
+        var corrigidos = remapearNiveis(lista);
+
         var atualOk = lista.indexOf(CONFIG.model) !== -1;
         var html = '<div class="err-row" style="background:rgba(16,185,129,.08);' +
                    'border-color:rgba(16,185,129,.45);color:#9ff0d0">' +
                    '<b>✓ Chave válida.</b> ' + lista.length + ' modelos disponíveis.</div>';
+
+        if(corrigidos.length){
+          html += '<div class="err-row" style="background:rgba(0,212,255,.07);' +
+                  'border-color:rgba(0,212,255,.4);color:#bfe9ff">' +
+                  '<b>Níveis do motor corrigidos:</b><br>' +
+                  corrigidos.map(function(c){
+                    return '· ' + c.label + ': <s style="opacity:.6">' + esc(c.de) +
+                           '</s> → <b>' + esc(c.para) + '</b>';
+                  }).join("<br>") + '</div>';
+          renderCfgTiers();
+        }
 
         if(atualOk){
           html += '<div style="font-size:.76rem;color:var(--ok);margin-bottom:8px">' +
