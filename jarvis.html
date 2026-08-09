@@ -988,6 +988,40 @@ body::after{
       </div>
 
       <div class="cfg-section">
+        <div class="cfg-title">🎙️ VOZ DO JARVIS</div>
+        <div class="cfg-help">
+          Grave e pausado soa mais mordomo. Mexa nos controles e clique em
+          <b>ouvir</b> — o que você salvar vale para todas as falas.
+        </div>
+        <div class="cfg-row" style="flex-direction:column;align-items:stretch;gap:10px">
+          <select id="cfg-voice" style="width:100%"></select>
+          <label style="font-size:.7rem;color:var(--text-dim)">
+            TOM · <span id="cfg-pitch-val">0.95</span> <span style="opacity:.6">(grave ← → agudo)</span>
+            <input type="range" id="cfg-pitch" min="0.4" max="1.6" step="0.05" style="width:100%;accent-color:var(--accent)">
+          </label>
+          <label style="font-size:.7rem;color:var(--text-dim)">
+            VELOCIDADE · <span id="cfg-rate-val">1.00</span> <span style="opacity:.6">(lento ← → rápido)</span>
+            <input type="range" id="cfg-rate" min="0.5" max="1.5" step="0.05" style="width:100%;accent-color:var(--accent)">
+          </label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="mini-btn" id="cfg-voice-test">▶ ouvir</button>
+            <button class="mini-btn" id="cfg-voice-butler">🎩 preset mordomo</button>
+            <button class="mini-btn" id="cfg-voice-reset">↺ padrão</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="cfg-section">
+        <div class="cfg-title">🩺 DIAGNÓSTICO DA CHAVE</div>
+        <div class="cfg-help">
+          Testa sua chave direto na API do Google e lista <b>exatamente</b> quais
+          modelos ela pode usar. Se o modelo atual não estiver na lista, é essa a causa do erro.
+        </div>
+        <button class="mini-btn" id="cfg-test-key">🔍 TESTAR CHAVE</button>
+        <div id="cfg-test-out" style="margin-top:12px"></div>
+      </div>
+
+      <div class="cfg-section">
         <div class="cfg-title">⚙️ MOTOR</div>
         <div class="tier-group" id="cfg-tiers"></div>
         <div class="switch-row" style="margin-top:14px">
@@ -1373,9 +1407,19 @@ body::after{
     var utter = new SpeechSynthesisUtterance(text);
     utter.lang = "pt-BR";
     /* alguns webviews devolvem objetos de voz estranhos — não deixar o Jarvis mudo por isso */
-    try{ if(chosenVoice) utter.voice = chosenVoice; }catch(e){}
-    utter.rate = 1;
-    utter.pitch = CONFIG.voiceGender === "masculina" ? 0.95 : 1.1;
+    /* Preferências do laboratório de voz (⚙). Sem nada salvo, cai
+       exatamente nos valores originais — comportamento inalterado. */
+    var vp = window.__vozPrefs || {};
+    var vozEscolhida = chosenVoice;
+    if(vp.voiceURI && voices && voices.length){
+      for(var vi = 0; vi < voices.length; vi++){
+        if(voices[vi].voiceURI === vp.voiceURI){ vozEscolhida = voices[vi]; break; }
+      }
+    }
+    try{ if(vozEscolhida) utter.voice = vozEscolhida; }catch(e){}
+    utter.rate  = (typeof vp.rate  === "number") ? vp.rate  : 1;
+    utter.pitch = (typeof vp.pitch === "number") ? vp.pitch
+                : (CONFIG.voiceGender === "masculina" ? 0.95 : 1.1);
 
     busy = true;
     setState("speaking");
@@ -1489,7 +1533,12 @@ body::after{
     .then(function(res){
       if(!res.ok){
         return res.text().then(function(t){
-          throw new Error("HTTP " + res.status + ": " + t);
+          /* marca como erro DA API (não de rede) e guarda a mensagem real
+             do Google — sem isso tudo virava "não consegui conectar" */
+          var e = new Error(explicarErroApi(res.status, t));
+          e.httpStatus = res.status;
+          e.apiError = true;
+          throw e;
         });
       }
       return res.json();
@@ -1514,11 +1563,49 @@ body::after{
     })
     .catch(function(err){
       busy = false;
-      var netMsg = "Não consegui me conectar aos meus servidores, " + CONFIG.address + ". Verifique sua chave de API e a conexão.";
-      setAssistantLine(netMsg);
-      speak(netMsg);
+      /* Dois casos DIFERENTES, com mensagens diferentes:
+         · erro da API  → o Google respondeu e disse o que está errado
+         · falha de rede → nem chegou lá (offline, DNS, bloqueio)        */
+      var falado, naTela;
+      if(err && err.apiError){
+        falado = err.message;
+        naTela = "Erro " + err.httpStatus + " · " + err.message;
+      }else{
+        falado = "Não consegui alcançar os servidores do Google, " + CONFIG.address +
+                 ". Verifique sua conexão com a internet.";
+        naTela = "Falha de rede: " + (err && err.message ? err.message : "sem detalhes") +
+                 " — a requisição nem chegou ao Google.";
+      }
+      setAssistantLine(falado);
+      speak(falado);
+      showWarn(naTela + "  (abra o ⚙ e use TESTAR CHAVE para o diagnóstico completo)");
       console.error(err);
     });
+  }
+
+  /* Traduz o erro cru do Google para algo acionável em português. */
+  function explicarErroApi(status, corpo){
+    var detalhe = "";
+    try{
+      var j = JSON.parse(corpo);
+      detalhe = (j.error && (j.error.message || j.error.status)) || "";
+    }catch(e){ detalhe = String(corpo || "").slice(0, 200); }
+
+    var d = detalhe.toLowerCase();
+    if(status === 400 && d.indexOf("api key not valid") !== -1)
+      return "Sua chave de API não é válida. Gere outra em aistudio.google.com/apikey.";
+    if(status === 400)
+      return "O Google recusou a requisição: " + detalhe;
+    if(status === 403)
+      return "Acesso negado. A chave pode ter restrição de site ou a API do Gemini não está habilitada no projeto.";
+    if(status === 404)
+      return "O modelo " + CONFIG.model + " não existe para a sua chave. " +
+             "Abra o ⚙, use TESTAR CHAVE e escolha um dos modelos que aparecerem.";
+    if(status === 429)
+      return "Você estourou a cota da API. Espere um pouco ou use o modelo ECONÔMICO no ⚙.";
+    if(status >= 500)
+      return "O servidor do Google está com problema no momento. Tente de novo em instantes.";
+    return "O Google devolveu erro " + status + ": " + detalhe;
   }
 
   var SAVE_RE = /\[\[SAVE:([a-z_]+)\|([^|]+)\|([\s\S]+?)\]\]/g;
@@ -1991,6 +2078,11 @@ body::after{
 
   if(!MODEL_TIERS[TIER]) TIER = "equilibrado";
   CONFIG.model = MODEL_TIERS[TIER].model;   /* reutiliza a MESMA referência da Parte 1 */
+
+  /* Modelo escolhido à mão no diagnóstico do ⚙ vence o nível, até o
+     usuário clicar num nível de novo (aí a escolha explícita manda). */
+  var MODEL_OVERRIDE = lsGet("jarvis_model_override", null);
+  if(MODEL_OVERRIDE) CONFIG.model = MODEL_OVERRIDE;
 
   /* estado ao vivo */
   var CAL_EVENTS = [];
@@ -3246,16 +3338,200 @@ body::after{
     box.querySelectorAll("[data-tier]").forEach(function(b){
       b.addEventListener("click", function(){
         TIER = b.getAttribute("data-tier");
+        /* escolha explícita de nível descarta o modelo fixado no diagnóstico */
+        MODEL_OVERRIDE = null;
+        localStorage.removeItem("jarvis_model_override");
         renderCfgTiers();
       });
     });
   }
+
+  /* ============================================================
+     LABORATÓRIO DE VOZ
+  ============================================================ */
+  var VOZ_PADRAO = { voiceURI:"", rate:1, pitch:0.95 };
+  var VOZ = lsGet("jarvis_voice_prefs", VOZ_PADRAO);
+  window.__vozPrefs = VOZ;                       /* speak() lê daqui */
+
+  var PRESET_MORDOMO = { rate:0.88, pitch:0.72 }; /* grave e pausado */
+
+  function renderVozLista(){
+    var sel = document.getElementById("cfg-voice");
+    if(!sel) return;
+    var todas = (window.speechSynthesis ? window.speechSynthesis.getVoices() : []) || [];
+    if(!todas.length){
+      sel.innerHTML = '<option value="">(o navegador ainda não carregou as vozes — reabra o ⚙)</option>';
+      return;
+    }
+    /* masculinas pt-BR primeiro: são as que mais lembram o personagem */
+    function nota(v){
+      var n = (v.name || "").toLowerCase(), s = 0;
+      if(/pt[-_]br/i.test(v.lang)) s += 10;
+      else if(/^pt/i.test(v.lang)) s += 6;
+      if(/male|masculin|daniel|ricardo|felipe|bruno|antonio|joao|joão|thiago/.test(n)) s += 4;
+      if(/female|feminin|maria|luciana|ana|francisca|vitoria|vitória|camila/.test(n)) s -= 2;
+      if(/natural|neural|premium|enhanced|google/.test(n)) s += 3;  /* melhor qualidade */
+      return s;
+    }
+    var ord = todas.slice().sort(function(a,b){ return nota(b) - nota(a); });
+    sel.innerHTML = ord.map(function(v){
+      var marca = /pt[-_]br/i.test(v.lang) ? "🇧🇷 " : "";
+      return '<option value="' + esc(v.voiceURI) + '"' +
+             (v.voiceURI === VOZ.voiceURI ? " selected" : "") + '>' +
+             marca + esc(v.name) + " · " + esc(v.lang) + '</option>';
+    }).join("");
+    if(!VOZ.voiceURI && ord.length) sel.value = ord[0].voiceURI;
+  }
+
+  /* O navegador carrega as vozes de forma assíncrona: na primeira abertura
+     a lista pode vir vazia. addEventListener (não onvoiceschanged=) para
+     não sobrescrever o handler que a Parte 1 já registrou. */
+  if(window.speechSynthesis && window.speechSynthesis.addEventListener){
+    window.speechSynthesis.addEventListener("voiceschanged", function(){
+      var ov = document.getElementById("cfg-overlay");
+      if(ov && ov.classList.contains("show")) renderVozLista();
+    });
+  }
+
+  function sincronizaSliders(){
+    var p = document.getElementById("cfg-pitch"), r = document.getElementById("cfg-rate");
+    if(!p || !r) return;
+    p.value = VOZ.pitch; r.value = VOZ.rate;
+    document.getElementById("cfg-pitch-val").textContent = Number(VOZ.pitch).toFixed(2);
+    document.getElementById("cfg-rate-val").textContent  = Number(VOZ.rate).toFixed(2);
+  }
+
+  function aplicaVoz(){
+    VOZ.voiceURI = (document.getElementById("cfg-voice") || {}).value || "";
+    window.__vozPrefs = VOZ;
+    lsSet("jarvis_voice_prefs", VOZ);
+  }
+
+  document.addEventListener("input", function(e){
+    if(e.target.id === "cfg-pitch"){
+      VOZ.pitch = parseFloat(e.target.value);
+      document.getElementById("cfg-pitch-val").textContent = VOZ.pitch.toFixed(2);
+      aplicaVoz();
+    }else if(e.target.id === "cfg-rate"){
+      VOZ.rate = parseFloat(e.target.value);
+      document.getElementById("cfg-rate-val").textContent = VOZ.rate.toFixed(2);
+      aplicaVoz();
+    }else if(e.target.id === "cfg-voice"){
+      aplicaVoz();
+    }
+  });
+
+  document.getElementById("cfg-voice-test").addEventListener("click", function(){
+    aplicaVoz();
+    if(window.speechSynthesis) window.speechSynthesis.cancel();
+    var u = new SpeechSynthesisUtterance(
+      "Sistemas online. Sua agenda está sob controle, " + CONFIG.address +
+      ". Permaneço à disposição."
+    );
+    u.lang = "pt-BR";
+    var todas = window.speechSynthesis ? window.speechSynthesis.getVoices() : [];
+    for(var i = 0; i < todas.length; i++){
+      if(todas[i].voiceURI === VOZ.voiceURI){ try{ u.voice = todas[i]; }catch(e){} break; }
+    }
+    u.rate = VOZ.rate; u.pitch = VOZ.pitch;
+    if(window.speechSynthesis) window.speechSynthesis.speak(u);
+  });
+
+  document.getElementById("cfg-voice-butler").addEventListener("click", function(){
+    VOZ.rate = PRESET_MORDOMO.rate; VOZ.pitch = PRESET_MORDOMO.pitch;
+    sincronizaSliders(); aplicaVoz();
+    document.getElementById("cfg-voice-test").click();
+  });
+
+  document.getElementById("cfg-voice-reset").addEventListener("click", function(){
+    VOZ.rate = VOZ_PADRAO.rate; VOZ.pitch = VOZ_PADRAO.pitch;
+    sincronizaSliders(); aplicaVoz();
+  });
+
+  /* ============================================================
+     DIAGNÓSTICO DA CHAVE — pergunta ao Google o que a chave pode fazer
+  ============================================================ */
+  document.getElementById("cfg-test-key").addEventListener("click", function(){
+    var out = document.getElementById("cfg-test-out");
+    var chave = (apiKeyInput.value || apiKey || "").trim();
+
+    if(!chave){
+      out.innerHTML = '<div class="err-row">Nenhuma chave preenchida. ' +
+        'Cole a chave no campo do topo da tela e teste de novo.<br><br>' +
+        'Pegue a sua em <b>aistudio.google.com/apikey</b> (é gratuito).</div>';
+      return;
+    }
+
+    out.innerHTML = '<div class="empty-state" style="padding:12px">Consultando o Google…</div>';
+
+    fetch("https://generativelanguage.googleapis.com/v1beta/models?key=" + encodeURIComponent(chave))
+      .then(function(r){
+        return r.text().then(function(t){ return { ok:r.ok, status:r.status, body:t }; });
+      })
+      .then(function(res){
+        if(!res.ok){
+          out.innerHTML = '<div class="err-row"><b>Chave recusada (HTTP ' + res.status + ')</b><br>' +
+            esc(explicarErroApi(res.status, res.body)) + '</div>';
+          return;
+        }
+        var dados = JSON.parse(res.body);
+        var lista = (dados.models || []).filter(function(m){
+          return (m.supportedGenerationMethods || []).indexOf("generateContent") !== -1;
+        }).map(function(m){ return String(m.name).replace(/^models\//, ""); });
+
+        var atualOk = lista.indexOf(CONFIG.model) !== -1;
+        var html = '<div class="err-row" style="background:rgba(16,185,129,.08);' +
+                   'border-color:rgba(16,185,129,.45);color:#9ff0d0">' +
+                   '<b>✓ Chave válida.</b> ' + lista.length + ' modelos disponíveis.</div>';
+
+        if(atualOk){
+          html += '<div style="font-size:.76rem;color:var(--ok);margin-bottom:8px">' +
+                  '✓ O modelo atual (<b>' + esc(CONFIG.model) + '</b>) está liberado. ' +
+                  'Se ainda der erro, o problema é rede, não chave.</div>';
+        }else{
+          html += '<div class="err-row"><b>Achei o problema:</b> o modelo <b>' +
+                  esc(CONFIG.model) + '</b> NÃO está disponível para a sua chave. ' +
+                  'Escolha um da lista abaixo.</div>';
+        }
+
+        html += '<div style="font-size:.72rem;color:var(--text-dim);margin-bottom:6px">' +
+                'Clique em um modelo para usá-lo:</div><div id="cfg-model-list">';
+        lista.slice(0, 24).forEach(function(m){
+          var atual = (m === CONFIG.model);
+          html += '<button class="mini-btn" data-model="' + esc(m) + '" ' +
+                  'style="margin:0 6px 6px 0;' +
+                  (atual ? 'border-color:var(--ok);color:var(--ok)' : '') + '">' +
+                  esc(m) + (atual ? " ✓" : "") + '</button>';
+        });
+        html += '</div>';
+        out.innerHTML = html;
+
+        out.querySelectorAll("[data-model]").forEach(function(b){
+          b.addEventListener("click", function(){
+            CONFIG.model = b.getAttribute("data-model");
+            lsSet("jarvis_model_override", CONFIG.model);
+            out.insertAdjacentHTML("afterbegin",
+              '<div class="err-row" style="background:rgba(16,185,129,.08);' +
+              'border-color:rgba(16,185,129,.45);color:#9ff0d0">Modelo trocado para <b>' +
+              esc(CONFIG.model) + '</b>. Feche o ⚙ e fale com ele.</div>');
+          });
+        });
+      })
+      .catch(function(e){
+        out.innerHTML = '<div class="err-row"><b>Não cheguei no Google.</b><br>' +
+          'A requisição falhou antes de sair da sua máquina: ' + esc(e.message) + '<br><br>' +
+          'Isso é rede — internet caída, firewall, VPN ou antivírus bloqueando.</div>';
+      });
+  });
 
   function openCfg(){
     renderCfgCalendars();
     renderCfgMailboxes();
     renderCfgTopics();
     renderCfgTiers();
+    renderVozLista();
+    sincronizaSliders();
+    document.getElementById("cfg-test-out").innerHTML = "";
     document.getElementById("cfg-city").value = CITY;
     document.getElementById("cfg-digest-speak").checked = !!DIGEST_CFG.speak;
     document.getElementById("cfg-digest-auto").checked = !!DIGEST_CFG.auto;
@@ -3321,7 +3597,9 @@ body::after{
       auto:  document.getElementById("cfg-digest-auto").checked
     };
     ECON = document.getElementById("cfg-econ").checked;
-    CONFIG.model = MODEL_TIERS[TIER].model;
+    MODEL_OVERRIDE = lsGet("jarvis_model_override", null);
+    CONFIG.model = MODEL_OVERRIDE || MODEL_TIERS[TIER].model;
+    aplicaVoz();
 
     lsSet(LS.calendars, CALENDARS);
     lsSet(LS.emails,    MAILBOXES);
