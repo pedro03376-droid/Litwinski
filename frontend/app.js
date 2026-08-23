@@ -609,7 +609,7 @@ function _pidObjHtml(o) {
       </div>
     </div>
     <div style="height:7px;background:rgba(255,255,255,.08);border-radius:4px;margin-top:8px;overflow:hidden;"><div style="height:100%;width:${o.progresso || 0}%;background:${done ? 'var(--success)' : 'var(--primary)'};border-radius:4px;transition:width .5s;"></div></div>
-    <div style="font-size:10px;color:var(--muted);margin-top:2px;">${o.progresso || 0}% · ${PID_STATUS[o.status] || o.status}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:2px;">${o.progresso || 0}% · ${PID_STATUS[o.status] || o.status}</div>
   </div>`;
 }
 
@@ -1085,7 +1085,7 @@ function renderFiltroCompeticoes() {
              background:${ativo ? 'rgba(0,212,255,.15)' : 'var(--card)'};
              color:${ativo ? 'var(--primary)' : 'var(--muted)'};
              font-size:12px;font-weight:${ativo ? 600 : 400};cursor:pointer;transition:all .2s;white-space:nowrap;">
-      ${c.label}${c.value ? ` <span style="opacity:.6;font-size:10px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
+      ${c.label}${c.value ? ` <span style="opacity:.6;font-size:11px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
     </button>`;
   }).join('');
 }
@@ -1119,11 +1119,11 @@ function renderPartidas() {
     let gkCell = gk ? _esc(gk.nome) : '—';
     if (gk2) {
       gkCell = `<span style="display:block;line-height:1.6;">
-        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${_esc(p.periodo1||'1º T')}</span><br>
+        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${_esc(p.periodo1||'1º T')}</span><br>
         <strong>${gk ? _esc(gk.nome) : '—'}</strong>
       </span>
       <span style="display:block;line-height:1.6;margin-top:4px;padding-top:4px;border-top:1px solid var(--border);">
-        <span style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${_esc(p.periodo2||'2º T')}</span><br>
+        <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${_esc(p.periodo2||'2º T')}</span><br>
         <strong>${_esc(gk2.nome)}</strong>
       </span>`;
     }
@@ -1416,7 +1416,7 @@ function showPerfDetail(gkId) {
       ${avgNota !== null ? `<span class="badge ${cls}" style="font-size:14px;padding:6px 14px;">${label} — ${avgNota}</span>` : ''}
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
-      <div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--primary);">${totalDef}</div><div style="font-size:11px;color:var(--muted);">Defesas</div></div>
+      <div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--primary-text);">${totalDef}</div><div style="font-size:11px;color:var(--muted);">Defesas</div></div>
       <div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--error);">${totalGols}</div><div style="font-size:11px;color:var(--muted);">Gols Sofridos</div></div>
       <div style="text-align:center;"><div style="font-size:22px;font-weight:700;color:var(--success);">${scouts.length}</div><div style="font-size:11px;color:var(--muted);">Partidas</div></div>
     </div>
@@ -1600,7 +1600,7 @@ function renderPerfilPID(gkId) {
     <div style="display:flex;gap:20px;margin-bottom:12px;font-size:13px;">
       <div><b style="font-size:20px;">${objs.length}</b> <span style="color:var(--muted);">objetivos</span></div>
       <div><b style="font-size:20px;color:var(--success);">${done}</b> <span style="color:var(--muted);">concluídos</span></div>
-      <div><b style="font-size:20px;color:var(--primary);">${prog}%</b> <span style="color:var(--muted);">progresso</span></div>
+      <div><b style="font-size:20px;color:var(--primary-text);">${prog}%</b> <span style="color:var(--muted);">progresso</span></div>
     </div>
     ${active.map(o => `<div style="margin-bottom:8px;">
       <div style="display:flex;justify-content:space-between;font-size:12px;"><span>${_esc(o.descricao)}</span><span style="color:var(--muted);">${o.progresso || 0}%</span></div>
@@ -2064,7 +2064,7 @@ function renderPerfilIGD(gkId, summary) {
         <div style="width:120px;height:120px;border-radius:50%;background:conic-gradient(${col} ${igd.score * 3.6}deg, rgba(255,255,255,.08) 0);display:flex;align-items:center;justify-content:center;">
           <div style="width:92px;height:92px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;">
             <div style="font-size:32px;font-weight:800;color:${col};line-height:1;">${igd.score}</div>
-            <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:2px;">IGD</div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-top:2px;">IGD</div>
           </div>
         </div>
         <div style="margin-top:8px;display:flex;flex-direction:column;gap:2px;">${deltaChip(dw, 'sem')}${deltaChip(dm, 'mês')}</div>
@@ -2118,7 +2118,7 @@ async function renderExecutivo() {
   const evol = goleiras.map(g => ({ g, d: _evolDelta(g.id) })).filter(x => x.d != null).sort((a, b) => b.d - a.d)[0];
   const hEl = document.getElementById('exec-highlights');
   const gkLink = (g, extra) => `<div onclick="verPerfil('${_esc(g.id)}')" style="cursor:pointer;display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);">
-    <span style="font-weight:600;font-size:13px;">${_esc(g.nome)}</span><span style="color:var(--primary);font-weight:700;font-size:13px;">${extra}</span></div>`;
+    <span style="font-weight:600;font-size:13px;">${_esc(g.nome)}</span><span style="color:var(--primary-text);font-weight:700;font-size:13px;">${extra}</span></div>`;
   if (hEl) {
     let h = '';
     if (best) h += `<div style="font-size:11px;color:var(--muted);margin-bottom:2px;">Melhor atleta</div>` + gkLink(best, (avgPerformance(best.id) || 0) + ' pts');
@@ -2727,7 +2727,7 @@ function renderPerfilExtras(gkId) {
     ach.map(a =>
       '<div title="' + _esc(a.desc) + '" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;' + (a.earned ? '' : 'opacity:.35;filter:grayscale(1);') + '">' +
         '<span style="font-size:20px;">' + a.icon + '</span>' +
-        '<div><div style="font-size:12px;font-weight:700;">' + _esc(a.title) + '</div><div style="font-size:10px;color:var(--muted);">' + _esc(a.desc) + '</div></div>' +
+        '<div><div style="font-size:12px;font-weight:700;">' + _esc(a.title) + '</div><div style="font-size:11px;color:var(--muted);">' + _esc(a.desc) + '</div></div>' +
       '</div>').join('') +
     '</div>';
 }
@@ -2779,7 +2779,7 @@ function renderPerfil() {
     ['Equipe', gk.equipe || '—'],
   ];
   document.getElementById('perfil-info-grid').innerHTML = infoItems.map(([k,v])=>`
-    <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${k}</div>
+    <div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;">${k}</div>
     <div style="font-weight:600;font-size:13px;margin-top:2px;">${v}</div></div>`).join('');
 
   // Ranking interno
@@ -2792,12 +2792,12 @@ function renderPerfil() {
   document.getElementById('perfil-ranking').innerHTML = `
     <div class="card-header"><span class="card-title">Ranking Interno</span></div>
     <div style="text-align:center;padding:12px 0;">
-      <div style="font-size:48px;font-weight:800;color:var(--primary);">${pos > 0 ? '#'+pos : '—'}</div>
+      <div style="font-size:48px;font-weight:800;color:var(--primary-text);">${pos > 0 ? '#'+pos : '—'}</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px;">de ${allGks.length} goleiras cadastradas</div>
     </div>
     <div style="font-size:12px;color:var(--muted);">
       ${ranking.slice(0,5).map((r,i)=>`
-        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);${r.id===gkId?'color:var(--primary);font-weight:700;':''}">
+        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);${r.id===gkId?'color:var(--primary-text);font-weight:700;':''}">
           <span>#${i+1} ${_esc(r.nome)}</span><span>${r.avg}</span>
         </div>`).join('')}
     </div>`;
@@ -2814,7 +2814,7 @@ function renderPerfil() {
       ${[['Partidas', scouts.length],['Defesas', totalDef],['Gols sofridos', totalGols],['Interceptações', sum('int')],
          ['Esquadros', sum('esq')],['Precisão dist.', Math.round(distAcc*100)+'%']
         ].map(([k,v])=>`<div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;">
-          <div style="font-size:20px;font-weight:800;color:var(--primary);">${v}</div>
+          <div style="font-size:20px;font-weight:800;color:var(--primary-text);">${v}</div>
           <div style="font-size:11px;color:var(--muted);margin-top:2px;">${k}</div></div>`).join('')}
     </div>`;
 
@@ -3010,7 +3010,7 @@ function gerarAnalise(gkId) {
     <div style="display:grid;grid-template-columns:auto 1fr auto;gap:20px;align-items:center;margin-bottom:24px;padding:20px;background:linear-gradient(135deg,rgba(0,212,255,.06),rgba(123,47,190,.06));border:1px solid rgba(0,212,255,.15);border-radius:14px;">
       <div style="text-align:center;">
         <div style="font-size:52px;font-weight:900;line-height:1;color:${clNota.color};text-shadow:0 0 30px ${clNota.color}40;">${avgNota !== null ? avgNota.toFixed(1) : '—'}</div>
-        <div style="font-size:10px;font-weight:600;color:var(--muted);letter-spacing:1px;margin-top:4px;">NOTA GERAL</div>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1px;margin-top:4px;">NOTA GERAL</div>
       </div>
       <div>
         <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:4px;">Nível de Desempenho</div>
@@ -3019,7 +3019,7 @@ function gerarAnalise(gkId) {
       </div>
       <div style="text-align:center;padding:12px 20px;background:rgba(0,0,0,.2);border-radius:10px;">
         <div style="font-size:28px;font-weight:800;color:${tendCorColor};">${tendenciaClasse}</div>
-        <div style="font-size:10px;color:var(--muted);letter-spacing:.5px;margin-top:2px;">EVOLUÇÃO</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.5px;margin-top:2px;">EVOLUÇÃO</div>
         <div style="font-size:11px;font-weight:600;color:${tendCorColor};margin-top:2px;">${tendencia}</div>
       </div>
     </div>
@@ -3036,9 +3036,9 @@ function gerarAnalise(gkId) {
         { label:'Consistência', val: consistencia !== null ? consistencia.toFixed(1)+'/10' : '—', sub: notas.length+' notas registradas', color: consistencia !== null && consistencia >= 7 ? 'var(--success)' : 'var(--warning)' },
       ].map(m=>`
         <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">
-          <div style="font-size:9px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">${m.label}</div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">${m.label}</div>
           <div style="font-size:26px;font-weight:800;color:${m.color};line-height:1;">${m.val}</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:4px;">${m.sub}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:4px;">${m.sub}</div>
         </div>`).join('')}
     </div>
 
@@ -3073,12 +3073,12 @@ function gerarAnalise(gkId) {
           { zona:'Baixas', val:defBaixa, pct: totalDef>0?(defBaixa/totalDef*100).toFixed(0):0, color:'#00E676' },
         ].map(z=>`
           <div style="text-align:center;">
-            <div style="font-size:9px;font-weight:600;color:var(--muted);letter-spacing:.5px;margin-bottom:6px;">${z.zona.toUpperCase()}</div>
+            <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.5px;margin-bottom:6px;">${z.zona.toUpperCase()}</div>
             <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:6px;">
               <div style="height:100%;width:${z.pct}%;background:${z.color};border-radius:3px;transition:width .6s;"></div>
             </div>
             <div style="font-size:18px;font-weight:800;color:${z.color};">${z.val}</div>
-            <div style="font-size:10px;color:var(--muted);">${z.pct}% das defesas</div>
+            <div style="font-size:11px;color:var(--muted);">${z.pct}% das defesas</div>
           </div>`).join('')}
       </div>
       ${totalGols > 0 ? `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">
@@ -3089,10 +3089,10 @@ function gerarAnalise(gkId) {
 
     <!-- Recomendações técnicas -->
     <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:16px;">
-      <div style="font-size:11px;font-weight:700;color:var(--primary);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📋 Recomendações Técnicas</div>
+      <div style="font-size:11px;font-weight:700;color:var(--primary-text);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📋 Recomendações Técnicas</div>
       ${recs.slice(0,5).map((r,i)=>`
         <div style="display:flex;gap:10px;margin-bottom:10px;font-size:12px;line-height:1.5;">
-          <span style="width:20px;height:20px;border-radius:50%;background:var(--primary);color:#000;font-size:10px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span>
+          <span style="width:20px;height:20px;border-radius:50%;background:var(--primary);color:#000;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span>
           <span style="color:var(--text);">${r}</span>
         </div>`).join('')}
     </div>
@@ -3229,7 +3229,7 @@ function renderComparacao() {
             <div style="width:${pctA}%;max-width:100%;height:6px;border-radius:4px;background:var(--primary);"></div>
           </div>
         </div>
-        <div style="text-align:center;font-size:10px;color:var(--muted);">vs</div>
+        <div style="text-align:center;font-size:11px;color:var(--muted);">vs</div>
         <div>
           <div style="font-weight:${winner==='b'?700:400};color:${winner==='b'?'var(--warning)':'var(--text)'};">${d.b}</div>
           <div style="margin-top:3px;">
@@ -3250,7 +3250,7 @@ function renderComparacao() {
     ['Esquadros/jogo', sA.esquPJ, sB.esquPJ],
   ];
   document.getElementById('comp-table-detail').innerHTML = `
-    <thead><tr><th>Métrica</th><th style="color:var(--primary);">${_esc(gkA.nome)}</th><th style="color:var(--warning);">${_esc(gkB.nome)}</th></tr></thead>
+    <thead><tr><th>Métrica</th><th style="color:var(--primary-text);">${_esc(gkA.nome)}</th><th style="color:var(--warning);">${_esc(gkB.nome)}</th></tr></thead>
     <tbody>${rows.map(([m,a,b])=>{
       const aw=typeof a==='number'&&typeof b==='number'&&a>b;
       const bw=typeof a==='number'&&typeof b==='number'&&b>a;
@@ -3358,7 +3358,7 @@ function aggScoutsHeatmap() {
     if (adv)  active.push(`Adversário: <strong>${_esc(adv)}</strong>`);
     if (hmPeriodo!=='all') active.push(`Período: <strong>últimos ${hmPeriodo} jogos</strong>`);
     if (active.length) {
-      summary.innerHTML = `<span style="color:var(--primary);font-weight:600;margin-right:6px;">Filtros ativos:</span>${active.join(' · ')} <span style="color:var(--muted);margin-left:4px;">(${scouts.length} scout${scouts.length!==1?'s':''})</span>`;
+      summary.innerHTML = `<span style="color:var(--primary-text);font-weight:600;margin-right:6px;">Filtros ativos:</span>${active.join(' · ')} <span style="color:var(--muted);margin-left:4px;">(${scouts.length} scout${scouts.length!==1?'s':''})</span>`;
       summary.style.display = 'block';
     } else {
       summary.style.display = 'none';
@@ -4017,17 +4017,17 @@ function mcUpdateLog() {
   const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)',tt:'rgba(167,139,250,.15)',golgk:'rgba(16,185,129,.2)'};
   const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)',tt:'rgba(167,139,250,.4)',golgk:'rgba(16,185,129,.6)'};
   el.innerHTML=mcLog.slice(0,60).map((e,i)=>{
-    if (e.tipo==='periodo') return `<div style="text-align:center;padding:6px 0;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
+    if (e.tipo==='periodo') return `<div style="text-align:center;padding:6px 0;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
     const icon=MC_TIPO_ICONS[e.key]||MC_ICONS[e.tipo]||'●';
     const bg=typeColors[e.tipo]||'rgba(255,255,255,.05)';
     const bc=borderColors[e.tipo]||'var(--border)';
-    const ptBadge=e.periodo?`<span style="font-size:9px;font-weight:700;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;">${e.periodo}T</span>`:'';
+    const ptBadge=e.periodo?`<span style="font-size:11px;font-weight:700;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;">${e.periodo}T</span>`:'';
     return `<div class="mc-timeline-item" title="${e.label} @ ${e.time}" style="opacity:${i===0?1:Math.max(0.45,1-i*0.04)}">
       <div class="mc-timeline-icon" style="background:${bg};border:1px solid ${bc};">${icon}</div>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:${i===0?700:500};font-size:12px;line-height:1.3;">${e.label}</div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:2px;">
-          <span style="color:var(--muted);font-size:10px;font-variant-numeric:tabular-nums;">${e.time}</span>
+          <span style="color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;">${e.time}</span>
           ${ptBadge}
         </div>
       </div>
@@ -4120,7 +4120,7 @@ function mcUpdateHighlights() {
     </div>
     <div class="mc-highlight-row">
       <span style="color:var(--muted);">🔥 Maior Sequência</span>
-      <span class="mc-highlight-val" style="color:var(--primary);">${mcMaxStreak} def.</span>
+      <span class="mc-highlight-val" style="color:var(--primary-text);">${mcMaxStreak} def.</span>
     </div>
     <div class="mc-highlight-row">
       <span style="color:var(--muted);">⏱ Seq. Atual</span>
@@ -4210,9 +4210,9 @@ function mcUpdatePeriodStats() {
   const segs=mcGkSegmentos;
   const priColor=mcPeriodo===1?'var(--primary)':'var(--warning)';
   let html=`
-    <div style="font-size:10px;font-weight:700;color:${priColor};letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px;">${mcPeriodo===1?'1º Tempo (atual)':'2º Tempo (atual)'}</div>
+    <div style="font-size:11px;font-weight:700;color:${priColor};letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px;">${mcPeriodo===1?'1º Tempo (atual)':'2º Tempo (atual)'}</div>
     <div class="mc-period-grid" style="margin-bottom:10px;">
-      <div class="mc-period-cell"><div class="pv" style="color:var(--primary);">${curDef}</div><div class="pl">Defesas</div></div>
+      <div class="mc-period-cell"><div class="pv" style="color:var(--primary-text);">${curDef}</div><div class="pl">Defesas</div></div>
       <div class="mc-period-cell"><div class="pv" style="color:var(--error);">${curGol}</div><div class="pl">Gols</div></div>
       <div class="mc-period-cell"><div class="pv" style="color:#6EE7B7;">${curInt}</div><div class="pl">Interceptações</div></div>
       <div class="mc-period-cell"><div class="pv" style="color:var(--warning);">${curAp}%</div><div class="pl">Aproveit. Dist.</div></div>
@@ -4226,9 +4226,9 @@ function mcUpdatePeriodStats() {
       const ap=(dC+dE)>0?Math.round(dC/(dC+dE)*100):0;
       const gk=DB.goleiras.find(g=>g.id===seg.gkId);
       html+=`
-        <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px;">${seg.periodoLabel} — ${gk?.nome||'—'}</div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px;">${seg.periodoLabel} — ${gk?.nome||'—'}</div>
         <div class="mc-period-grid" style="margin-bottom:10px;">
-          <div class="mc-period-cell"><div class="pv" style="color:var(--primary);">${def}</div><div class="pl">Defesas</div></div>
+          <div class="mc-period-cell"><div class="pv" style="color:var(--primary-text);">${def}</div><div class="pl">Defesas</div></div>
           <div class="mc-period-cell"><div class="pv" style="color:var(--error);">${gol}</div><div class="pl">Gols</div></div>
           <div class="mc-period-cell"><div class="pv" style="color:#6EE7B7;">${d.int||0}</div><div class="pl">Intercep.</div></div>
           <div class="mc-period-cell"><div class="pv" style="color:var(--warning);">${ap}%</div><div class="pl">Aproveit.</div></div>
@@ -4263,14 +4263,14 @@ function mcUpdateGkComp(segs) {
   const mxDef=Math.max(1,...metrics.map(m=>Math.max(m.va,m.vb)));
   el.innerHTML=`
     <div style="display:grid;grid-template-columns:1fr 60px 1fr;gap:4px;margin-bottom:8px;">
-      <div style="font-size:11px;font-weight:700;color:var(--primary);text-align:right;">${_esc(gkA?.nome||'GK A')}</div>
+      <div style="font-size:11px;font-weight:700;color:var(--primary-text);text-align:right;">${_esc(gkA?.nome||'GK A')}</div>
       <div></div>
       <div style="font-size:11px;font-weight:700;color:var(--warning);">${_esc(gkB?.nome||'GK B')}</div>
     </div>
     ${metrics.map(m=>`
     <div class="comp-row" style="grid-template-columns:1fr 80px 1fr;">
       <div>
-        <div style="text-align:right;font-weight:700;font-size:13px;color:var(--primary);">${m.va}</div>
+        <div style="text-align:right;font-weight:700;font-size:13px;color:var(--primary-text);">${m.va}</div>
         <div class="comp-bar-wrap"><div class="comp-bar-a" style="width:${Math.round(m.va/mxDef*100)}%;"></div></div>
       </div>
       <div class="comp-label">${m.label}</div>
@@ -4392,14 +4392,14 @@ function mcRenderFasesBar() {
   const faseColors={alta:'rgba(52,211,153,.15)',queda:'rgba(239,68,68,.12)',recuperacao:'rgba(59,130,246,.15)',estavel:'rgba(148,163,184,.06)'};
   const faseBorder={alta:'rgba(52,211,153,.5)',queda:'rgba(239,68,68,.4)',recuperacao:'rgba(59,130,246,.4)',estavel:'rgba(148,163,184,.2)'};
   el.innerHTML=`
-    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">Fases Detectadas</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">Fases Detectadas</div>
     <div style="display:flex;flex-direction:column;gap:4px;">
       ${fases.map(f=>`
         <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${faseColors[f.tipo]};border:1px solid ${faseBorder[f.tipo]};border-radius:8px;">
           <span style="font-size:14px;">${f.emoji}</span>
           <div style="flex:1;">
             <span style="font-size:11px;font-weight:700;color:var(--text);">${f.label}</span>
-            <span style="font-size:10px;color:var(--muted);margin-left:6px;">${mcFormatTime(f.startSec)} → ${mcFormatTime(f.endSec)}</span>
+            <span style="font-size:11px;color:var(--muted);margin-left:6px;">${mcFormatTime(f.startSec)} → ${mcFormatTime(f.endSec)}</span>
           </div>
           <span style="font-size:11px;font-weight:700;color:${f.delta>0?'#34D399':'#EF4444'};">${f.delta>0?'+':''}${f.delta.toFixed(1)}</span>
         </div>`).join('')}
@@ -4413,7 +4413,7 @@ function mcRenderSmartLog() {
   if (!events.length){el.innerHTML='';return;}
   const fases=mcDetectFases();
   const typeColors={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#8B5CF6','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981'};
-  let html='<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">Linha do Tempo</div>';
+  let html='<div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">Linha do Tempo</div>';
   let lastFaseIdx=-1;
   for (const ev of events) {
     // Check if a phase starts around this event
@@ -4423,7 +4423,7 @@ function mcRenderSmartLog() {
         lastFaseIdx=fi;
         const faseColors2={alta:'rgba(52,211,153,.12)',queda:'rgba(239,68,68,.1)',recuperacao:'rgba(59,130,246,.12)'};
         const faseBorder2={alta:'rgba(52,211,153,.4)',queda:'rgba(239,68,68,.35)',recuperacao:'rgba(59,130,246,.35)'};
-        html+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin:4px 0;background:${faseColors2[f.tipo]||'rgba(148,163,184,.08)'};border-left:2px solid ${faseBorder2[f.tipo]||'var(--border)'};border-radius:0 6px 6px 0;font-size:10px;font-weight:700;color:var(--muted);">${f.emoji} ${f.label} · ${mcFormatTime(f.startSec)}</div>`;
+        html+=`<div style="display:flex;align-items:center;gap:6px;padding:5px 8px;margin:4px 0;background:${faseColors2[f.tipo]||'rgba(148,163,184,.08)'};border-left:2px solid ${faseBorder2[f.tipo]||'var(--border)'};border-radius:0 6px 6px 0;font-size:11px;font-weight:700;color:var(--muted);">${f.emoji} ${f.label} · ${mcFormatTime(f.startSec)}</div>`;
         break;
       }
     }
@@ -4723,7 +4723,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
         <div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(139,92,246,.06));border:1px solid rgba(59,130,246,.15);border-radius:14px;margin-bottom:16px;">
           <div style="text-align:center;flex-shrink:0;">
             <div style="font-size:44px;font-weight:900;color:${nivelColor};line-height:1;">${nota.toFixed(1)}</div>
-            <div style="font-size:9px;color:var(--muted);letter-spacing:1px;font-weight:600;">NOTA FINAL</div>
+            <div style="font-size:11px;color:var(--muted);letter-spacing:1px;font-weight:600;">NOTA FINAL</div>
           </div>
           <div style="flex:1;">
             <div style="font-size:18px;font-weight:800;">${gk?.nome||'—'}</div>
@@ -4738,7 +4738,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
             {l:'Gols Sofr.',v:gol,c:'var(--error)'},
             {l:'Interceções',v:sum('int'),c:'#6EE7B7'},
             {l:'Precis. Dist.',v:taxaDist!==null?(taxaDist*100).toFixed(0)+'%':'—',c:'var(--warning)'}
-          ].map(m=>`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:6px;">${m.l}</div><div style="font-size:24px;font-weight:800;color:${m.c};">${m.v}</div></div>`).join('')}
+          ].map(m=>`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:6px;">${m.l}</div><div style="font-size:24px;font-weight:800;color:${m.c};">${m.v}</div></div>`).join('')}
         </div>
 
         <div style="background:rgba(255,255,255,.03);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text);">
@@ -4750,18 +4750,18 @@ function mcMostrarRelatorioFinal(segs, pId) {
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
           <div style="background:rgba(16,185,129,.04);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:14px;">
-            <div style="font-size:10px;font-weight:700;color:var(--success);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">✅ Pontos Fortes</div>
+            <div style="font-size:11px;font-weight:700;color:var(--success);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">✅ Pontos Fortes</div>
             ${(forcas.length?forcas:[`Continue acumulando dados para análise`]).map(f=>`<div style="font-size:12px;line-height:1.5;margin-bottom:7px;display:flex;gap:6px;"><span>▸</span><span>${f}</span></div>`).join('')}
           </div>
           <div style="background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:14px;">
-            <div style="font-size:10px;font-weight:700;color:var(--warning);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">⚠ A Desenvolver</div>
+            <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">⚠ A Desenvolver</div>
             ${(mels.length?mels:[`Manter o nível atual e continuar evoluindo`]).map(m=>`<div style="font-size:12px;line-height:1.5;margin-bottom:7px;display:flex;gap:6px;"><span>▸</span><span>${m}</span></div>`).join('')}
           </div>
         </div>
 
         <div style="background:rgba(59,130,246,.04);border:1px solid rgba(59,130,246,.15);border-radius:12px;padding:14px;">
-          <div style="font-size:10px;font-weight:700;color:var(--primary);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">📋 Recomendações de Treino</div>
-          ${recs.map((r,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px;line-height:1.5;"><span style="width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:9px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span>${r}</span></div>`).join('')}
+          <div style="font-size:11px;font-weight:700;color:var(--primary-text);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">📋 Recomendações de Treino</div>
+          ${recs.map((r,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px;line-height:1.5;"><span style="width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span>${r}</span></div>`).join('')}
         </div>
       </div>`;
   });
@@ -4771,38 +4771,38 @@ function mcMostrarRelatorioFinal(segs, pId) {
   const recentPesos=mcLog.slice(0,5).map(e=>MC_NOTA_PESOS[e.key]||0).reduce((a,b)=>a+b,0);
   const tendencia=recentPesos>=0.25?{icon:'📈',label:'Crescimento',color:'#34D399'}:recentPesos<=-0.25?{icon:'📉',label:'Queda',color:'#EF4444'}:{icon:'➡',label:'Estável',color:'#94A3B8'};
   html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📊 Resumo da Partida</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📊 Resumo da Partida</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
       <div style="background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:10px;">
-        <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">🔥 Melhor Momento</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">🔥 Melhor Momento</div>
         <div style="font-size:18px;font-weight:800;color:#34D399;">${mcMaxNota.toFixed(1)}</div>
-        <div style="font-size:10px;color:var(--muted);">⏱ ${mcFormatTime(mcBestNotaSec)}</div>
+        <div style="font-size:11px;color:var(--muted);">⏱ ${mcFormatTime(mcBestNotaSec)}</div>
       </div>
       <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:10px;">
-        <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">📉 Pior Momento</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">📉 Pior Momento</div>
         <div style="font-size:18px;font-weight:800;color:#EF4444;">${mcMinNota.toFixed(1)}</div>
-        <div style="font-size:10px;color:var(--muted);">⏱ ${mcFormatTime(mcWorstNotaSec)}</div>
+        <div style="font-size:11px;color:var(--muted);">⏱ ${mcFormatTime(mcWorstNotaSec)}</div>
       </div>
       <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;">
-        <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">✅ Seq. Positiva Máx.</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">✅ Seq. Positiva Máx.</div>
         <div style="font-size:18px;font-weight:800;color:#3B82F6;">${mcMaxPosStreak}</div>
-        <div style="font-size:10px;color:var(--muted);">ações consecutivas</div>
+        <div style="font-size:11px;color:var(--muted);">ações consecutivas</div>
       </div>
       <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:10px;">
-        <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">⚠ Seq. Negativa Máx.</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">⚠ Seq. Negativa Máx.</div>
         <div style="font-size:18px;font-weight:800;color:#F59E0B;">${mcMaxNegStreak}</div>
-        <div style="font-size:10px;color:var(--muted);">eventos negativos</div>
+        <div style="font-size:11px;color:var(--muted);">eventos negativos</div>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(148,163,184,.06);border:1px solid var(--border);border-radius:10px;margin-bottom:${fases.length?'12px':'0'};">
       <span style="font-size:20px;">${tendencia.icon}</span>
       <div>
         <div style="font-size:11px;font-weight:700;color:${tendencia.color};">Tendência Final: ${tendencia.label}</div>
-        <div style="font-size:10px;color:var(--muted);">Baseado nos últimos eventos da partida</div>
+        <div style="font-size:11px;color:var(--muted);">Baseado nos últimos eventos da partida</div>
       </div>
     </div>
     ${fases.length?`
-    <div style="font-size:9px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Fases da Partida</div>
+    <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:6px;">Fases da Partida</div>
     ${fases.map(f=>{
       const fc={alta:'rgba(52,211,153,.1)',queda:'rgba(239,68,68,.08)',recuperacao:'rgba(59,130,246,.1)'};
       const fb={alta:'rgba(52,211,153,.35)',queda:'rgba(239,68,68,.3)',recuperacao:'rgba(59,130,246,.3)'};
@@ -4817,7 +4817,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
 
   // 🎥 Vídeo do jogo — cole o link e os lances viram clicáveis (abrem no tempo do lance)
   html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">🎥 Vídeo do jogo</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">🎥 Vídeo do jogo</div>
     <input id="mc-video-url" class="form-input" style="font-size:12px;padding:8px;width:100%;" placeholder="Cole o link do vídeo (YouTube, Drive, Vimeo…)" value="${_esc(mcVideoUrl)}" onchange="mcSetVideoUrl(this.value)">
     ${mcVideoUrl?'<div style="font-size:11px;color:var(--success);margin-top:6px;">✅ Clique no horário de cada lance (abaixo) para abrir o vídeo naquele momento.</div>':'<div style="font-size:11px;color:var(--muted);margin-top:6px;">Com o link colado, cada lance da timeline abre o vídeo no segundo exato.</div>'}
   </div>`;
@@ -4826,17 +4826,17 @@ function mcMostrarRelatorioFinal(segs, pId) {
   if (timelineEvents.length) {
     const typeColors2={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#F59E0B','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981'};
     html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📅 Timeline do Jogo</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📅 Timeline do Jogo</div>
       ${timelineEvents.map(e=>{
         const tempo = mcVideoUrl
-          ? `<a href="${_esc(_videoAtTime(mcVideoUrl,e.sec))}" target="_blank" rel="noopener" style="color:var(--primary);text-decoration:underline;font-variant-numeric:tabular-nums;">${e.time}</a>`
+          ? `<a href="${_esc(_videoAtTime(mcVideoUrl,e.sec))}" target="_blank" rel="noopener" style="color:var(--primary-text);text-decoration:underline;font-variant-numeric:tabular-nums;">${e.time}</a>`
           : `<span style="color:var(--muted);font-variant-numeric:tabular-nums;">${e.time}</span>`;
         return `
         <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;">
           <span style="width:40px;flex-shrink:0;">${tempo}</span>
           <span style="width:8px;height:8px;border-radius:50%;background:${typeColors2[e.tipo]||'var(--muted)'};flex-shrink:0;"></span>
           <span style="flex:1;">${e.label}</span>
-          <span style="font-size:9px;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;font-weight:700;">${e.periodo}T</span>
+          <span style="font-size:11px;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;font-weight:700;">${e.periodo}T</span>
         </div>`;}).join('')}
     </div>`;
   }
@@ -6391,7 +6391,7 @@ async function loadWorkspaces() {
                border:none;cursor:pointer;color:var(--text);display:flex;align-items:center;gap:6px;">
         <span style="width:6px;height:6px;border-radius:50%;background:${_activeWorkspaceId===w.teamId?'var(--primary)':'var(--muted)'};flex-shrink:0;"></span>
         <span style="flex:1;">${_esc(w.teamName)}</span>
-        <span style="font-size:10px;color:var(--muted);">${_esc(w.role)}</span>
+        <span style="font-size:11px;color:var(--muted);">${_esc(w.role)}</span>
       </button>`).join('');
     document.getElementById('workspace-switcher').style.display = 'block';
   } catch(e) { /* API not available or user has no memberships */ }
@@ -6847,7 +6847,7 @@ async function renderTpExercises() {
     list.map(x => `
       <div class="stat-card" style="padding:12px;">
         <div style="display:flex;justify-content:space-between;gap:6px;align-items:start;">
-          <div style="font-weight:700;font-size:14px;">${_esc(x.name || 'Exercício')}${(x._pending || _tpIsLocal(x.id)) ? ' <span style="font-size:10px;color:var(--warning);font-weight:600;">📥 no aparelho</span>' : ''}</div>
+          <div style="font-weight:700;font-size:14px;">${_esc(x.name || 'Exercício')}${(x._pending || _tpIsLocal(x.id)) ? ' <span style="font-size:11px;color:var(--warning);font-weight:600;">📥 no aparelho</span>' : ''}</div>
           <button class="btn btn-ghost btn-sm" style="color:#ef4444;padding:2px 6px;" onclick="tpDeleteExercise('${_esc(x.id)}')">✕</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">${_esc(TP_EX_LABEL[x.category] || x.category || '—')}${x.estimatedMinutes ? ' · ' + x.estimatedMinutes + ' min' : ''}${x.difficulty ? ' · dif. ' + x.difficulty : ''}</div>
@@ -6994,14 +6994,14 @@ function tpRenderCalendar() {
     const key = `${year}-${pad(month + 1)}-${pad(day)}`;
     const list = byDay[key] || [];
     const chips = list.slice(0, 3).map(ev =>
-      `<div onclick="event.stopPropagation();${ev.onclick}" title="${_esc(ev.label)}" style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:10px;line-height:1.3;padding:1px 3px;border-radius:4px;background:var(--bg);margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
+      `<div onclick="event.stopPropagation();${ev.onclick}" title="${_esc(ev.label)}" style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:11px;line-height:1.3;padding:1px 3px;border-radius:4px;background:var(--bg);margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
         <span style="flex:none;">${ev.kind === 'match' ? '⚽' : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${ev.color};"></span>`}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;color:${ev.kind === 'match' ? '#00D4FF' : 'inherit'};">${_esc(ev.label)}</span>
       </div>`).join('');
     cells += `<div style="min-height:56px;border:1px solid var(--border,#2a2a3a);border-radius:8px;padding:4px;">
       <div style="font-size:12px;font-weight:600;">${day}</div>
       ${chips}
-      ${list.length > 3 ? `<div style="font-size:10px;color:var(--muted);margin-top:2px;">+${list.length - 3}</div>` : ''}
+      ${list.length > 3 ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">+${list.length - 3}</div>` : ''}
     </div>`;
   }
   grid.style.display = 'grid';
@@ -7565,8 +7565,8 @@ async function renderPerfilTreinos(gkId) {
   ];
   kpis.innerHTML = cards.map(([k, v]) => `
     <div style="text-align:center;padding:10px;background:var(--bg);border-radius:8px;">
-      <div style="font-size:18px;font-weight:800;color:var(--primary);">${_esc(String(v))}</div>
-      <div style="font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;">${k}</div>
+      <div style="font-size:18px;font-weight:800;color:var(--primary-text);">${_esc(String(v))}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px;">${k}</div>
     </div>`).join('');
 
   // Risco de lesão por carga (ACWR) — só aparece quando há dados suficientes.
@@ -7577,7 +7577,7 @@ async function renderPerfilTreinos(gkId) {
       acwrEl.style.display = 'block';
       acwrEl.innerHTML =
         '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border:1px solid ' + a.color + '55;border-left:4px solid ' + a.color + ';border-radius:10px;">' +
-          '<div style="text-align:center;min-width:64px;"><div style="font-size:22px;font-weight:900;color:' + a.color + ';line-height:1;">' + a.ratio + '</div><div style="font-size:9px;color:var(--muted);letter-spacing:.5px;">ACWR</div></div>' +
+          '<div style="text-align:center;min-width:64px;"><div style="font-size:22px;font-weight:900;color:' + a.color + ';line-height:1;">' + a.ratio + '</div><div style="font-size:11px;color:var(--muted);letter-spacing:.5px;">ACWR</div></div>' +
           '<div style="flex:1;">' +
             '<div style="font-weight:700;font-size:14px;color:' + a.color + ';">Risco de lesão: ' + a.status + '</div>' +
             '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Carga aguda (7d): ' + a.acute + ' · crônica (média/sem): ' + a.chronic + ' · zona ideal 0,8–1,3</div>' +
@@ -7632,7 +7632,7 @@ async function renderPerfilTreinos(gkId) {
         <div style="height:6px;background:var(--bg);border-radius:4px;margin-top:6px;overflow:hidden;">
           <div style="height:100%;width:${prog}%;background:${done ? 'var(--success)' : 'var(--primary)'};"></div>
         </div>
-        <div style="font-size:10px;color:var(--muted);margin-top:2px;">${prog}%</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px;">${prog}%</div>
       </div>`;
     }).join('') : '<div style="color:var(--muted);font-size:13px;">Nenhuma meta. Clique em “+ Meta”.</div>';
   }
@@ -8187,8 +8187,8 @@ async function renderAdminPanel() {
       '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;"><thead>' + head + '</thead><tbody>' +
       rows.map(r =>
         '<tr style="border-top:1px solid var(--border);">' +
-          '<td style="padding:6px;">' + _esc(r.name || r.email || '—') + '<br><span style="color:var(--muted);font-size:10px;">' + _esc(r.email || '') + '</span></td>' +
-          '<td style="padding:6px;font-family:monospace;font-size:10px;word-break:break-all;">' + _esc(r.clubKey || '—') + '</td>' +
+          '<td style="padding:6px;">' + _esc(r.name || r.email || '—') + '<br><span style="color:var(--muted);font-size:11px;">' + _esc(r.email || '') + '</span></td>' +
+          '<td style="padding:6px;font-family:monospace;font-size:11px;word-break:break-all;">' + _esc(r.clubKey || '—') + '</td>' +
           '<td style="padding:6px;">' + _relDateShort(r.lastSeen) + '</td>' +
           '<td style="padding:6px;text-align:center;">' + (r.goleiras ?? '—') + '</td>' +
           '<td style="padding:6px;text-align:center;">' + (r.partidas ?? '—') + '</td>' +
@@ -8491,7 +8491,7 @@ function topbarSearch(val) {
 
   let html = '';
   if (gks.length) {
-    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Goleiros(as)</div>`;
+    html += `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;">Goleiros(as)</div>`;
     html += gks.slice(0,5).map(g => `
       <div class="sr-item" onclick="clearTopbarSearch();navigate('goleiras');setTimeout(()=>{const i=document.getElementById('search-goleiras');if(i){i.value='${_esc(g.nome.replace(/'/g,"\\'"))}';i.dispatchEvent(new Event('input'));}},200)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -8502,7 +8502,7 @@ function topbarSearch(val) {
       </div>`).join('');
   }
   if (pts.length) {
-    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Partidas</div>`;
+    html += `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Partidas</div>`;
     html += pts.slice(0,5).map(p => {
       const gk = DB.goleiras.find(g => g.id === p.goalkeeperId);
       return `
@@ -8515,7 +8515,7 @@ function topbarSearch(val) {
       </div>`}).join('');
   }
   if (scUniq.length) {
-    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Scouts</div>`;
+    html += `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Scouts</div>`;
     html += scUniq.slice(0,4).map(s => {
       const gk = DB.goleiras.find(g => g.id === s.goalkeeperId);
       const pt = DB.partidas.find(p => p.id === s.partidaId);
@@ -8529,7 +8529,7 @@ function topbarSearch(val) {
       </div>`}).join('');
   }
   if (sess.length) {
-    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Treinos</div>`;
+    html += `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Treinos</div>`;
     html += sess.slice(0,4).map(s => `
       <div class="sr-item" onclick="clearTopbarSearch();navigate('treinos');">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M6 3v18M18 3v18M3 8h4M17 8h4M3 16h4M17 16h4"/></svg>
@@ -8538,7 +8538,7 @@ function topbarSearch(val) {
       </div>`).join('');
   }
   if (exs.length) {
-    html += `<div style="padding:8px 12px 4px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Exercícios</div>`;
+    html += `<div style="padding:8px 12px 4px;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;border-top:1px solid rgba(255,255,255,.05);margin-top:4px;">Exercícios</div>`;
     html += exs.slice(0,4).map(x => `
       <div class="sr-item" onclick="clearTopbarSearch();navigate('treinos');">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
@@ -9254,7 +9254,7 @@ function showInstallGuide() {
         </div>
       </div>
       <div style="margin-top:16px;padding:10px 14px;background:rgba(59,130,246,.08);border-radius:10px;font-size:11px;color:var(--muted);">
-        ⚠️ Abra este link no <strong style="color:var(--primary);">Safari</strong> — Chrome e Firefox no iOS não suportam instalação de PWA.
+        ⚠️ Abra este link no <strong style="color:var(--primary-text);">Safari</strong> — Chrome e Firefox no iOS não suportam instalação de PWA.
       </div>
       ` : `
       <div style="display:flex;flex-direction:column;gap:14px;">
