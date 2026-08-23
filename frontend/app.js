@@ -2655,6 +2655,83 @@ function calcIdade(nasc) {
   const diff = new Date() - new Date(nasc);
   return Math.floor(diff / (1000*60*60*24*365.25));
 }
+// #4 Tendência de rendimento: compara a média das últimas notas com as anteriores.
+function _gkTrend(gkId) {
+  const line = _gkMatchTimeline(gkId, DB.partidas, DB.scouts).map(r => r.nota).filter(n => n != null);
+  if (line.length < 4) return { status: 'insuficiente' };
+  const n = Math.min(3, Math.floor(line.length / 2));
+  const recent = line.slice(-n);
+  const prev = line.slice(-2 * n, -n);
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  const delta = +(avg(recent) - avg(prev)).toFixed(1);
+  let status, color, icon;
+  if (delta >= 0.5) { status = 'Em alta'; color = '#10B981'; icon = '📈'; }
+  else if (delta <= -0.5) { status = 'Em queda'; color = '#EF4444'; icon = '📉'; }
+  else { status = 'Estável'; color = '#94A3B8'; icon = '➡️'; }
+  return { status, color, icon, delta, recent: +avg(recent).toFixed(1), prev: +avg(prev).toFixed(1), n };
+}
+
+// #5 Conquistas: distintivos automáticos a partir dos dados do goleiro.
+function _gkAchievements(gkId) {
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
+  const line = _gkMatchTimeline(gkId, DB.partidas, DB.scouts);
+  const sum = k => scouts.reduce((a, s) => a + (+s[k] || 0), 0);
+  const def = sum('dad') + sum('dae') + sum('dbd') + sum('dbe') + sum('dc') + sum('d1x1') + sum('esq');
+  const gols = sum('gda') + sum('gfa') + sum('gpe') + sum('gfl');
+  const distC = sum('dpc') + sum('dmc'), distT = distC + sum('dpe') + sum('dme');
+  const taxaDef = (def + gols) > 0 ? def / (def + gols) : 0;
+  const taxaDist = distT > 0 ? distC / distT : 0;
+  const cleanSheets = line.filter(r => r.gc === 0).length;
+  const bestNota = line.reduce((m, r) => Math.max(m, r.nota || 0), 0);
+  const igd = (typeof computeIGD === 'function') ? (computeIGD(gkId).score || 0) : 0;
+  const golgk = sum('golgk');
+  const A = [];
+  const add = (cond, icon, title, desc) => { if (cond) A.push({ icon, title, desc, earned: true }); else A.push({ icon, title, desc, earned: false }); };
+  add(line.length >= 1, '🎬', 'Estreia', 'Primeiro jogo analisado');
+  add(line.length >= 10, '📊', 'Veterana', '10 jogos analisados');
+  add(cleanSheets >= 1, '🧤', 'Sem sofrer gol', 'Um jogo sem levar gol');
+  add(cleanSheets >= 5, '🛡️', 'Muralha', '5 jogos sem sofrer gol');
+  add(bestNota >= 9, '⭐', 'Nota de craque', 'Nota 9+ em um jogo');
+  add(taxaDef >= 0.85 && (def + gols) >= 10, '🔥', 'Paredão', 'Taxa de defesa 85%+');
+  add(taxaDist >= 0.8 && distT >= 10, '🎯', 'Boa de bola', 'Distribuição 80%+ de acerto');
+  add(sum('esq') >= 1, '🤸', 'Esquadro', 'Fez um esquadro (defesa de elite)');
+  add(golgk >= 1, '🥅', 'Goleira artilheira', 'Marcou um gol');
+  add(igd >= 75, '👑', 'Elite', 'Índice de desenvolvimento (IGD) 75+');
+  return A;
+}
+
+function renderPerfilExtras(gkId) {
+  const card = document.getElementById('perfil-extras-card');
+  const trendEl = document.getElementById('perfil-trend');
+  const achEl = document.getElementById('perfil-achievements');
+  if (!card || !trendEl || !achEl) return;
+  card.style.display = 'block';
+  // Tendência
+  const t = _gkTrend(gkId);
+  if (t.status === 'insuficiente') {
+    trendEl.innerHTML = '<div style="font-size:12px;color:var(--muted);">Tendência: registre ao menos 4 jogos para calcular.</div>';
+  } else {
+    trendEl.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--bg);border-left:4px solid ' + t.color + ';border-radius:10px;">' +
+        '<div style="font-size:26px;">' + t.icon + '</div>' +
+        '<div><div style="font-weight:700;color:' + t.color + ';">Rendimento ' + t.status + ' (' + (t.delta > 0 ? '+' : '') + t.delta + ')</div>' +
+        '<div style="font-size:11px;color:var(--muted);">Últimos ' + t.n + ' jogos: ' + t.recent + ' · anteriores: ' + t.prev + '</div></div>' +
+      '</div>';
+  }
+  // Conquistas
+  const ach = _gkAchievements(gkId);
+  const earned = ach.filter(a => a.earned).length;
+  achEl.innerHTML =
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">🏅 ' + earned + ' de ' + ach.length + ' conquistas</div>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">' +
+    ach.map(a =>
+      '<div title="' + _esc(a.desc) + '" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;' + (a.earned ? '' : 'opacity:.35;filter:grayscale(1);') + '">' +
+        '<span style="font-size:20px;">' + a.icon + '</span>' +
+        '<div><div style="font-size:12px;font-weight:700;">' + _esc(a.title) + '</div><div style="font-size:10px;color:var(--muted);">' + _esc(a.desc) + '</div></div>' +
+      '</div>').join('') +
+    '</div>';
+}
+
 function renderPerfil() {
   const gkId = document.getElementById('perfil-gk-select')?.value;
   const content = document.getElementById('perfil-content');
@@ -2665,6 +2742,7 @@ function renderPerfil() {
   content.style.display='block'; empty.style.display='none';
   _perfilGkId = gkId;
   renderPerfilTreinos(gkId);
+  renderPerfilExtras(gkId);
   renderPerfilInsights(gkId);
   renderPerfilTimeline(gkId);
   renderPerfilPID(gkId);
