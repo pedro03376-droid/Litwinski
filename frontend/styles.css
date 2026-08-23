@@ -572,8 +572,12 @@
       position: relative;
       width: 100%;
       max-width: 520px;
-      background: linear-gradient(180deg,#0d2218 0%,#0a1a12 100%);
-      border: 2px solid rgba(16,185,129,.25);
+      /* Quadra OFICIAL de futsal (40x20): piso de quadra + áreas de meta (arcos 6m)
+         e marcas de pênalti (6m e 10m) desenhadas em SVG. */
+      background:
+        url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 200' preserveAspectRatio='none'><g fill='none' stroke='white' stroke-opacity='0.30' stroke-width='1.6'><path d='M0,40 A60,60 0 0 1 60,85 L60,115 A60,60 0 0 1 0,160'/><path d='M400,40 A60,60 0 0 0 340,85 L340,115 A60,60 0 0 0 400,160'/></g><g fill='white' fill-opacity='0.55'><circle cx='60' cy='100' r='2.6'/><circle cx='100' cy='100' r='2.6'/><circle cx='340' cy='100' r='2.6'/><circle cx='300' cy='100' r='2.6'/></g></svg>"),
+        linear-gradient(180deg,#123a52 0%,#0d2c40 100%);
+      border: 2px solid rgba(96,165,250,.30);
       border-radius: var(--radius);
       aspect-ratio: 2/1;
       margin: 0 auto;
