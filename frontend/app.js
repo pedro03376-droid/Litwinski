@@ -2732,6 +2732,178 @@ function renderPerfilExtras(gkId) {
     '</div>';
 }
 
+// ═══════════════════════════════════════════════════════════
+// GK RATING — nota única de forma (0–100), estilo "score".
+// Fusão: média de desempenho por jogo (recência ponderada) + taxa de
+// defesa + consistência + forma recente. Guarda histórico p/ projeção.
+// ═══════════════════════════════════════════════════════════
+function _ratingTier(s) {
+  if (s == null)      return { label: '—',              color: '#94A3B8' };
+  if (s >= 90)        return { label: 'Elite',          color: '#F5C542' };
+  if (s >= 80)        return { label: 'Excelente',      color: '#10B981' };
+  if (s >= 70)        return { label: 'Muito bom',      color: '#3B82F6' };
+  if (s >= 55)        return { label: 'Bom',            color: '#60A5FA' };
+  if (s >= 40)        return { label: 'Em evolução',    color: '#F59E0B' };
+  return                     { label: 'Início',         color: '#EF4444' };
+}
+
+// Regressão linear simples: retorna a inclinação por índice.
+function _linRegSlope(ys) {
+  const n = ys.length; if (n < 2) return 0;
+  let sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (let i = 0; i < n; i++) { sx += i; sy += ys[i]; sxy += i * ys[i]; sxx += i * i; }
+  const d = n * sxx - sx * sx; if (!d) return 0;
+  return (n * sxy - sx * sy) / d;
+}
+
+function computeGKRating(gkId) {
+  const line = _gkMatchTimeline(gkId, DB.partidas, DB.scouts);
+  if (!line.length) return { score: null };
+  const notas = line.map(r => r.nota);
+  const n = notas.length;
+
+  // Base: média com recência ponderada (últimos até 8 jogos pesam mais).
+  const window = notas.slice(-8);
+  let wsum = 0, num = 0;
+  window.forEach((v, i) => { const w = i + 1; num += v * w; wsum += w; });
+  const wavg = num / wsum;              // 0–10
+  let score = wavg * 10;               // 0–100
+
+  // Modificador de taxa de defesa (± até 5 pts).
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
+  const sum = k => scouts.reduce((a, s) => a + (+s[k] || 0), 0);
+  const def = sum('dad') + sum('dae') + sum('dbd') + sum('dbe') + sum('dc') + sum('d1x1') + sum('esq');
+  const gols = sum('gda') + sum('gfa') + sum('gpe') + sum('gfl');
+  if (def + gols >= 8) {
+    const taxa = def / (def + gols);   // 0–1
+    score += (taxa - 0.7) * 16;        // 70% de defesa = neutro
+  }
+
+  // Modificador de consistência (± até 4 pts): menor variação = mais confiável.
+  if (n >= 3) {
+    const m = notas.reduce((a, b) => a + b, 0) / n;
+    const sd = Math.sqrt(notas.reduce((a, v) => a + (v - m) ** 2, 0) / n);
+    score += Math.max(-4, Math.min(4, (1.2 - sd) * 3));
+  }
+
+  score = Math.max(0, Math.min(100, Math.round(score)));
+
+  // Tendência (reaproveita _gkTrend em pontos de nota → pontos de rating).
+  const t = _gkTrend(gkId);
+  const trend = (t && t.status !== 'insuficiente')
+    ? { status: t.status, color: t.color, icon: t.icon, delta: Math.round(t.delta * 10) }
+    : null;
+
+  // Projeção 6 semanas: inclinação recente por jogo × ~6 jogos, honesta.
+  let projection = null;
+  if (n >= 4) {
+    const slope = _linRegSlope(notas.slice(-Math.min(8, n))); // por jogo, em nota
+    // horizonte ~6 jogos, com variação limitada a ±15 pts para manter a estimativa honesta
+    const rawDiff = Math.max(-15, Math.min(15, Math.round(slope * 10 * 6)));
+    const proj = Math.max(0, Math.min(100, score + rawDiff));
+    projection = { value: proj, diff: proj - score };
+  }
+
+  // Confiança pela quantidade de jogos.
+  const confidence = n >= 6 ? 'alta' : n >= 3 ? 'média' : 'baixa';
+
+  // Fatores (para o "porquê").
+  const factors = [
+    { label: 'Desempenho médio', pct: Math.round(wavg * 10) },
+    { label: 'Taxa de defesa', pct: (def + gols) ? Math.round(def / (def + gols) * 100) : null },
+  ];
+
+  // Guarda histórico (deduplicado por dia) para evolução futura.
+  try {
+    const all = JSON.parse(localStorage.getItem('gkhub_rating_history') || '{}');
+    const arr = all[gkId] || [];
+    const today = new Date().toISOString().slice(0, 10);
+    if (!arr.length || arr[arr.length - 1].d !== today) arr.push({ d: today, s: score });
+    else arr[arr.length - 1].s = score;
+    all[gkId] = arr.slice(-180);
+    localStorage.setItem('gkhub_rating_history', JSON.stringify(all));
+  } catch (e) {}
+
+  return { score, tier: _ratingTier(score), trend, projection, confidence, factors, games: n, notas };
+}
+
+// Sparkline SVG leve das últimas notas.
+function _sparkline(vals, color) {
+  const v = vals.slice(-12);
+  if (v.length < 2) return '';
+  const w = 120, h = 30, pad = 3;
+  const min = Math.min(...v), max = Math.max(...v), rng = (max - min) || 1;
+  const pts = v.map((y, i) => {
+    const x = pad + (i / (v.length - 1)) * (w - 2 * pad);
+    const yy = h - pad - ((y - min) / rng) * (h - 2 * pad);
+    return x.toFixed(1) + ',' + yy.toFixed(1);
+  }).join(' ');
+  return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" style="overflow:visible;">' +
+    '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' +
+    '</svg>';
+}
+
+function renderGKRating(gkId) {
+  const card = document.getElementById('perfil-rating-card');
+  const el = document.getElementById('perfil-rating');
+  if (!card || !el) return;
+  const r = computeGKRating(gkId);
+  if (r.score == null) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const c = r.tier.color;
+  const circ = 2 * Math.PI * 52;
+  const dash = (r.score / 100) * circ;
+
+  const trendChip = r.trend
+    ? '<span style="display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;color:' + r.trend.color + ';background:' + r.trend.color + '18;border-radius:20px;padding:4px 10px;">' +
+        r.trend.icon + ' ' + r.trend.status + (r.trend.delta ? ' (' + (r.trend.delta > 0 ? '+' : '') + r.trend.delta + ')' : '') + '</span>'
+    : '<span style="font-size:12px;color:var(--muted);">Tendência: registre 4+ jogos</span>';
+
+  const projLine = r.projection
+    ? '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;">' +
+        '<span style="font-size:16px;">🎯</span>' +
+        '<span>Projeção 6 semanas: <b style="color:' + _ratingTier(r.projection.value).color + ';">' + r.projection.value + '</b> ' +
+        '<span style="color:var(--muted);">(' + (r.projection.diff >= 0 ? '+' : '') + r.projection.diff + ' no ritmo atual)</span></span>' +
+      '</div>'
+    : '';
+
+  const factorsHtml = r.factors.filter(f => f.pct != null).map(f =>
+    '<div style="flex:1;min-width:120px;">' +
+      '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;"><span style="color:var(--muted);">' + f.label + '</span><b>' + f.pct + '</b></div>' +
+      '<div style="height:6px;border-radius:4px;background:var(--bg);overflow:hidden;"><div style="height:100%;width:' + Math.min(100, f.pct) + '%;background:' + c + ';border-radius:4px;"></div></div>' +
+    '</div>').join('');
+
+  el.innerHTML =
+    '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">' +
+      // anel com a nota
+      '<div style="position:relative;width:130px;height:130px;flex-shrink:0;">' +
+        '<svg viewBox="0 0 120 120" style="width:130px;height:130px;transform:rotate(-90deg);">' +
+          '<circle cx="60" cy="60" r="52" fill="none" stroke="var(--border)" stroke-width="10"/>' +
+          '<circle cx="60" cy="60" r="52" fill="none" stroke="' + c + '" stroke-width="10" stroke-linecap="round" ' +
+            'stroke-dasharray="' + dash.toFixed(1) + ' ' + circ.toFixed(1) + '"/>' +
+        '</svg>' +
+        '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
+          '<div style="font-size:40px;font-weight:800;line-height:1;color:' + c + ';">' + r.score + '</div>' +
+          '<div style="font-size:10px;color:var(--muted);letter-spacing:.5px;">GK RATING</div>' +
+        '</div>' +
+      '</div>' +
+      // texto ao lado
+      '<div style="flex:1;min-width:200px;">' +
+        '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">' +
+          '<span style="font-size:20px;font-weight:800;color:' + c + ';">' + r.tier.label + '</span>' +
+          trendChip +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">' +
+          _sparkline(r.notas, c) +
+          '<span style="font-size:11px;color:var(--muted);">' + r.games + ' jogos · confiança ' + r.confidence + '</span>' +
+        '</div>' +
+        projLine +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">' + factorsHtml + '</div>' +
+    (r.confidence === 'baixa' ? '<div style="font-size:11px;color:var(--muted);margin-top:10px;">ℹ️ Poucos jogos — a nota fica mais precisa a cada partida registrada.</div>' : '');
+}
+
 // Mapa do gol: distribuição das defesas por zona (força/onde é mais exigida)
 // + gols sofridos por origem. Usa os dados de scout que já existem.
 function renderPerfilGoalMap(gkId) {
@@ -2797,6 +2969,7 @@ function renderPerfil() {
   if (!gk) return;
   content.style.display='block'; empty.style.display='none';
   _perfilGkId = gkId;
+  renderGKRating(gkId);
   renderPerfilTreinos(gkId);
   renderPerfilExtras(gkId);
   renderPerfilGoalMap(gkId);
