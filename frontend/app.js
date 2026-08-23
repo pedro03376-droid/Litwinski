@@ -2732,6 +2732,62 @@ function renderPerfilExtras(gkId) {
     '</div>';
 }
 
+// Mapa do gol: distribuição das defesas por zona (força/onde é mais exigida)
+// + gols sofridos por origem. Usa os dados de scout que já existem.
+function renderPerfilGoalMap(gkId) {
+  const card = document.getElementById('perfil-goalmap-card');
+  const el = document.getElementById('perfil-goalmap');
+  if (!card || !el) return;
+  const gk = DB.goleiras.find(g => g.id === gkId) || {};
+  const mod = gk.modalidade === 'beach' ? 'beach' : 'futsal';
+  const L = (SCOUT_LABELS && SCOUT_LABELS[mod]) ? SCOUT_LABELS[mod] : SCOUT_LABELS.futsal;
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
+  const sum = k => scouts.reduce((a, s) => a + (+s[k] || 0), 0);
+  const zones = { dae: sum('dae'), dc: sum('dc'), dad: sum('dad'), dbe: sum('dbe'), dbd: sum('dbd') };
+  const totalDef = Object.values(zones).reduce((a, b) => a + b, 0) + sum('d1x1') + sum('esq');
+  const gols = { gda: sum('gda'), gfa: sum('gfa'), gpe: sum('gpe'), gfl: sum('gfl') };
+  const totalGol = Object.values(gols).reduce((a, b) => a + b, 0);
+  if (totalDef === 0 && totalGol === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const max = Math.max(1, ...Object.values(zones));
+  const cell = (key) => {
+    const v = zones[key] || 0;
+    const alpha = (0.10 + 0.80 * (v / max)).toFixed(2);
+    const pct = totalDef ? Math.round((v / totalDef) * 100) : 0;
+    return `<div style="background:rgba(16,185,129,${alpha});border:1px solid var(--border);border-radius:8px;padding:10px 6px;text-align:center;">
+      <div style="font-size:20px;font-weight:800;">${v}</div>
+      <div style="font-size:11px;color:var(--text);opacity:.85;">${_esc(L[key] || key)}</div>
+      <div style="font-size:11px;color:var(--muted);">${pct}%</div>
+    </div>`;
+  };
+  const bar = (label, v) => {
+    const p = totalGol ? Math.round((v / totalGol) * 100) : 0;
+    return `<div style="margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span>${_esc(label)}</span><span style="color:var(--muted);">${v} (${p}%)</span></div>
+      <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${p}%;background:var(--error);"></div></div>
+    </div>`;
+  };
+  el.innerHTML =
+    '<div style="max-width:420px;margin:0 auto;">' +
+      // trave superior do gol
+      '<div style="height:8px;background:linear-gradient(var(--border),transparent);border:2px solid var(--border-h);border-bottom:none;border-radius:6px 6px 0 0;"></div>' +
+      '<div style="border:2px solid var(--border-h);border-top:none;padding:8px;background:repeating-linear-gradient(90deg,transparent,transparent 22px,rgba(255,255,255,.03) 22px,rgba(255,255,255,.03) 23px);">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">' +
+          cell('dae') + cell('dc') + cell('dad') +
+          cell('dbe') + '<div style="border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">meio</div>' + cell('dbd') +
+        '</div>' +
+      '</div>' +
+      '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:6px;">Distribuição das defesas por zona (' + totalDef + ' defesas). Verde mais forte = mais defesas ali.</div>' +
+      '<div style="display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap;">' +
+        '<span style="font-size:11px;background:var(--card-2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;">🤾 ' + _esc(L.d1x1 || '1×1') + ': <b>' + sum('d1x1') + '</b></span>' +
+        '<span style="font-size:11px;background:var(--card-2);border:1px solid var(--border);border-radius:20px;padding:4px 10px;">🤸 ' + _esc(L.esq || 'Esquadro') + ': <b>' + sum('esq') + '</b></span>' +
+      '</div>' +
+      (totalGol ? '<div style="margin-top:14px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Gols sofridos por origem (' + totalGol + ')</div>' +
+        bar('Dentro da área', gols.gda) + bar('Fora da área', gols.gfa) + bar('Pênalti', gols.gpe) + bar('Falta', gols.gfl) + '</div>'
+        : '<div style="font-size:11px;color:var(--success);text-align:center;margin-top:12px;">Nenhum gol sofrido registrado 🧤</div>') +
+    '</div>';
+}
+
 function renderPerfil() {
   const gkId = document.getElementById('perfil-gk-select')?.value;
   const content = document.getElementById('perfil-content');
@@ -2743,6 +2799,7 @@ function renderPerfil() {
   _perfilGkId = gkId;
   renderPerfilTreinos(gkId);
   renderPerfilExtras(gkId);
+  renderPerfilGoalMap(gkId);
   renderPerfilInsights(gkId);
   renderPerfilTimeline(gkId);
   renderPerfilPID(gkId);
