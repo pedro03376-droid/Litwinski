@@ -3453,7 +3453,7 @@ function renderHeatmap() {
   const beach = _hmModalidade() === 'beach';
   const bands = beach ? ['Aéreo / voleio', 'Meia altura', 'Rasteiro'] : ['Alto', 'Médio', 'Rasteiro'];
   drawCourt('court-chutes', chutesGrid, '139,92,246', bands);
-  drawCourt('court-defesas', defGrid, '59,130,246', bands);
+  drawGoal('court-defesas', {dae:sum('dae'), dad:sum('dad'), dbe:sum('dbe'), dbd:sum('dbd'), dc:sum('dc')}, '59,130,246');
   drawCourt('court-gols', golGrid, '239,68,68', bands);
   renderDistribChart(scouts);
 
@@ -3556,6 +3556,46 @@ function drawCourt(id, grid, rgb, bands) {
   }
   html += `</div>`;
   court.innerHTML = html;
+}
+
+// Desenha a área de DEFESAS como uma TRAVE (gol), não uma quadra.
+// zones = { dae, dad, dbe, dbd, dc }  (defesas por zona da baliza)
+function drawGoal(id, zones, rgb) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('hm-asgoal');
+  el.classList.remove('hm-beach');
+  const beach = _hmModalidade() === 'beach';
+  const lbl = beach
+    ? { dae:'Aérea esq.', dad:'Aérea dir.', dc:'Central', dbe:'Rasteira esq.', dbd:'Rasteira dir.' }
+    : { dae:'Alta esq.',  dad:'Alta dir.',  dc:'Central', dbe:'Baixa esq.',    dbd:'Baixa dir.' };
+  const total = (zones.dae||0)+(zones.dad||0)+(zones.dbe||0)+(zones.dbd||0)+(zones.dc||0);
+  const max = Math.max(1, zones.dae||0, zones.dad||0, zones.dbe||0, zones.dbd||0, zones.dc||0);
+  const cell = (key) => {
+    const v = zones[key] || 0;
+    const alpha = (0.10 + 0.78 * (v / max)).toFixed(2);
+    const pct = total ? Math.round((v / total) * 100) : 0;
+    const bg = v > 0 ? `rgba(${rgb},${alpha})` : 'transparent';
+    return `<div style="background:${bg};border:1px solid var(--border);border-radius:8px;padding:12px 6px;text-align:center;min-height:64px;display:flex;flex-direction:column;justify-content:center;">
+      <div style="font-size:20px;font-weight:800;">${v}</div>
+      <div style="font-size:11px;color:var(--text);opacity:.85;">${lbl[key]}</div>
+      <div style="font-size:11px;color:var(--muted);">${v>0?pct+'%':''}</div>
+    </div>`;
+  };
+  el.innerHTML =
+    '<div style="max-width:440px;margin:0 auto;">' +
+      // trave superior (crossbar)
+      '<div style="height:9px;background:linear-gradient(var(--border-h),var(--border));border:2px solid var(--border-h);border-bottom:none;border-radius:6px 6px 0 0;"></div>' +
+      // baliza com rede (net) + zonas
+      '<div style="border:2px solid var(--border-h);border-top:none;padding:8px;background:repeating-linear-gradient(90deg,transparent,transparent 22px,rgba(255,255,255,.03) 22px,rgba(255,255,255,.03) 23px),repeating-linear-gradient(0deg,transparent,transparent 22px,rgba(255,255,255,.03) 22px,rgba(255,255,255,.03) 23px);">' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;">' +
+          cell('dae') + cell('dc') + cell('dad') +
+          cell('dbe') +
+          '<div style="border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);">meio</div>' +
+          cell('dbd') +
+        '</div>' +
+      '</div>' +
+    '</div>';
 }
 
 // ═══════════════════════════════════════════════════════════

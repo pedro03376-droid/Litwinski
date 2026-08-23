@@ -622,6 +622,9 @@
     .hm-cell span.lbl { font-size:11px; font-weight:500; opacity:.7; margin-top:2px; }
     .hm-goal { position:absolute; top:25%; bottom:25%; width:5px; background:rgba(255,255,255,.45); border-radius:2px; }
     .hm-goal.left { left:0; } .hm-goal.right { right:0; }
+    /* Aba Defesas: a área vira uma TRAVE (gol), não uma quadra */
+    .heatmap-court.hm-asgoal { background: transparent; border: none; box-shadow: none; aspect-ratio: auto; overflow: visible; }
+    .heatmap-court.hm-asgoal::before, .heatmap-court.hm-asgoal::after { display: none; content: none; }
 
     /* ════════════════════════════════════════════════════════
        PERFORMANCE BARS
