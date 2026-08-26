@@ -1296,7 +1296,7 @@ function verRelatorioPartida(pId) {
   mcBestNotaSec  = _t.bestSec || 0; mcWorstNotaSec = _t.worstSec || 0;
   mcMaxStreak    = _t.maxStreak || 0; mcMaxPosStreak = _t.maxPosStreak || 0; mcMaxNegStreak = _t.maxNegStreak || 0;
   mcMaxSemGolSec = _t.maxSemGolSec || 0;
-  mcNotaHistory  = []; // no live history for past matches
+  mcNotaHistory  = Array.isArray(_t.hist) ? _t.hist.slice() : []; // histórico salvo p/ gráfico
   mcLog          = []; // clear any leftover live session log
   mcSeconds      = _t.totalSec || 0;
   mcPendingPId   = pId; // needed for PDF to find partida data
@@ -4188,6 +4188,7 @@ let mcTimerInterval = null;
 let mcSeconds = 0;
 let mcRunning = false;
 let mcTimerEverRan = false;   // cronômetro já foi iniciado alguma vez nesta partida?
+let mcRelChart = null;        // instância do gráfico de momento da nota (relatório)
 let mcPeriodo = 1;
 let mcPlacar = { nos: 0, adv: 0 };
 let mcGkSegmentos = [];
@@ -5035,7 +5036,8 @@ function mcSalvarEFechar() {
         totalSec: mcSeconds, bestSec: mcBestNotaSec, worstSec: mcWorstNotaSec,
         maxNota: mcMaxNota, minNota: mcMinNota,
         maxStreak: mcMaxStreak, maxPosStreak: mcMaxPosStreak, maxNegStreak: mcMaxNegStreak,
-        maxSemGolSec: mcMaxSemGolSec
+        maxSemGolSec: mcMaxSemGolSec,
+        hist: _downsampleHist(mcNotaHistory, 48)   // histórico da nota (compacto) p/ gráfico ao reabrir
       };
       DB.savePartidas(partidas);
       cloudSet('partidas',partidas[pIdx]);
@@ -5088,6 +5090,81 @@ function mcSetVideoUrl(v) {
     if (i >= 0) { ps[i].videoUrl = mcVideoUrl; DB.savePartidas(ps); try { cloudSet('partidas', ps[i]); } catch (e) {} }
   }
   mcMostrarRelatorioFinal(mcCurrentReportSegs, mcReportPId);
+}
+
+// Reduz o histórico da nota para no máx. N pontos (mantém 1º e último).
+function _downsampleHist(hist, n) {
+  if (!Array.isArray(hist) || hist.length <= n) return (hist || []).map(h => ({ sec: h.sec, nota: +(+h.nota).toFixed(2) }));
+  const out = []; const step = (hist.length - 1) / (n - 1);
+  for (let i = 0; i < n; i++) { const h = hist[Math.round(i * step)]; out.push({ sec: h.sec, nota: +(+h.nota).toFixed(2) }); }
+  return out;
+}
+
+// Trave (gol) com defesas por zona — HTML autocontido para o relatório.
+function _mcGoalHTML(zones, mod) {
+  const beach = mod === 'beach';
+  const lbl = beach
+    ? { dae:'Aérea esq.', dad:'Aérea dir.', dc:'Central', dbe:'Rasteira esq.', dbd:'Rasteira dir.' }
+    : { dae:'Alta esq.',  dad:'Alta dir.',  dc:'Central', dbe:'Baixa esq.',    dbd:'Baixa dir.' };
+  const rgb = '59,130,246';
+  const total = (zones.dae||0)+(zones.dad||0)+(zones.dbe||0)+(zones.dbd||0)+(zones.dc||0);
+  if (total === 0) return '';
+  const max = Math.max(1, zones.dae||0, zones.dad||0, zones.dbe||0, zones.dbd||0, zones.dc||0);
+  const cell = (key) => {
+    const v = zones[key] || 0;
+    const alpha = (0.10 + 0.78 * (v / max)).toFixed(2);
+    const pct = total ? Math.round((v / total) * 100) : 0;
+    const bg = v > 0 ? `rgba(${rgb},${alpha})` : 'transparent';
+    return `<div style="background:${bg};border:1px solid var(--border);border-radius:8px;padding:10px 4px;text-align:center;min-height:56px;display:flex;flex-direction:column;justify-content:center;">
+      <div style="font-size:18px;font-weight:800;">${v}</div>
+      <div style="font-size:10px;color:var(--text);opacity:.85;">${lbl[key]}</div>
+      <div style="font-size:10px;color:var(--muted);">${v>0?pct+'%':''}</div>
+    </div>`;
+  };
+  return `<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">🥅 Defesas por Zona da Baliza</div>
+    <div style="max-width:400px;margin:0 auto;">
+      <div style="height:8px;background:linear-gradient(var(--border-h),var(--border));border:2px solid var(--border-h);border-bottom:none;border-radius:6px 6px 0 0;"></div>
+      <div style="border:2px solid var(--border-h);border-top:none;padding:7px;background:repeating-linear-gradient(90deg,transparent,transparent 20px,rgba(255,255,255,.03) 20px,rgba(255,255,255,.03) 21px),repeating-linear-gradient(0deg,transparent,transparent 20px,rgba(255,255,255,.03) 20px,rgba(255,255,255,.03) 21px);">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
+          ${cell('dae')}${cell('dc')}${cell('dad')}
+          ${cell('dbe')}<div style="border-radius:8px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);">meio</div>${cell('dbd')}
+        </div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Azul mais forte = mais defesas naquela zona do gol (${total} defesas).</div>
+  </div>`;
+}
+
+// Cria o gráfico de linha do "momento da nota" (após o HTML estar no DOM).
+function _mcRenderMomentumChart() {
+  try {
+    if (mcRelChart) { mcRelChart.destroy(); mcRelChart = null; }
+    const cv = document.getElementById('mc-chart-momentum');
+    if (!cv || typeof Chart === 'undefined') return;
+    const hist = (mcNotaHistory || []).filter(h => h && isFinite(h.nota));
+    if (hist.length < 2) return;
+    const labels = hist.map(h => mcFormatTime(h.sec || 0));
+    const data = hist.map(h => +(+h.nota).toFixed(2));
+    const ctx = cv.getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 160);
+    grad.addColorStop(0, 'rgba(59,130,246,.35)');
+    grad.addColorStop(1, 'rgba(59,130,246,0)');
+    mcRelChart = new Chart(ctx, {
+      type: 'line',
+      data: { labels, datasets: [{ label: 'Nota', data, borderColor: '#3B82F6', backgroundColor: grad,
+        fill: true, tension: 0.35, pointRadius: 0, pointHoverRadius: 4, borderWidth: 2 }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false },
+          tooltip: { callbacks: { title: items => 'Tempo ' + (items[0]?.label || ''), label: it => 'Nota ' + it.formattedValue } } },
+        scales: {
+          y: { min: 0, max: 10, ticks: { stepSize: 2, color: 'rgba(148,163,184,.8)', font: { size: 10 } }, grid: { color: 'rgba(148,163,184,.12)' } },
+          x: { ticks: { color: 'rgba(148,163,184,.8)', font: { size: 9 }, maxTicksLimit: 6 }, grid: { display: false } }
+        }
+      }
+    });
+  } catch (e) {}
 }
 
 function mcMostrarRelatorioFinal(segs, pId) {
@@ -5160,6 +5237,8 @@ function mcMostrarRelatorioFinal(segs, pId) {
           ].map(m=>`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:12px;text-align:center;"><div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:6px;">${m.l}</div><div style="font-size:24px;font-weight:800;color:${m.c};">${m.v}</div></div>`).join('')}
         </div>
 
+        ${_mcGoalHTML({dae:sum('dae'),dad:sum('dad'),dbe:sum('dbe'),dbd:sum('dbd'),dc:sum('dc')}, gk?.modalidade==='beach'?'beach':'futsal')}
+
         <div style="background:rgba(255,255,255,.03);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text);">
           ${gk?.nome||'A goleira'} encerrou a partida com classificação <strong>${nivel}</strong> e nota <strong>${nota.toFixed(1)}/10</strong>.
           ${taxaDef!==null?`Taxa de defesa de <strong>${(taxaDef*100).toFixed(0)}%</strong>.`:''}
@@ -5184,6 +5263,15 @@ function mcMostrarRelatorioFinal(segs, pId) {
         </div>
       </div>`;
   });
+
+  // ── Gráfico: Momento da Nota ao longo do jogo ──
+  if ((mcNotaHistory || []).filter(h => h && isFinite(h.nota)).length >= 2) {
+    html += `<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📈 Momento da Nota</div>
+      <div style="height:170px;"><canvas id="mc-chart-momentum"></canvas></div>
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Como a nota da goleira evoluiu durante a partida.</div>
+    </div>`;
+  }
 
   // ── Resumo da Timeline de Desempenho ──
   const fases=mcDetectFases();
@@ -5265,6 +5353,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
   if(bodyEl) bodyEl.innerHTML=html;
   const _aiw = document.getElementById('mc-ai-wrap'); if (_aiw) _aiw.style.display = 'none';
   openModal('modal-mc-relatorio');
+  try { _mcRenderMomentumChart(); } catch (e) {}
 }
 
 // ── PDF canvas helpers ───────────────────────────────────────
