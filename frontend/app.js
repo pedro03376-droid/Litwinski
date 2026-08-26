@@ -4189,6 +4189,8 @@ let mcSeconds = 0;
 let mcRunning = false;
 let mcTimerEverRan = false;   // cronômetro já foi iniciado alguma vez nesta partida?
 let mcRelChart = null;        // instância do gráfico de momento da nota (relatório)
+let mcRelChartAprov = null;   // gráfico de aproveitamento (defesas x gols)
+let mcRelChartDist = null;    // gráfico de distribuição (pé/mão certo x errado)
 let mcPeriodo = 1;
 let mcPlacar = { nos: 0, adv: 0 };
 let mcGkSegmentos = [];
@@ -5180,6 +5182,13 @@ function mcMostrarRelatorioFinal(segs, pId) {
   if(subtitleEl) subtitleEl.textContent=subtitleParts.join(' · ');
 
   let html='<div id="mc-rel-content">';
+  // Abas do relatório: Resumo · Gráficos · Timeline
+  html += `<div class="mc-rel-tabs" style="display:flex;gap:6px;margin-bottom:16px;position:sticky;top:0;z-index:2;background:var(--card);padding:2px 0;">
+    <button class="btn btn-sm btn-primary mc-rel-tab" data-tab="resumo" onclick="mcRelTab('resumo')">📊 Resumo</button>
+    <button class="btn btn-sm btn-secondary mc-rel-tab" data-tab="graficos" onclick="mcRelTab('graficos')">📈 Gráficos</button>
+    <button class="btn btn-sm btn-secondary mc-rel-tab" data-tab="timeline" onclick="mcRelTab('timeline')">📅 Timeline</button>
+  </div>`;
+  html += '<div class="mc-rel-pane" data-pane="resumo">';
 
   gkIds.forEach(gkId=>{
     const gk=DB.goleiras.find(g=>g.id===gkId);
@@ -5264,15 +5273,6 @@ function mcMostrarRelatorioFinal(segs, pId) {
       </div>`;
   });
 
-  // ── Gráfico: Momento da Nota ao longo do jogo ──
-  if ((mcNotaHistory || []).filter(h => h && isFinite(h.nota)).length >= 2) {
-    html += `<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📈 Momento da Nota</div>
-      <div style="height:170px;"><canvas id="mc-chart-momentum"></canvas></div>
-      <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Como a nota da goleira evoluiu durante a partida.</div>
-    </div>`;
-  }
-
   // ── Resumo da Timeline de Desempenho ──
   const fases=mcDetectFases();
   const recentPesos=mcLog.slice(0,5).map(e=>MC_NOTA_PESOS[e.key]||0).reduce((a,b)=>a+b,0);
@@ -5322,6 +5322,42 @@ function mcMostrarRelatorioFinal(segs, pId) {
     }).join('')}`:''}
   </div>`;
 
+  // Fecha a aba RESUMO e abre a aba GRÁFICOS
+  html += '</div><div class="mc-rel-pane" data-pane="graficos" style="display:none;">';
+
+  // Totais da partida (todas as goleiras) para os gráficos agregados
+  const tsum = f => segs.reduce((a,s)=>a+((s.data&&s.data[f])||0),0);
+  const tDef = tsum('dad')+tsum('dae')+tsum('dbd')+tsum('dbe')+tsum('dc')+tsum('d1x1')+tsum('esq');
+  const tGol = tsum('gda')+tsum('gfa')+tsum('gpe')+tsum('gfl');
+  const tDist = tsum('dpc')+tsum('dpe')+tsum('dmc')+tsum('dme');
+  const hasHist = (mcNotaHistory || []).filter(h => h && isFinite(h.nota)).length >= 2;
+
+  if (hasHist) {
+    html += `<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📈 Momento da Nota</div>
+      <div style="height:170px;"><canvas id="mc-chart-momentum"></canvas></div>
+      <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Como a nota da goleira evoluiu durante a partida.</div>
+    </div>`;
+  }
+  if (tDef + tGol > 0) {
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">🎯 Aproveitamento</div>
+        <div style="height:150px;"><canvas id="mc-chart-aprov"></canvas></div>
+      </div>
+      <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">🖐️ Distribuição</div>
+        ${tDist>0?'<div style="height:150px;"><canvas id="mc-chart-dist"></canvas></div>':'<div style="font-size:12px;color:var(--muted);padding:24px 0;text-align:center;">Sem dados de distribuição.</div>'}
+      </div>
+    </div>`;
+  }
+  if (!hasHist && tDef + tGol === 0) {
+    html += '<div style="color:var(--muted);font-size:13px;padding:16px 0;text-align:center;">Sem dados suficientes para gráficos nesta partida.</div>';
+  }
+
+  // Fecha a aba GRÁFICOS e abre a aba TIMELINE
+  html += '</div><div class="mc-rel-pane" data-pane="timeline" style="display:none;">';
+
   // 🎥 Vídeo do jogo — cole o link e os lances viram clicáveis (abrem no tempo do lance)
   html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
     <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">🎥 Vídeo do jogo</div>
@@ -5348,12 +5384,64 @@ function mcMostrarRelatorioFinal(segs, pId) {
     </div>`;
   }
 
-  html+='</div>';
+  html+='</div>';   // fecha a aba TIMELINE
+  html+='</div>';   // fecha #mc-rel-content
   const bodyEl=document.getElementById('mc-rel-body');
   if(bodyEl) bodyEl.innerHTML=html;
   const _aiw = document.getElementById('mc-ai-wrap'); if (_aiw) _aiw.style.display = 'none';
   openModal('modal-mc-relatorio');
-  try { _mcRenderMomentumChart(); } catch (e) {}
+  mcRelActiveTab = 'resumo';   // sempre abre no Resumo
+}
+
+let mcRelActiveTab = 'resumo';
+function mcRelTab(name) {
+  mcRelActiveTab = name;
+  document.querySelectorAll('#mc-rel-content .mc-rel-pane').forEach(p => { p.style.display = (p.dataset.pane === name) ? '' : 'none'; });
+  document.querySelectorAll('#mc-rel-content .mc-rel-tab').forEach(t => {
+    const on = t.dataset.tab === name;
+    t.classList.toggle('btn-primary', on);
+    t.classList.toggle('btn-secondary', !on);
+  });
+  if (name === 'graficos') _mcRenderReportCharts();
+}
+
+// Renderiza todos os gráficos do relatório (momento da nota, aproveitamento,
+// distribuição). Só desenha se o Chart.js e os dados existirem.
+function _mcRenderReportCharts() {
+  try {
+    [mcRelChart, mcRelChartAprov, mcRelChartDist].forEach(c => { if (c) { try { c.destroy(); } catch (e) {} } });
+    mcRelChart = mcRelChartAprov = mcRelChartDist = null;
+    if (typeof Chart === 'undefined') return;
+    _mcRenderMomentumChart();
+    const segs = mcCurrentReportSegs || [];
+    const sum = f => segs.reduce((a, s) => a + ((s.data && s.data[f]) || 0), 0);
+    const def = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
+    const gol = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+    const cvA = document.getElementById('mc-chart-aprov');
+    if (cvA && (def + gol) > 0) {
+      mcRelChartAprov = new Chart(cvA.getContext('2d'), {
+        type: 'doughnut',
+        data: { labels: ['Defesas', 'Gols sofridos'], datasets: [{ data: [def, gol], backgroundColor: ['#3B82F6', '#EF4444'], borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, cutout: '62%',
+          plugins: { legend: { position: 'bottom', labels: { color: 'rgba(148,163,184,.9)', font: { size: 11 }, padding: 10 } },
+            tooltip: { callbacks: { label: it => it.label + ': ' + it.formattedValue + (def+gol ? ' (' + Math.round(it.parsed/(def+gol)*100) + '%)' : '') } } } }
+      });
+    }
+    const dpc = sum('dpc'), dpe = sum('dpe'), dmc = sum('dmc'), dme = sum('dme');
+    const cvD = document.getElementById('mc-chart-dist');
+    if (cvD && (dpc + dpe + dmc + dme) > 0) {
+      mcRelChartDist = new Chart(cvD.getContext('2d'), {
+        type: 'bar',
+        data: { labels: ['Pé', 'Mão'], datasets: [
+          { label: 'Certas', data: [dpc, dmc], backgroundColor: '#34D399', borderRadius: 6 },
+          { label: 'Erradas', data: [dpe, dme], backgroundColor: '#EF4444', borderRadius: 6 } ] },
+        options: { responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom', labels: { color: 'rgba(148,163,184,.9)', font: { size: 11 } } } },
+          scales: { x: { stacked: true, grid: { display: false }, ticks: { color: 'rgba(148,163,184,.8)' } },
+            y: { stacked: true, beginAtZero: true, grid: { color: 'rgba(148,163,184,.12)' }, ticks: { color: 'rgba(148,163,184,.8)', precision: 0 } } } }
+      });
+    }
+  } catch (e) {}
 }
 
 // ── PDF canvas helpers ───────────────────────────────────────
