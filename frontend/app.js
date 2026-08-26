@@ -49,6 +49,8 @@ const DB = {
   get reports()       { return this.load('reports'); },
   get lesoes()        { return this.load('lesoes'); },
   get pid()           { return this.load('pid'); },
+  get seasons()       { return this.load('seasons'); },
+  saveSeasons(d)      { this.save('seasons', d); },
   get aianalyses()    { return this.load('aianalyses'); },
   saveAianalyses(d)   { this.save('aianalyses', d); },
   saveNotifications(d){ this.save('notifications', d); },
@@ -289,6 +291,129 @@ function saveClube() {
   toast('Configurações salvas!', 'success');
 }
 function resetIgdWeights() { localStorage.removeItem('gkhub_igd_weights'); renderClube(); toast('Pesos do IGD restaurados.', 'info'); }
+
+// ═══════════════════════════════════════════════════════════
+// TEMPORADAS — iniciar / encerrar / trocar. Cada temporada é um
+// período nomeado (início/fim). Fica em localStorage e sincroniza.
+// ═══════════════════════════════════════════════════════════
+function _today() { return new Date().toISOString().slice(0, 10); }
+function _seasons() { return DB.seasons.slice().sort((a, b) => String(b.inicio || '').localeCompare(String(a.inicio || ''))); }
+function _activeSeason() { return DB.seasons.find(s => s.active) || null; }
+
+function updateTopbarSeason() {
+  const el = document.getElementById('topbar-season');
+  if (!el) return;
+  const s = _activeSeason();
+  el.textContent = s ? s.nome : 'Sem temporada';
+  el.style.cursor = 'pointer';
+  el.title = 'Gerir temporadas';
+  el.onclick = renderSeasonManager;
+}
+
+function iniciarTemporada() {
+  const anoAtual = new Date().getFullYear();
+  const sugestao = 'Temporada ' + anoAtual;
+  const nome = (prompt('Nome da nova temporada:', sugestao) || '').trim();
+  if (!nome) return;
+  const list = DB.seasons;
+  const hoje = _today();
+  // Encerra a temporada ativa anterior (se houver e ainda estiver aberta).
+  list.forEach(s => { if (s.active) { s.active = false; if (!s.fim) s.fim = hoje; } });
+  const nova = { id: uid(), nome, inicio: hoje, fim: null, active: true };
+  list.push(nova);
+  DB.saveSeasons(list);
+  try { cloudSet('seasons', nova); } catch (e) {}
+  try { logAudit('Temporada', 'Iniciou a temporada "' + nome + '"'); } catch (e) {}
+  updateTopbarSeason();
+  renderSeasonManager();
+  toast('Temporada "' + nome + '" iniciada! 🏁', 'success');
+}
+
+function encerrarTemporada(id) {
+  const list = DB.seasons;
+  const s = list.find(x => x.id === id) || list.find(x => x.active);
+  if (!s) { toast('Nenhuma temporada ativa para encerrar.', 'info'); return; }
+  if (!confirm('Encerrar a temporada "' + s.nome + '"? Os dados continuam salvos; ela fica marcada como encerrada.')) return;
+  s.active = false; s.fim = s.fim || _today();
+  DB.saveSeasons(list);
+  try { cloudSet('seasons', s); } catch (e) {}
+  try { logAudit('Temporada', 'Encerrou a temporada "' + s.nome + '"'); } catch (e) {}
+  updateTopbarSeason();
+  renderSeasonManager();
+  toast('Temporada "' + s.nome + '" encerrada.', 'info');
+}
+
+function ativarTemporada(id) {
+  const list = DB.seasons;
+  list.forEach(s => { s.active = (s.id === id); if (s.id === id && !s.inicio) s.inicio = _today(); });
+  DB.saveSeasons(list);
+  try { const a = list.find(s => s.id === id); if (a) cloudSet('seasons', a); } catch (e) {}
+  updateTopbarSeason();
+  renderSeasonManager();
+  toast('Temporada ativada.', 'success');
+}
+
+function renomearTemporada(id) {
+  const list = DB.seasons;
+  const s = list.find(x => x.id === id);
+  if (!s) return;
+  const nome = (prompt('Novo nome da temporada:', s.nome) || '').trim();
+  if (!nome) return;
+  s.nome = nome;
+  DB.saveSeasons(list);
+  try { cloudSet('seasons', s); } catch (e) {}
+  updateTopbarSeason();
+  renderSeasonManager();
+}
+
+function excluirTemporada(id) {
+  const s = DB.seasons.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm('Excluir a temporada "' + s.nome + '"? Isso NÃO apaga partidas nem scouts — só remove o rótulo da temporada.')) return;
+  DB.saveSeasons(DB.seasons.filter(x => x.id !== id));
+  updateTopbarSeason();
+  renderSeasonManager();
+  toast('Temporada excluída (dados preservados).', 'info');
+}
+
+function renderSeasonManager() {
+  let modal = document.getElementById('season-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'season-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
+  const list = _seasons();
+  const fmt = d => d ? formatDate(d) : '—';
+  // Conta partidas por temporada (por seasonId, com fallback por intervalo de datas).
+  const parts = DB.partidas;
+  const countFor = (s) => parts.filter(p => p.seasonId === s.id ||
+    (!p.seasonId && p.data && p.data >= (s.inicio || '') && (!s.fim || p.data <= s.fim))).length;
+  const rows = list.length ? list.map(s => {
+    const badge = s.active
+      ? '<span style="font-size:10px;font-weight:800;color:#0d2c40;background:#34D399;border-radius:20px;padding:2px 8px;">ATIVA</span>'
+      : '<span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:2px 8px;">encerrada</span>';
+    return `<div style="border:1px solid ${s.active ? 'rgba(52,211,153,.4)' : 'var(--border)'};border-radius:12px;padding:12px 14px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:800;font-size:15px;">${_esc(s.nome)}</span>${badge}
+        <span style="font-size:11px;color:var(--muted);margin-left:auto;">${countFor(s)} partida(s)</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">Início: ${fmt(s.inicio)} · Fim: ${fmt(s.fim)}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;">
+        ${!s.active ? `<button class="btn btn-sm btn-primary" onclick="ativarTemporada('${s.id}')">Ativar</button>` : `<button class="btn btn-sm btn-secondary" onclick="encerrarTemporada('${s.id}')">Encerrar</button>`}
+        <button class="btn btn-sm btn-ghost" onclick="renomearTemporada('${s.id}')">Renomear</button>
+        <button class="btn btn-sm btn-ghost" onclick="excluirTemporada('${s.id}')" style="color:var(--error);">Excluir</button>
+      </div>
+    </div>`;
+  }).join('') : '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhuma temporada criada ainda. Comece iniciando a sua primeira temporada — as próximas partidas ficarão vinculadas a ela.</div>';
+
+  modal.innerHTML = `
+    <div class="modal" style="max-width:520px;">
+      <div class="modal-header"><span class="modal-title">🗓️ Temporadas</span><button class="modal-close" onclick="closeModal('season-modal')">&times;</button></div>
+      <div class="modal-body">
+        <button class="btn btn-primary" style="width:100%;margin-bottom:14px;" onclick="iniciarTemporada()">🏁 Iniciar nova temporada</button>
+        ${rows}
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">Ao iniciar uma nova temporada, a anterior é encerrada automaticamente. As novas partidas ficam vinculadas à temporada ativa. Nada é apagado ao encerrar ou excluir.</div>
+      </div>
+    </div>`;
+  openModal('season-modal');
+}
 
 // Metodologia — transparência das notas e referências por naipe (editável)
 let _metodoMod = 'futsal';
@@ -1016,6 +1141,8 @@ function salvarPartida() {
     const idx = partidas.findIndex(p => p.id === editingId.partida);
     if (idx !== -1) partidas[idx] = { ...partidas[idx], ...obj };
   } else {
+    const _as = (typeof _activeSeason === 'function') ? _activeSeason() : null;
+    if (_as) obj.seasonId = _as.id;
     partidas.push(obj);
   }
   DB.savePartidas(partidas);
@@ -1162,13 +1289,16 @@ function verRelatorioPartida(pId) {
   // Set MC globals from historical data
   const notaVals = scouts.map(s => parseFloat(s.nota) || calcPerformanceAuto(s) || 7.0);
   mcNotaAtual    = notaVals[notaVals.length - 1] ?? 7.0;
-  mcMaxNota      = Math.max(...notaVals);
-  mcMinNota      = Math.min(...notaVals);
-  mcBestNotaSec  = 0; mcWorstNotaSec = 0;
-  mcMaxStreak    = 0; mcMaxPosStreak = 0; mcMaxNegStreak = 0;
+  const _t = partida.mcTiming || {};
+  mcMaxNota      = (_t.maxNota != null) ? _t.maxNota : Math.max(...notaVals);
+  mcMinNota      = (_t.minNota != null) ? _t.minNota : Math.min(...notaVals);
+  // Minutagem/estatísticas salvas na partida (quando gravada por este app).
+  mcBestNotaSec  = _t.bestSec || 0; mcWorstNotaSec = _t.worstSec || 0;
+  mcMaxStreak    = _t.maxStreak || 0; mcMaxPosStreak = _t.maxPosStreak || 0; mcMaxNegStreak = _t.maxNegStreak || 0;
+  mcMaxSemGolSec = _t.maxSemGolSec || 0;
   mcNotaHistory  = []; // no live history for past matches
   mcLog          = []; // clear any leftover live session log
-  mcSeconds      = 0;
+  mcSeconds      = _t.totalSec || 0;
   mcPendingPId   = pId; // needed for PDF to find partida data
 
   // Hide "Salvar e Fechar" (only relevant for live MC session)
@@ -4057,6 +4187,7 @@ let mcLog = [];
 let mcTimerInterval = null;
 let mcSeconds = 0;
 let mcRunning = false;
+let mcTimerEverRan = false;   // cronômetro já foi iniciado alguma vez nesta partida?
 let mcPeriodo = 1;
 let mcPlacar = { nos: 0, adv: 0 };
 let mcGkSegmentos = [];
@@ -4117,7 +4248,7 @@ const MC_TIPO_ICONS = {
 
 function mcReset() {
   MC_FIELDS.forEach(f => mcData[f] = 0);
-  mcLog = []; mcSeconds = 0; mcRunning = false;
+  mcLog = []; mcSeconds = 0; mcRunning = false; mcTimerEverRan = false;
   mcPeriodo = 1; mcPlacar = { nos:0, adv:0 };
   mcGkSegmentos = [];
   mcNotaAtual = 7.0; mcNotaHistory = [];
@@ -4190,6 +4321,7 @@ function mcToggleTimer() {
     if (btn2t && mcPeriodo < _mcPeriods().n) { btn2t.textContent = '⏩ ' + _MC_ORD[mcPeriodo + 1] + ' ' + _mcPeriods().lbl; btn2t.style.display = 'inline-flex'; }
   } else {
     mcRunning=true;
+    mcTimerEverRan=true;
     if (btn) btn.innerHTML='⏸ Pausar';
     if (dot) { dot.style.background='var(--error)'; dot.style.animation='none'; }
     if (btn2t) btn2t.style.display='none';
@@ -4207,6 +4339,9 @@ function mcToggleTimer() {
 }
 
 function mcEvento(key, label, tipo) {
+  // Inicia o cronômetro automaticamente no 1º evento (captura a minutagem
+  // mesmo se o técnico esquecer de apertar "play").
+  if (!mcTimerEverRan) mcToggleTimer();
   mcData[key] = (mcData[key]||0)+1;
   const timeStr = mcFormatTime(mcSeconds);
   mcLog.unshift({ key, label, tipo, time:timeStr, periodo:mcPeriodo, sec:mcSeconds });
@@ -4225,6 +4360,7 @@ function mcEvento(key, label, tipo) {
 
 // Gol marcado PELA goleira: conta como gol do time (placar) + estatística + nota.
 function mcGolGoleira() {
+  if (!mcTimerEverRan) mcToggleTimer();
   mcData.golgk = (mcData.golgk || 0) + 1;
   mcPlacar.nos = (mcPlacar.nos || 0) + 1;
   const elNos = document.getElementById('mc-score-nos');
@@ -4893,6 +5029,14 @@ function mcSalvarEFechar() {
     if(pIdx!==-1){
       partidas[pIdx].gf=mcPlacar.nos;
       partidas[pIdx].gc=mcPlacar.adv;
+      // Salva a minutagem/estatísticas do jogo para o relatório continuar
+      // completo ao ser reaberto (o tempo por evento não fica nos scouts).
+      partidas[pIdx].mcTiming = {
+        totalSec: mcSeconds, bestSec: mcBestNotaSec, worstSec: mcWorstNotaSec,
+        maxNota: mcMaxNota, minNota: mcMinNota,
+        maxStreak: mcMaxStreak, maxPosStreak: mcMaxPosStreak, maxNegStreak: mcMaxNegStreak,
+        maxSemGolSec: mcMaxSemGolSec
+      };
       DB.savePartidas(partidas);
       cloudSet('partidas',partidas[pIdx]);
     }
@@ -5051,12 +5195,12 @@ function mcMostrarRelatorioFinal(segs, pId) {
       <div style="background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:10px;">
         <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">🔥 Melhor Momento</div>
         <div style="font-size:18px;font-weight:800;color:#34D399;">${mcMaxNota.toFixed(1)}</div>
-        <div style="font-size:11px;color:var(--muted);">⏱ ${mcFormatTime(mcBestNotaSec)}</div>
+        ${mcBestNotaSec>0?`<div style="font-size:11px;color:var(--muted);">⏱ ${mcFormatTime(mcBestNotaSec)}</div>`:''}
       </div>
       <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:10px;">
         <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">📉 Pior Momento</div>
         <div style="font-size:18px;font-weight:800;color:#EF4444;">${mcMinNota.toFixed(1)}</div>
-        <div style="font-size:11px;color:var(--muted);">⏱ ${mcFormatTime(mcWorstNotaSec)}</div>
+        ${mcWorstNotaSec>0?`<div style="font-size:11px;color:var(--muted);">⏱ ${mcFormatTime(mcWorstNotaSec)}</div>`:''}
       </div>
       <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;">
         <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">✅ Seq. Positiva Máx.</div>
@@ -8615,7 +8759,7 @@ function cloudDelete(col, id) {
    com mesclagem ao abrir. Último a escrever vence por coleção.
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
-const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals'];
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons'];
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
@@ -9380,6 +9524,7 @@ applyPreferences();
 try { applyClubBranding(); } catch (e) {}
 updateGoleiraSelects();
 refreshDashboard();
+try { updateTopbarSeason(); } catch (e) {}
 updateNotifBadge();
 try { netInit(); } catch (e) {}
 try { _updateScrollUI(); setTimeout(_updateScrollUI, 700); } catch (e) {}
@@ -9389,7 +9534,7 @@ try { cloudPullCore(false); } catch (e) {}
 try { setTimeout(() => { _autoBackup(); }, 6000); } catch (e) {}   // backup automático diário (nuvem)
 try { setTimeout(() => { _registerUsage(); }, 4000); } catch (e) {}   // registro central de uso (admin)
 try { setTimeout(_maybeShowWelcome, 2500); } catch (e) {}
-try { cloudPullNew(true).then(c => { if (c) { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a === 'dashboard') refreshDashboard(); updateNotifBadge(); } }); } catch (e) {}
+try { cloudPullNew(true).then(c => { if (c) { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a === 'dashboard') refreshDashboard(); updateNotifBadge(); try { updateTopbarSeason(); } catch (e) {} } }); } catch (e) {}
 
 // ═══════════════════════════════════════════════════════════
 // PWA — SERVICE WORKER + OFFLINE + AUTO-SYNC
