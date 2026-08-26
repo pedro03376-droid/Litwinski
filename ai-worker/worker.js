@@ -14,6 +14,23 @@ function buildPrompt(ctx){
 }
 function coerce(obj){const arr=v=>Array.isArray(v)?v.filter(x=>typeof x==='string'&&x.trim()):[];let s=Number(obj&&obj.overallScore);if(!isFinite(s))s=null;return{overallScore:s,strengths:arr(obj&&obj.strengths),attentionPoints:arr(obj&&obj.attentionPoints),evolutionNotes:arr(obj&&obj.evolutionNotes),trainingSuggestions:arr(obj&&obj.trainingSuggestions)};}
 
+// Busca a lista viva de modelos da conta (só os que fazem generateContent),
+// já ordenada com os "flash" na frente (mais rápidos/baratos).
+async function listLiveModels(key){
+  try{
+    const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?key='+key);
+    const d=await r.json();
+    if(d&&d.error) return [];
+    const names=(d.models||[])
+      .filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent'))
+      .map(m=>m.name.replace('models/',''))
+      // evita modelos pesados/experimentais de raciocínio por padrão
+      .filter(n=>!/embedding|aqa|vision|thinking/i.test(n));
+    const score=n=>{ let s=0; if(/flash/i.test(n))s-=4; if(/latest/i.test(n))s-=2; if(/2\.5|2\.0/i.test(n))s-=1; if(/pro/i.test(n))s+=1; return s; };
+    return names.sort((a,b)=>score(a)-score(b));
+  }catch(e){ return []; }
+}
+
 async function callModel(model, key, prompt){
   const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+key,{
     method:'POST',headers:{'Content-Type':'application/json'},
@@ -52,11 +69,22 @@ export default {
     if(env.GEMINI_MODEL) candidates.push(env.GEMINI_MODEL);
     ['gemini-flash-latest','gemini-2.0-flash','gemini-2.0-flash-001','gemini-1.5-flash','gemini-1.5-flash-latest','gemini-pro-latest'].forEach(m=>{if(!candidates.includes(m))candidates.push(m);});
     const prompt = buildPrompt(context);
-    let last=null;
-    for (const model of candidates){
-      try{ const res=await callModel(model,key,prompt); if(res.ok) return json({analysis:res.analysis,model:res.model}); last=res; }
-      catch(e){ last={ok:false,detail:String(e).slice(0,150),model}; }
-    }
-    return json({analysis:null,error:'all_models_failed',detail:last});
+    let last=null; const tried=[];
+    const tryList = async (models) => {
+      for (const model of models){
+        if (tried.includes(model)) continue; tried.push(model);
+        try{ const res=await callModel(model,key,prompt); if(res.ok) return {analysis:res.analysis,model:res.model}; last=res; }
+        catch(e){ last={ok:false,detail:String(e).slice(0,150),model}; }
+      }
+      return null;
+    };
+    // 1) caminho rápido: modelos fixos conhecidos
+    let hit = await tryList(candidates);
+    if (hit) return json(hit);
+    // 2) auto-cura: descobre os modelos REAIS da conta e tenta de novo
+    const live = await listLiveModels(key);
+    hit = await tryList(live);
+    if (hit) return json(hit);
+    return json({analysis:null,error:'all_models_failed',detail:last,tried});
   }
 };
