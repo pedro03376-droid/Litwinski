@@ -1851,16 +1851,21 @@ async function gerarAnaliseIA() {
   if (!ctx.partidasAnalisadas) { body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Registre ao menos um scout deste(a) goleiro(a) para gerar a análise.</div>'; return; }
   body.innerHTML = '<div style="color:var(--muted);font-size:13px;">🤖 Analisando com IA…</div>';
   if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
-  let res = null;
-  try { res = await api.post('/ai-analysis/insights', { context: ctx }); } catch (e) { res = null; }
+  let res = null, errMsg = '';
+  try { res = await api.post('/ai-analysis/insights', { context: ctx }); } catch (e) { res = null; errMsg = String(e && e.message || e); }
   if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
   const data = res && (res.data !== undefined ? res.data : res);
   const a = data && data.analysis;
   if (!a) {
+    // Motivo técnico (para diagnóstico) — vem do Worker ou da falha de rede.
+    let diag = errMsg;
+    if (!diag && data && data.error) diag = data.error + (data.detail ? ' — ' + (typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail)) : '');
+    const diagHtml = diag ? `<div style="font-size:11px;color:var(--muted);margin-top:8px;">Detalhe técnico: <code>${_esc(diag).slice(0,180)}</code></div>` : '';
     // Fallback: insights locais (heurística) quando a IA não está disponível
     const local = gkIntelligence(gkId, DB.partidas, DB.scouts);
     body.innerHTML = `<div style="font-size:12px;color:var(--warning);margin-bottom:10px;">⚠️ IA (Gemini) indisponível agora. Mostrando insights automáticos locais:</div>`
-      + (local.length ? local.map(i => `<div style="font-size:13px;padding:4px 0;">${i.icon} ${_esc(i.text)}</div>`).join('') : '<div style="color:var(--muted);font-size:13px;">Sem insights suficientes.</div>');
+      + (local.length ? local.map(i => `<div style="font-size:13px;padding:4px 0;">${i.icon} ${_esc(i.text)}</div>`).join('') : '<div style="color:var(--muted);font-size:13px;">Sem insights suficientes.</div>')
+      + diagHtml;
     return;
   }
   _saveAIAnalysis('perfil', gkId, a, ctx.nome || 'Goleiro(a)');
@@ -8141,7 +8146,10 @@ async function apiRequest(method, path, body) {
       method, headers: { 'Content-Type': 'application/json' },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
-    if (!res.ok) throw new Error('AI ' + res.status);
+    if (!res.ok) {
+      let extra = ''; try { extra = ' ' + (await res.text()).slice(0, 160); } catch (e) {}
+      throw new Error('AI ' + res.status + extra);
+    }
     return res.json();
   }
   const token = _apiToken();
