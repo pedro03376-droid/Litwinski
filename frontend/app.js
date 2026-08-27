@@ -51,6 +51,8 @@ const DB = {
   get pid()           { return this.load('pid'); },
   get seasons()       { return this.load('seasons'); },
   saveSeasons(d)      { this.save('seasons', d); },
+  get def_lances()    { return this.load('def_lances'); },
+  saveDeflances(d)    { this.save('def_lances', d); },
   get aianalyses()    { return this.load('aianalyses'); },
   saveAianalyses(d)   { this.save('aianalyses', d); },
   saveNotifications(d){ this.save('notifications', d); },
@@ -5363,6 +5365,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
     <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">🎥 Vídeo do jogo</div>
     <input id="mc-video-url" class="form-input" style="font-size:12px;padding:8px;width:100%;" placeholder="Cole o link do vídeo (YouTube, Drive, Vimeo…)" value="${_esc(mcVideoUrl)}" onchange="mcSetVideoUrl(this.value)">
     ${mcVideoUrl?'<div style="font-size:11px;color:var(--success);margin-top:6px;">✅ Clique no horário de cada lance (abaixo) para abrir o vídeo naquele momento.</div>':'<div style="font-size:11px;color:var(--muted);margin-top:6px;">Com o link colado, cada lance da timeline abre o vídeo no segundo exato.</div>'}
+    <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="openDefMap('${gkIds[0]||''}','${pId||''}', mcVideoUrl)">🎯 Mapa de Defesas (marcar lances do vídeo)</button>
   </div>`;
 
   const timelineEvents=mcLog.filter(e=>e.tipo!=='periodo').slice(0,20);
@@ -5442,6 +5445,177 @@ function _mcRenderReportCharts() {
       });
     }
   } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAPA DE DEFESAS (assistido, a partir do vídeo) — o técnico pausa
+// o lance no vídeo e marca na quadra de ONDE veio o chute e ONDE ele
+// foi no gol. Gera um mapa espacial de defesas + estatísticas.
+// Sem IA: confiável, offline, e cada lance abre o vídeo no tempo certo.
+// ═══════════════════════════════════════════════════════════
+let _defCtx = { gkId: '', pId: '', videoUrl: '' };
+let _defPending = { origin: null, target: null, result: 'def' };
+
+function openDefMap(gkId, pId, videoUrl) {
+  _defCtx = { gkId: gkId || '', pId: pId || '', videoUrl: videoUrl || '' };
+  _defPending = { origin: null, target: null, result: 'def' };
+  let modal = document.getElementById('defmap-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'defmap-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
+  const gkOpts = DB.goleiras.map(g => `<option value="${g.id}" ${g.id === _defCtx.gkId ? 'selected' : ''}>${_esc(g.nome)}</option>`).join('');
+  modal.innerHTML = `
+    <div class="modal" style="max-width:640px;">
+      <div class="modal-header"><span class="modal-title">🎯 Mapa de Defesas (vídeo)</span><button class="modal-close" onclick="closeModal('defmap-modal')">&times;</button></div>
+      <div class="modal-body" id="defmap-body"></div>
+    </div>`;
+  openModal('defmap-modal');
+  renderDefMap();
+}
+
+function _defSetGk(v) { _defCtx.gkId = v; renderDefMap(); }
+function _defSetVideo(v) { _defCtx.videoUrl = String(v || '').trim(); renderDefMap(); }
+function _defSetResult(r) { _defPending.result = r; renderDefMap(); }
+
+// Captura o toque na quadra/gol e guarda a coordenada normalizada (0..1).
+function _defTap(evt, kind) {
+  const svg = evt.currentTarget;
+  const r = svg.getBoundingClientRect();
+  const px = (evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left;
+  const py = (evt.touches ? evt.touches[0].clientY : evt.clientY) - r.top;
+  const x = Math.max(0, Math.min(1, px / r.width));
+  const y = Math.max(0, Math.min(1, py / r.height));
+  _defPending[kind] = { x, y };
+  renderDefMap();
+}
+
+function defAddLance() {
+  if (!_defCtx.gkId) { toast('Selecione o(a) goleiro(a).', 'error'); return; }
+  if (!_defPending.origin) { toast('Toque na quadra de onde veio o chute.', 'error'); return; }
+  const tRaw = (document.getElementById('def-time')?.value || '').trim();
+  let t = 0;
+  if (tRaw.includes(':')) { const [m, s] = tRaw.split(':'); t = (parseInt(m) || 0) * 60 + (parseInt(s) || 0); }
+  else t = parseInt(tRaw) || 0;
+  const lance = {
+    id: uid(), gkId: _defCtx.gkId, partidaId: _defCtx.pId || '',
+    seasonId: (typeof _activeSeason === 'function' ? (_activeSeason() || {}).id : '') || '',
+    t, ox: _defPending.origin.x, oy: _defPending.origin.y,
+    gx: _defPending.target ? _defPending.target.x : null, gy: _defPending.target ? _defPending.target.y : null,
+    result: _defPending.result, videoUrl: _defCtx.videoUrl || '', ts: Date.now()
+  };
+  const list = DB.def_lances; list.push(lance); DB.saveDeflances(list);
+  try { cloudSet('def_lances', lance); } catch (e) {}
+  try { logAudit('Defesas', 'Mapeou 1 lance (' + (lance.result === 'gol' ? 'gol' : 'defesa') + ')'); } catch (e) {}
+  _defPending = { origin: null, target: null, result: _defPending.result };
+  renderDefMap();
+  toast(lance.result === 'gol' ? 'Gol mapeado.' : 'Defesa mapeada! 🧤', 'success');
+}
+
+function defDelLance(id) {
+  DB.saveDeflances(DB.def_lances.filter(l => l.id !== id));
+  renderDefMap();
+}
+
+function _defLancesFor() {
+  return DB.def_lances.filter(l => l.gkId === _defCtx.gkId && (!_defCtx.pId || l.partidaId === _defCtx.pId));
+}
+
+// SVG da meia-quadra de futsal (gol embaixo). Marcadores em coords 0..1.
+function _defCourtSVG(lances) {
+  const W = 300, H = 300;
+  const pt = (p) => ({ x: (p.x * W).toFixed(1), y: (p.y * H).toFixed(1) });
+  const goalX = 0.5 * W, goalY = H; // centro do gol (embaixo)
+  let marks = '';
+  lances.forEach(l => {
+    const o = pt({ x: l.ox, y: l.oy });
+    const col = l.result === 'gol' ? '#EF4444' : '#3B82F6';
+    marks += `<line x1="${o.x}" y1="${o.y}" x2="${goalX}" y2="${goalY - 4}" stroke="${col}" stroke-width="1.4" opacity="0.5"/>`;
+    marks += `<circle cx="${o.x}" cy="${o.y}" r="5" fill="${col}" opacity="0.9"/>`;
+  });
+  let pend = '';
+  if (_defPending.origin) { const o = pt(_defPending.origin); pend = `<circle cx="${o.x}" cy="${o.y}" r="7" fill="none" stroke="#F5C542" stroke-width="2.5"/><circle cx="${o.x}" cy="${o.y}" r="3" fill="#F5C542"/>`; }
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:300px;touch-action:none;cursor:crosshair;background:linear-gradient(180deg,#123a52,#0d2c40);border:1px solid rgba(96,165,250,.3);border-radius:10px;" onclick="_defTap(event,'origin')">
+    <rect x="8" y="8" width="284" height="284" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1.5"/>
+    <line x1="8" y1="12" x2="292" y2="12" stroke="rgba(255,255,255,.18)" stroke-width="1"/>
+    <path d="M120,292 Q150,205 180,292" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.5"/>
+    <circle cx="150" cy="222" r="2.5" fill="rgba(255,255,255,.5)"/>
+    <rect x="128" y="289" width="44" height="5" fill="rgba(245,197,66,.9)"/>
+    <text x="150" y="26" fill="rgba(255,255,255,.35)" font-size="9" text-anchor="middle">meio-campo</text>
+    ${marks}${pend}
+  </svg>`;
+}
+
+// SVG do gol (frente) para marcar onde a bola foi.
+function _defGoalSVG(lances) {
+  const W = 300, H = 130;
+  const pt = (p) => ({ x: (p.x * W).toFixed(1), y: (p.y * H).toFixed(1) });
+  let marks = '';
+  lances.forEach(l => {
+    if (l.gx == null) return;
+    const g = pt({ x: l.gx, y: l.gy });
+    const col = l.result === 'gol' ? '#EF4444' : '#3B82F6';
+    marks += `<circle cx="${g.x}" cy="${g.y}" r="5" fill="${col}" opacity="0.9"/>`;
+  });
+  let pend = '';
+  if (_defPending.target) { const g = pt(_defPending.target); pend = `<circle cx="${g.x}" cy="${g.y}" r="7" fill="none" stroke="#F5C542" stroke-width="2.5"/><circle cx="${g.x}" cy="${g.y}" r="3" fill="#F5C542"/>`; }
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:300px;touch-action:none;cursor:crosshair;border-radius:8px;" onclick="_defTap(event,'target')">
+    <rect x="4" y="4" width="292" height="118" fill="rgba(255,255,255,.02)"/>
+    <line x1="20" y1="14" x2="280" y2="14" stroke="var(--border-h)" stroke-width="5"/>
+    <line x1="20" y1="14" x2="20" y2="120" stroke="var(--border-h)" stroke-width="5"/>
+    <line x1="280" y1="14" x2="280" y2="120" stroke="var(--border-h)" stroke-width="5"/>
+    ${[86,150,214].map(x=>`<line x1="${x}" y1="16" x2="${x}" y2="118" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`).join('')}
+    ${[48,82].map(y=>`<line x1="22" y1="${y}" x2="278" y2="${y}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`).join('')}
+    ${marks}${pend}
+  </svg>`;
+}
+
+function renderDefMap() {
+  const body = document.getElementById('defmap-body');
+  if (!body) return;
+  const lances = _defLancesFor();
+  const def = lances.filter(l => l.result === 'def').length;
+  const gol = lances.filter(l => l.result === 'gol').length;
+  const total = def + gol;
+  const taxa = total ? Math.round(def / total * 100) : 0;
+  const gkOpts = DB.goleiras.map(g => `<option value="${g.id}" ${g.id === _defCtx.gkId ? 'selected' : ''}>${_esc(g.nome)}</option>`).join('');
+  const rBtn = (r, lbl, col) => `<button class="btn btn-sm ${_defPending.result === r ? 'btn-primary' : 'btn-secondary'}" onclick="_defSetResult('${r}')">${lbl}</button>`;
+  const listHtml = lances.slice().sort((a, b) => (a.t || 0) - (b.t || 0)).map(l => {
+    const tempo = _defCtx.videoUrl
+      ? `<a href="${_esc(_videoAtTime(_defCtx.videoUrl, l.t))}" target="_blank" rel="noopener" style="color:var(--primary-text);text-decoration:underline;font-variant-numeric:tabular-nums;">${mcFormatTime(l.t || 0)}</a>`
+      : `<span style="color:var(--muted);font-variant-numeric:tabular-nums;">${mcFormatTime(l.t || 0)}</span>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px;">
+      <span style="width:44px;flex-shrink:0;">${tempo}</span>
+      <span style="width:9px;height:9px;border-radius:50%;background:${l.result === 'gol' ? '#EF4444' : '#3B82F6'};flex-shrink:0;"></span>
+      <span style="flex:1;">${l.result === 'gol' ? 'Gol sofrido' : 'Defesa'}</span>
+      <button class="btn btn-ghost btn-sm" onclick="defDelLance('${l.id}')" style="color:var(--error);padding:2px 8px;">×</button>
+    </div>`;
+  }).join('');
+
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <select class="form-select" style="flex:1;min-width:150px;" onchange="_defSetGk(this.value)"><option value="">— goleiro(a) —</option>${gkOpts}</select>
+    </div>
+    <input class="form-input" style="width:100%;font-size:12px;padding:8px;margin-bottom:12px;" placeholder="Link do vídeo (YouTube/transmissão)" value="${_esc(_defCtx.videoUrl)}" onchange="_defSetVideo(this.value)">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;">
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">1) De onde veio o chute</div>
+        ${_defCourtSVG(lances)}
+      </div>
+      <div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">2) Onde foi no gol</div>
+        ${_defGoalSVG(lances)}
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+      <input id="def-time" class="form-input" style="width:110px;font-size:12px;padding:8px;" placeholder="mm:ss do vídeo">
+      <div style="display:flex;gap:6px;">${rBtn('def', '🧤 Defesa')}${rBtn('gol', '⚽ Gol')}</div>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="defAddLance()">+ Adicionar lance</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
+      <div style="background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#3B82F6;">${def}</div><div style="font-size:10px;color:var(--muted);">Defesas</div></div>
+      <div style="background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#EF4444;">${gol}</div><div style="font-size:10px;color:var(--muted);">Gols</div></div>
+      <div style="background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#34D399;">${taxa}%</div><div style="font-size:10px;color:var(--muted);">Aproveit.</div></div>
+    </div>
+    ${listHtml ? `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">Lances (${total})</div>${listHtml}` : '<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0;">Nenhum lance mapeado ainda. Pause o vídeo na defesa, toque na quadra e no gol, e adicione.</div>'}
+    <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5;">Azul = defesa · Vermelho = gol. Toque no tempo de cada lance para abrir o vídeo naquele momento.</div>`;
 }
 
 // ── PDF canvas helpers ───────────────────────────────────────
@@ -8936,7 +9110,7 @@ function cloudDelete(col, id) {
    com mesclagem ao abrir. Último a escrever vence por coleção.
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
-const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons'];
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances'];
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
