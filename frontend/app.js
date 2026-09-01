@@ -5725,6 +5725,127 @@ function penDel(id) {
   renderPenaltis();
 }
 
+// Gera a "colinha" de pênaltis em PDF — um card por batedor (nº, pé, mapa de
+// onde bate) + resumo da goleira adversária. Estilo ficha de goleiro.
+function gerarFichaPenaltis() {
+  if (!window.jspdf) { toast('Biblioteca PDF não carregada.', 'error'); return; }
+  const { jsPDF } = window.jspdf;
+  const equipe = _penEquipe;
+  const bat = DB.penaltis.filter(p => p.type === 'batedor' && (!equipe || p.equipe === equipe));
+  const gks = DB.penaltis.filter(p => p.type === 'goleira' && (!equipe || p.equipe === equipe));
+  if (!bat.length && !gks.length) { toast('Sem dados para gerar a ficha. Registre batedores primeiro.', 'info'); return; }
+
+  // Agrupa batedores por jogador
+  const groups = {};
+  bat.forEach(p => { const k = p.equipe + '|' + p.jogador; (groups[k] = groups[k] || []).push(p); });
+  const jogadores = Object.keys(groups).map(k => {
+    const arr = groups[k];
+    const cols = { esq: 0, centro: 0, dir: 0 };
+    arr.forEach(p => { if (p.gx != null) cols[_penCol(p.gx)]++; });
+    const dom = Object.keys(cols).sort((a, b) => cols[b] - cols[a])[0];
+    return { nome: arr[0].jogador, num: arr[0].numero, pe: arr[0].pe, eq: arr[0].equipe, placements: arr, dom, cols, tot: arr.filter(p => p.gx != null).length };
+  });
+
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, M = 10;
+  const clube = (localStorage.getItem('gkhub_club_name') || 'GK Hub');
+  let page = 0;
+  const header = () => {
+    page++;
+    doc.setFillColor(13, 44, 64); doc.rect(0, 0, PW, 22, 'F');
+    doc.setTextColor(255); doc.setFont(undefined, 'bold'); doc.setFontSize(15);
+    doc.text('FICHA DE PÊNALTIS', M, 11);
+    doc.setFont(undefined, 'normal'); doc.setFontSize(10);
+    doc.text((equipe || 'Todas as equipes') + '  ·  ' + new Date().toLocaleDateString('pt-BR'), M, 17.5);
+    doc.setFontSize(9); doc.setTextColor(200);
+    doc.text(clube, PW - M, 12, { align: 'right' });
+  };
+
+  // Desenha um mini-gol com os pontos de colocação (0..1).
+  const drawGoal = (gx0, gy0, gw, gh, placements, dom) => {
+    doc.setDrawColor(60); doc.setLineWidth(0.7);
+    doc.rect(gx0, gy0, gw, gh);
+    doc.setLineWidth(0.2); doc.setDrawColor(200);
+    doc.line(gx0 + gw / 3, gy0, gx0 + gw / 3, gy0 + gh);
+    doc.line(gx0 + 2 * gw / 3, gy0, gx0 + 2 * gw / 3, gy0 + gh);
+    // Realça o canto dominante
+    if (dom && placements.length) {
+      doc.setFillColor(239, 68, 68); doc.setGState && doc.setGState(new doc.GState({ opacity: 0.12 }));
+      const zx = dom === 'esq' ? gx0 : dom === 'dir' ? gx0 + 2 * gw / 3 : gx0 + gw / 3;
+      doc.rect(zx, gy0, gw / 3, gh, 'F');
+      doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
+    }
+    placements.forEach(p => {
+      if (p.gx == null) return;
+      const c = p.resultado === 'gol' ? [239, 68, 68] : p.resultado === 'defendido' ? [59, 130, 246] : [148, 163, 184];
+      doc.setFillColor(c[0], c[1], c[2]);
+      doc.circle(gx0 + p.gx * gw, gy0 + p.gy * gh, 1.1, 'F');
+    });
+  };
+
+  const cardW = (PW - 2 * M - 6) / 2, cardH = 46;
+  let col = 0, y = 30;
+  header();
+  const card = (j) => {
+    if (y + cardH > PH - 12) { doc.addPage(); y = 30; col = 0; header(); }
+    const x = M + col * (cardW + 6);
+    doc.setDrawColor(180); doc.setLineWidth(0.4); doc.setFillColor(255);
+    doc.roundedRect(x, y, cardW, cardH, 2, 2, 'S');
+    // Badge número
+    doc.setFillColor(20); doc.roundedRect(x + 3, y + 3, 12, 8, 1, 1, 'F');
+    doc.setTextColor(255); doc.setFont(undefined, 'bold'); doc.setFontSize(11);
+    doc.text(j.num ? String(j.num) : '–', x + 9, y + 8.8, { align: 'center' });
+    // Nome
+    doc.setTextColor(20); doc.setFontSize(11);
+    doc.text(String(j.nome).toUpperCase().slice(0, 22), x + 17, y + 8.5);
+    // Pé
+    doc.setFont(undefined, 'normal'); doc.setFontSize(8); doc.setTextColor(90);
+    doc.text(j.pe ? ('Pé: ' + (j.pe === 'E' ? 'Canhoto' : 'Destro')) : 'Pé: —', x + 17, y + 13.5);
+    // Mini gol
+    drawGoal(x + 3, y + 17, cardW - 6, 20, j.placements, j.dom);
+    // Tendência
+    doc.setFontSize(8); doc.setTextColor(20); doc.setFont(undefined, 'bold');
+    const rec = j.tot ? ('Cai: ' + (j.dom === 'esq' ? 'ESQUERDA' : j.dom === 'dir' ? 'DIREITA' : 'MEIO') + '  (' + j.cols[j.dom] + '/' + j.tot + ')') : 'Sem dados';
+    doc.text(rec, x + 3, y + cardH - 2.5);
+    col++; if (col >= 2) { col = 0; y += cardH + 4; }
+  };
+  jogadores.forEach(card);
+
+  // Goleira adversária
+  if (gks.length) {
+    if (col !== 0) { col = 0; y += cardH + 4; }
+    if (y + 34 > PH - 12) { doc.addPage(); y = 30; header(); }
+    const gg = {};
+    gks.forEach(p => { const k = p.equipe + '|' + p.goleira; (gg[k] = gg[k] || []).push(p); });
+    Object.keys(gg).forEach(k => {
+      const arr = gg[k]; const lados = { esq: 0, centro: 0, dir: 0 };
+      arr.forEach(p => { if (lados[p.lado] != null) lados[p.lado]++; });
+      const tot = arr.length; const dom = Object.keys(lados).sort((a, b) => lados[b] - lados[a])[0];
+      const oposto = dom === 'esq' ? 'DIREITA' : dom === 'dir' ? 'ESQUERDA' : 'NOS CANTOS';
+      if (y + 26 > PH - 12) { doc.addPage(); y = 30; header(); }
+      doc.setFillColor(16, 185, 129); doc.setGState && doc.setGState(new doc.GState({ opacity: 0.08 }));
+      doc.roundedRect(M, y, PW - 2 * M, 22, 2, 2, 'F');
+      doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
+      doc.setDrawColor(16, 185, 129); doc.roundedRect(M, y, PW - 2 * M, 22, 2, 2, 'S');
+      doc.setTextColor(20); doc.setFont(undefined, 'bold'); doc.setFontSize(11);
+      doc.text('GOLEIRA: ' + String(arr[0].goleira).toUpperCase(), M + 4, y + 7);
+      doc.setFont(undefined, 'normal'); doc.setFontSize(9); doc.setTextColor(60);
+      const pct = l => tot ? Math.round(lados[l] / tot * 100) : 0;
+      doc.text(`Esq ${pct('esq')}%  ·  Meio ${pct('centro')}%  ·  Dir ${pct('dir')}%   (${tot} cobranças)`, M + 4, y + 13);
+      doc.setFont(undefined, 'bold'); doc.setTextColor(16, 120, 90);
+      doc.text('BATER: ' + oposto, M + 4, y + 19);
+      y += 26;
+    });
+  }
+
+  // Legenda no rodapé
+  doc.setFontSize(8); doc.setTextColor(120);
+  doc.text('Vermelho = gol  ·  Azul = defendido  ·  Cinza = fora.  Visão de frente para o gol.', M, PH - 6);
+
+  doc.save('ficha_penaltis_' + (equipe || 'geral').replace(/\s+/g, '_') + '.pdf');
+  try { logAudit('Pênaltis', 'Gerou ficha PDF (' + (equipe || 'geral') + ')'); } catch (e) {}
+}
+
 function renderPenaltis() {
   const el = document.getElementById('penaltis-content');
   if (!el) return;
@@ -5740,7 +5861,8 @@ function renderPenaltis() {
     <div class="card" style="margin-bottom:16px;">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <span class="card-title" style="flex-shrink:0;">🥅 Pênaltis — Adversário</span>
-        <select class="form-select" style="min-width:180px;margin-left:auto;" onchange="_penSetEquipe(this.value)">${eqOpts}</select>
+        <select class="form-select" style="min-width:160px;margin-left:auto;" onchange="_penSetEquipe(this.value)">${eqOpts}</select>
+        <button class="btn btn-secondary btn-sm" onclick="gerarFichaPenaltis()">🖨️ Ficha (PDF)</button>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:8px;">Prepare a disputa: registre como os adversários batem e como a goleira deles cai. Visão de frente para o gol.</div>
       <div style="display:flex;gap:6px;margin-top:12px;">${tabBtn('batedores', '👟 Batedores')}${tabBtn('goleira', '🧤 Goleira adversária')}</div>
