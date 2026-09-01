@@ -10398,6 +10398,33 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+// Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
+const APP_VERSION = 'v103';
+try {
+  const _vEl = document.getElementById('app-version');
+  if (_vEl) _vEl.textContent = APP_VERSION;
+} catch (e) {}
+
+// Força baixar a versão mais recente: remove SW + limpa caches + recarrega.
+// Resolve o app "preso" numa versão antiga (PWA no iOS).
+async function forceUpdateApp() {
+  try { toast('Atualizando…', 'info'); } catch (e) {}
+  try {
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if (window.caches && caches.keys) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch (e) {}
+  // Recarrega forçando buscar do servidor (evita cache do navegador)
+  const u = new URL(window.location.href);
+  u.searchParams.set('_v', Date.now());
+  window.location.replace(u.toString());
+}
+
 // Install prompt
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
