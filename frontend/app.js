@@ -2662,13 +2662,23 @@ function applyCrop() {
   const canvas = document.createElement('canvas');
   canvas.width = out; canvas.height = out;
   const ctx = canvas.getContext('2d');
-  ctx.beginPath();
-  ctx.arc(out/2, out/2, out/2, 0, Math.PI*2);
-  ctx.clip();
+  // Batedor: recorte quadrado (preenche o card/PDF). Demais: círculo.
+  if (cropTarget !== 'penbat') {
+    ctx.beginPath();
+    ctx.arc(out/2, out/2, out/2, 0, Math.PI*2);
+    ctx.clip();
+  } else {
+    ctx.fillStyle = '#0d2c40'; ctx.fillRect(0, 0, out, out);
+  }
   ctx.drawImage(img, cropState.x*ratio, cropState.y*ratio,
     img.naturalWidth*cropState.scale*ratio, img.naturalHeight*cropState.scale*ratio);
   const result = canvas.toDataURL('image/jpeg', 0.85);
 
+  if (cropTarget === 'penbat') {
+    _penSaveFoto(result);
+    closeModal('modal-crop');
+    return;
+  }
   if (cropTarget === 'perfil' && cropGkId) {
     // Save directly to the goalkeeper
     const goleiras = DB.goleiras;
@@ -5637,6 +5647,16 @@ let _penPend = { gx: null, gy: null };
 let _penBatResult = 'gol';
 let _penGkLado = 'esq';
 let _penGkResult = 'defendeu';
+// Estado do formulário — preserva o que foi digitado entre redesenhos.
+let _penForm = {};
+function _penCaptureForm() {
+  const g = id => { const e = document.getElementById(id); return e ? e.value : undefined; };
+  ['pen-bat-equipe', 'pen-bat-jogador', 'pen-bat-num', 'pen-bat-pe', 'pen-bat-pais', 'pen-bat-obs',
+   'pen-gk-equipe', 'pen-gk-nome', 'pen-gk-momento', 'pen-gk-obs'].forEach(id => {
+    const v = g(id); if (v !== undefined) _penForm[id] = v;
+  });
+}
+function _pf(id, fallback) { return _penForm[id] !== undefined ? _penForm[id] : (fallback || ''); }
 
 function _penEquipes() {
   return [...new Set(DB.penaltis.map(p => (p.equipe || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -5709,6 +5729,9 @@ function penAddBatedor() {
   try { cloudSet('penaltis', rec); } catch (e) {}
   try { logAudit('Pênaltis', 'Batedor ' + jogador + ' (' + equipe + ')'); } catch (e) {}
   _penPend = { gx: null, gy: null };
+  // Limpa os campos do jogador (mantém a equipe para o próximo batedor)
+  ['pen-bat-jogador', 'pen-bat-num', 'pen-bat-pe', 'pen-bat-pais', 'pen-bat-obs'].forEach(k => { _penForm[k] = ''; });
+  _penForm['pen-bat-equipe'] = equipe;
   _penEquipe = _penEquipe || equipe;
   renderPenaltis();
   toast('Cobrança registrada.', 'success');
@@ -5728,6 +5751,8 @@ function penAddGoleira() {
   const list = DB.penaltis; list.push(rec); DB.savePenaltis(list);
   try { cloudSet('penaltis', rec); } catch (e) {}
   try { logAudit('Pênaltis', 'Goleira ' + goleira + ' (' + equipe + ')'); } catch (e) {}
+  ['pen-gk-nome', 'pen-gk-momento', 'pen-gk-obs'].forEach(k => { _penForm[k] = ''; });
+  _penForm['pen-gk-equipe'] = equipe;
   _penEquipe = _penEquipe || equipe;
   renderPenaltis();
   toast('Observação registrada.', 'success');
@@ -5761,17 +5786,21 @@ function _penResize(file, cb) {
 }
 function penFotoUpload(input) {
   const f = input.files && input.files[0]; if (!f) return;
-  _penResize(f, url => {
-    const list = DB.pen_fotos; const k = _penFotoKey(_penFotoTarget.eq, _penFotoTarget.jog);
-    const rec = { id: k, foto: url, ts: Date.now() };
-    const i = list.findIndex(x => x.id === k);
-    if (i >= 0) list[i] = rec; else list.push(rec);
-    DB.savePenfotos(list);
-    try { cloudSet('pen_fotos', rec); } catch (e) {}
-    renderPenaltis();
-    toast('Foto adicionada.', 'success');
-  });
+  // Abre o recortador (arrastar + zoom) para ajustar o enquadramento.
+  const reader = new FileReader();
+  reader.onload = e => { if (typeof openCropModal === 'function') openCropModal(e.target.result, 'penbat'); };
+  reader.readAsDataURL(f);
   input.value = '';
+}
+function _penSaveFoto(dataUrl) {
+  const list = DB.pen_fotos; const k = _penFotoKey(_penFotoTarget.eq, _penFotoTarget.jog);
+  const rec = { id: k, foto: dataUrl, ts: Date.now() };
+  const i = list.findIndex(x => x.id === k);
+  if (i >= 0) list[i] = rec; else list.push(rec);
+  DB.savePenfotos(list);
+  try { cloudSet('pen_fotos', rec); } catch (e) {}
+  renderPenaltis();
+  toast('Foto ajustada.', 'success');
 }
 
 // Gera a "colinha" de pênaltis em PDF — um card por batedor (nº, pé, mapa de
@@ -5900,6 +5929,7 @@ function gerarFichaPenaltis() {
 function renderPenaltis() {
   const el = document.getElementById('penaltis-content');
   if (!el) return;
+  _penCaptureForm();   // preserva o que já foi digitado antes de redesenhar
   const equipes = _penEquipes();
   const eqOpts = '<option value="">Todas as equipes</option>' + equipes.map(e => `<option value="${_esc(e)}" ${e === _penEquipe ? 'selected' : ''}>${_esc(e)}</option>`).join('');
   const tabBtn = (t, lbl) => `<button class="btn btn-sm ${_penTab === t ? 'btn-primary' : 'btn-secondary'}" onclick="penTab('${t}')">${lbl}</button>`;
@@ -5958,11 +5988,11 @@ function _penRenderBatedores() {
     <div class="card" style="margin-bottom:16px;">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">+ Registrar cobrança</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-        <input id="pen-bat-equipe" class="form-input" placeholder="Equipe adversária" value="${_esc(_penEquipe)}">
-        <input id="pen-bat-jogador" class="form-input" placeholder="Batedor (nome)">
-        <input id="pen-bat-num" class="form-input" placeholder="Nº (opcional)">
-        <select id="pen-bat-pe" class="form-select"><option value="">Pé —</option><option value="D">Destro</option><option value="E">Canhoto</option></select>
-        <select id="pen-bat-pais" class="form-select" style="grid-column:1/-1;"><option value="">País —</option>${Object.keys(_PEN_PAISES).map(pz => `<option value="${pz}">${_PEN_PAISES[pz]} ${pz}</option>`).join('')}</select>
+        <input id="pen-bat-equipe" class="form-input" placeholder="Equipe adversária" value="${_esc(_pf('pen-bat-equipe', _penEquipe))}" oninput="_penForm['pen-bat-equipe']=this.value">
+        <input id="pen-bat-jogador" class="form-input" placeholder="Batedor (nome)" value="${_esc(_pf('pen-bat-jogador'))}" oninput="_penForm['pen-bat-jogador']=this.value">
+        <input id="pen-bat-num" class="form-input" placeholder="Nº (opcional)" value="${_esc(_pf('pen-bat-num'))}" oninput="_penForm['pen-bat-num']=this.value">
+        <select id="pen-bat-pe" class="form-select" onchange="_penForm['pen-bat-pe']=this.value"><option value="">Pé —</option><option value="D" ${_pf('pen-bat-pe')==='D'?'selected':''}>Destro</option><option value="E" ${_pf('pen-bat-pe')==='E'?'selected':''}>Canhoto</option></select>
+        <select id="pen-bat-pais" class="form-select" style="grid-column:1/-1;" onchange="_penForm['pen-bat-pais']=this.value"><option value="">País —</option>${Object.keys(_PEN_PAISES).map(pz => `<option value="${pz}" ${_pf('pen-bat-pais')===pz?'selected':''}>${_PEN_PAISES[pz]} ${pz}</option>`).join('')}</select>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Toque no gol onde ele costuma bater:</div>
       <div style="max-width:300px;margin:0 auto 8px;">${_penGoalSVG([], true)}</div>
@@ -5970,7 +6000,7 @@ function _penRenderBatedores() {
         <span style="font-size:11px;color:var(--muted);">Resultado:</span>
         ${rBtn('gol', '⚽ Gol')}${rBtn('defendido', '🧤 Defendido')}${rBtn('fora', '❌ Fora')}
       </div>
-      <input id="pen-bat-obs" class="form-input" placeholder="Observação (ex.: espera a goleira cair)" style="margin-bottom:10px;">
+      <input id="pen-bat-obs" class="form-input" placeholder="Observação (ex.: espera a goleira cair)" style="margin-bottom:10px;" value="${_esc(_pf('pen-bat-obs'))}" oninput="_penForm['pen-bat-obs']=this.value">
       <button class="btn btn-primary" style="width:100%;" onclick="penAddBatedor()">+ Adicionar cobrança</button>
       <div style="font-size:11px;color:var(--muted);margin-top:8px;">🔴 Gol · 🔵 Defendido · ⚪ Fora</div>
     </div>
@@ -6011,16 +6041,16 @@ function _penRenderGoleira() {
     <div class="card" style="margin-bottom:16px;">
       <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">+ Registrar observação da goleira</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-        <input id="pen-gk-equipe" class="form-input" placeholder="Equipe adversária" value="${_esc(_penEquipe)}">
-        <input id="pen-gk-nome" class="form-input" placeholder="Goleira adversária (nome)">
+        <input id="pen-gk-equipe" class="form-input" placeholder="Equipe adversária" value="${_esc(_pf('pen-gk-equipe', _penEquipe))}" oninput="_penForm['pen-gk-equipe']=this.value">
+        <input id="pen-gk-nome" class="form-input" placeholder="Goleira adversária (nome)" value="${_esc(_pf('pen-gk-nome'))}" oninput="_penForm['pen-gk-nome']=this.value">
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Para que lado ela caiu?</div>
       <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">${lBtn('esq', '↙ Esquerda')}${lBtn('centro', '⬆ Meio')}${lBtn('dir', '↘ Direita')}</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-        <select id="pen-gk-momento" class="form-select" style="flex:1;min-width:140px;"><option value="">Momento —</option><option value="antecipa">Antecipa (cai antes)</option><option value="espera">Espera a batida</option></select>
+        <select id="pen-gk-momento" class="form-select" style="flex:1;min-width:140px;" onchange="_penForm['pen-gk-momento']=this.value"><option value="">Momento —</option><option value="antecipa" ${_pf('pen-gk-momento')==='antecipa'?'selected':''}>Antecipa (cai antes)</option><option value="espera" ${_pf('pen-gk-momento')==='espera'?'selected':''}>Espera a batida</option></select>
         <div style="display:flex;gap:6px;">${rBtn('defendeu', '🧤 Defendeu')}${rBtn('gol', '⚽ Levou gol')}</div>
       </div>
-      <input id="pen-gk-obs" class="form-input" placeholder="Observação (ex.: sai muito cedo)" style="margin-bottom:10px;">
+      <input id="pen-gk-obs" class="form-input" placeholder="Observação (ex.: sai muito cedo)" style="margin-bottom:10px;" value="${_esc(_pf('pen-gk-obs'))}" oninput="_penForm['pen-gk-obs']=this.value">
       <button class="btn btn-primary" style="width:100%;" onclick="penAddGoleira()">+ Adicionar observação</button>
     </div>
     ${cards || '<div class="card" style="color:var(--muted);font-size:13px;text-align:center;">Nenhuma goleira adversária registrada ainda.</div>'}`;
