@@ -5641,6 +5641,13 @@ let _penGkResult = 'defendeu';
 function _penEquipes() {
   return [...new Set(DB.penaltis.map(p => (p.equipe || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
+// País → bandeira (emoji) para os cards de batedor
+const _PEN_PAISES = {
+  'Brasil':'🇧🇷','Argentina':'🇦🇷','Uruguai':'🇺🇾','Paraguai':'🇵🇾','Chile':'🇨🇱',
+  'Colômbia':'🇨🇴','Peru':'🇵🇪','Venezuela':'🇻🇪','Bolívia':'🇧🇴','Equador':'🇪🇨',
+  'Espanha':'🇪🇸','Portugal':'🇵🇹','Itália':'🇮🇹','França':'🇫🇷','Estados Unidos':'🇺🇸','Outro':'🏳️'
+};
+function _penFlag(pais) { return _PEN_PAISES[pais] || ''; }
 function _penCol(gx) { return gx < 0.4 ? 'esq' : gx > 0.6 ? 'dir' : 'centro'; }
 function _penColLabel(c) { return c === 'esq' ? 'esquerda' : c === 'dir' ? 'direita' : 'meio'; }
 function _penRow(gy) { return gy < 0.4 ? 'alto' : gy > 0.66 ? 'rasteiro' : 'meio'; }
@@ -5690,6 +5697,7 @@ function penAddBatedor() {
     id: uid(), type: 'batedor', equipe, jogador,
     numero: (document.getElementById('pen-bat-num')?.value || '').trim(),
     pe: document.getElementById('pen-bat-pe')?.value || '',
+    pais: document.getElementById('pen-bat-pais')?.value || '',
     gx: _penPend.gx, gy: _penPend.gy, resultado: _penBatResult,
     obs: (document.getElementById('pen-bat-obs')?.value || '').trim(),
     seasonId: (typeof _activeSeason === 'function' ? (_activeSeason() || {}).id : '') || '', ts: Date.now()
@@ -5781,7 +5789,7 @@ function gerarFichaPenaltis() {
     const cols = { esq: 0, centro: 0, dir: 0 };
     arr.forEach(p => { if (p.gx != null) cols[_penCol(p.gx)]++; });
     const dom = Object.keys(cols).sort((a, b) => cols[b] - cols[a])[0];
-    return { nome: arr[0].jogador, num: arr[0].numero, pe: arr[0].pe, eq: arr[0].equipe, foto: _penFoto(arr[0].equipe, arr[0].jogador), placements: arr, dom, cols, tot: arr.filter(p => p.gx != null).length };
+    return { nome: arr[0].jogador, num: arr[0].numero, pe: arr[0].pe, pais: arr[0].pais, eq: arr[0].equipe, foto: _penFoto(arr[0].equipe, arr[0].jogador), placements: arr, dom, cols, tot: arr.filter(p => p.gx != null).length };
   });
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -5840,7 +5848,7 @@ function gerarFichaPenaltis() {
     doc.text(String(j.nome).toUpperCase().slice(0, j.foto ? 18 : 22), x + 17, y + 8.5);
     // Pé
     doc.setFont(undefined, 'normal'); doc.setFontSize(8); doc.setTextColor(90);
-    doc.text(j.pe ? ('Pé: ' + (j.pe === 'E' ? 'Canhoto' : 'Destro')) : 'Pé: —', x + 17, y + 13.5);
+    doc.text((j.pe ? ('Pé: ' + (j.pe === 'E' ? 'Canhoto' : 'Destro')) : 'Pé: —') + (j.pais ? '  ·  ' + j.pais : ''), x + 17, y + 13.5);
     // Mini gol
     drawGoal(x + 3, y + 17, cardW - 6, 20, j.placements, j.dom);
     // Tendência
@@ -5918,7 +5926,7 @@ function _penRenderBatedores() {
   all.forEach(p => { const k = p.equipe + '|' + p.jogador; (groups[k] = groups[k] || []).push(p); });
   const cards = Object.keys(groups).map(k => {
     const arr = groups[k];
-    const nome = arr[0].jogador, eq = arr[0].equipe, num = arr[0].numero, pe = arr[0].pe;
+    const nome = arr[0].jogador, eq = arr[0].equipe, num = arr[0].numero, pe = arr[0].pe, pais = arr[0].pais;
     const cols = { esq: 0, centro: 0, dir: 0 };
     arr.forEach(p => { if (p.gx != null) cols[_penCol(p.gx)]++; });
     const domCol = Object.keys(cols).sort((a, b) => cols[b] - cols[a])[0];
@@ -5931,8 +5939,8 @@ function _penRenderBatedores() {
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
         ${avatar}
         <div style="flex:1;min-width:120px;">
-          <div style="font-weight:800;font-size:15px;">${num ? '#' + _esc(num) + ' ' : ''}${_esc(nome)}</div>
-          <div style="font-size:11px;color:var(--muted);">${_esc(eq)}${pe ? ' · pé ' + (pe === 'E' ? 'esquerdo' : 'direito') : ''}</div>
+          <div style="font-weight:800;font-size:15px;">${pais ? _penFlag(pais) + ' ' : ''}${num ? '#' + _esc(num) + ' ' : ''}${_esc(nome)}</div>
+          <div style="font-size:11px;color:var(--muted);">${_esc(eq)}${pe ? ' · pé ' + (pe === 'E' ? 'esquerdo' : 'direito') : ''}${pais ? ' · ' + _esc(pais) : ''}</div>
         </div>
         <span style="font-size:11px;color:var(--muted);">${arr.length} cobrança(s) · ${gols} gol(s)</span>
       </div>
@@ -5951,6 +5959,7 @@ function _penRenderBatedores() {
         <input id="pen-bat-jogador" class="form-input" placeholder="Batedor (nome)">
         <input id="pen-bat-num" class="form-input" placeholder="Nº (opcional)">
         <select id="pen-bat-pe" class="form-select"><option value="">Pé —</option><option value="D">Destro</option><option value="E">Canhoto</option></select>
+        <select id="pen-bat-pais" class="form-select" style="grid-column:1/-1;"><option value="">País —</option>${Object.keys(_PEN_PAISES).map(pz => `<option value="${pz}">${_PEN_PAISES[pz]} ${pz}</option>`).join('')}</select>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Toque no gol onde ele costuma bater:</div>
       <div style="max-width:300px;margin:0 auto 8px;">${_penGoalSVG([], true)}</div>
