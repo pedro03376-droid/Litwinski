@@ -5840,24 +5840,34 @@ function gerarFichaPenaltis() {
   };
 
   // Desenha um mini-gol com os pontos de colocação (0..1).
+  // Desenha o gol (proporção 3:2, como no sistema): trave + postes + rede + zonas.
   const drawGoal = (gx0, gy0, gw, gh, placements, dom) => {
-    doc.setDrawColor(60); doc.setLineWidth(0.7);
-    doc.rect(gx0, gy0, gw, gh);
-    doc.setLineWidth(0.2); doc.setDrawColor(200);
-    doc.line(gx0 + gw / 3, gy0, gx0 + gw / 3, gy0 + gh);
-    doc.line(gx0 + 2 * gw / 3, gy0, gx0 + 2 * gw / 3, gy0 + gh);
-    // Realça o canto dominante
+    // Realça a coluna dominante (fundo)
     if (dom && placements.length) {
-      doc.setFillColor(239, 68, 68); doc.setGState && doc.setGState(new doc.GState({ opacity: 0.12 }));
+      doc.setFillColor(239, 68, 68); doc.setGState && doc.setGState(new doc.GState({ opacity: 0.10 }));
       const zx = dom === 'esq' ? gx0 : dom === 'dir' ? gx0 + 2 * gw / 3 : gx0 + gw / 3;
       doc.rect(zx, gy0, gw / 3, gh, 'F');
       doc.setGState && doc.setGState(new doc.GState({ opacity: 1 }));
     }
+    // Grade de zonas (linhas finas)
+    doc.setLineWidth(0.15); doc.setDrawColor(205);
+    doc.line(gx0 + gw / 3, gy0, gx0 + gw / 3, gy0 + gh);
+    doc.line(gx0 + 2 * gw / 3, gy0, gx0 + 2 * gw / 3, gy0 + gh);
+    doc.line(gx0, gy0 + gh / 3, gx0 + gw, gy0 + gh / 3);
+    doc.line(gx0, gy0 + 2 * gh / 3, gx0 + gw, gy0 + 2 * gh / 3);
+    // Trave + postes (grosso) e linha do chão
+    doc.setDrawColor(70); doc.setLineWidth(1.1);
+    doc.line(gx0, gy0, gx0 + gw, gy0);          // travessão
+    doc.line(gx0, gy0, gx0, gy0 + gh);          // poste esq.
+    doc.line(gx0 + gw, gy0, gx0 + gw, gy0 + gh);// poste dir.
+    doc.setLineWidth(0.3); doc.setDrawColor(150);
+    doc.line(gx0 - 1.5, gy0 + gh, gx0 + gw + 1.5, gy0 + gh); // chão
+    // Colocações
     placements.forEach(p => {
       if (p.gx == null) return;
       const c = p.resultado === 'gol' ? [239, 68, 68] : p.resultado === 'defendido' ? [59, 130, 246] : [148, 163, 184];
       doc.setFillColor(c[0], c[1], c[2]);
-      doc.circle(gx0 + p.gx * gw, gy0 + p.gy * gh, 1.1, 'F');
+      doc.circle(gx0 + p.gx * gw, gy0 + p.gy * gh, 1.4, 'F');
     });
   };
 
@@ -5881,8 +5891,9 @@ function gerarFichaPenaltis() {
     // Pé
     doc.setFont(undefined, 'normal'); doc.setFontSize(8); doc.setTextColor(90);
     doc.text((j.pe ? ('Pé: ' + (j.pe === 'E' ? 'Canhoto' : 'Destro')) : 'Pé: —') + (j.pais ? '  ·  ' + j.pais : ''), x + 17, y + 13.5);
-    // Mini gol
-    drawGoal(x + 3, y + 17, cardW - 6, 20, j.placements, j.dom);
+    // Mini gol — proporção 3:2, centralizado
+    const gH = 24, gW = gH * 1.5;
+    drawGoal(x + (cardW - gW) / 2, y + 16, gW, gH, j.placements, j.dom);
     // Tendência
     doc.setFontSize(8); doc.setTextColor(20); doc.setFont(undefined, 'bold');
     const rec = j.tot ? ('Cai: ' + (j.dom === 'esq' ? 'ESQUERDA' : j.dom === 'dir' ? 'DIREITA' : 'MEIO') + '  (' + j.cols[j.dom] + '/' + j.tot + ')') : 'Sem dados';
