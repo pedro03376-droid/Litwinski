@@ -55,6 +55,8 @@ const DB = {
   saveDeflances(d)    { this.save('def_lances', d); },
   get penaltis()      { return this.load('penaltis'); },
   savePenaltis(d)     { this.save('penaltis', d); },
+  get pen_fotos()     { return this.load('pen_fotos'); },
+  savePenfotos(d)     { this.save('pen_fotos', d); },
   get aianalyses()    { return this.load('aianalyses'); },
   saveAianalyses(d)   { this.save('aianalyses', d); },
   saveNotifications(d){ this.save('notifications', d); },
@@ -5725,6 +5727,42 @@ function penDel(id) {
   renderPenaltis();
 }
 
+// ── Foto do batedor (por equipe|jogador) ─────────────────────
+let _penFotoTarget = { eq: '', jog: '' };
+function _penFotoKey(eq, jog) { return (eq || '') + '|' + (jog || ''); }
+function _penFoto(eq, jog) { const r = DB.pen_fotos.find(x => x.id === _penFotoKey(eq, jog)); return r ? r.foto : ''; }
+function penFotoClick(eq, jog) { _penFotoTarget = { eq, jog }; const i = document.getElementById('pen-foto-input'); if (i) i.click(); }
+function _penResize(file, cb) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const S = 200, c = document.createElement('canvas'); c.width = S; c.height = S;
+      const ctx = c.getContext('2d');
+      const scale = Math.max(S / img.width, S / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+      cb(c.toDataURL('image/jpeg', 0.82));
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function penFotoUpload(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  _penResize(f, url => {
+    const list = DB.pen_fotos; const k = _penFotoKey(_penFotoTarget.eq, _penFotoTarget.jog);
+    const rec = { id: k, foto: url, ts: Date.now() };
+    const i = list.findIndex(x => x.id === k);
+    if (i >= 0) list[i] = rec; else list.push(rec);
+    DB.savePenfotos(list);
+    try { cloudSet('pen_fotos', rec); } catch (e) {}
+    renderPenaltis();
+    toast('Foto adicionada.', 'success');
+  });
+  input.value = '';
+}
+
 // Gera a "colinha" de pênaltis em PDF — um card por batedor (nº, pé, mapa de
 // onde bate) + resumo da goleira adversária. Estilo ficha de goleiro.
 function gerarFichaPenaltis() {
@@ -5743,7 +5781,7 @@ function gerarFichaPenaltis() {
     const cols = { esq: 0, centro: 0, dir: 0 };
     arr.forEach(p => { if (p.gx != null) cols[_penCol(p.gx)]++; });
     const dom = Object.keys(cols).sort((a, b) => cols[b] - cols[a])[0];
-    return { nome: arr[0].jogador, num: arr[0].numero, pe: arr[0].pe, eq: arr[0].equipe, placements: arr, dom, cols, tot: arr.filter(p => p.gx != null).length };
+    return { nome: arr[0].jogador, num: arr[0].numero, pe: arr[0].pe, eq: arr[0].equipe, foto: _penFoto(arr[0].equipe, arr[0].jogador), placements: arr, dom, cols, tot: arr.filter(p => p.gx != null).length };
   });
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -5795,9 +5833,11 @@ function gerarFichaPenaltis() {
     doc.setFillColor(20); doc.roundedRect(x + 3, y + 3, 12, 8, 1, 1, 'F');
     doc.setTextColor(255); doc.setFont(undefined, 'bold'); doc.setFontSize(11);
     doc.text(j.num ? String(j.num) : '–', x + 9, y + 8.8, { align: 'center' });
+    // Foto (canto superior direito)
+    if (j.foto) { try { doc.addImage(j.foto, 'JPEG', x + cardW - 16, y + 3, 13, 13); } catch (e) {} }
     // Nome
     doc.setTextColor(20); doc.setFontSize(11);
-    doc.text(String(j.nome).toUpperCase().slice(0, 22), x + 17, y + 8.5);
+    doc.text(String(j.nome).toUpperCase().slice(0, j.foto ? 18 : 22), x + 17, y + 8.5);
     // Pé
     doc.setFont(undefined, 'normal'); doc.setFontSize(8); doc.setTextColor(90);
     doc.text(j.pe ? ('Pé: ' + (j.pe === 'E' ? 'Canhoto' : 'Destro')) : 'Pé: —', x + 17, y + 13.5);
@@ -5885,11 +5925,16 @@ function _penRenderBatedores() {
     const domN = cols[domCol], tot = arr.filter(p => p.gx != null).length;
     const gols = arr.filter(p => p.resultado === 'gol').length;
     const rec = tot ? `Nossa goleira deve cair à <b>${_penColLabel(domCol)}</b> (${domN}/${tot} cobranças ali).` : '';
+    const foto = _penFoto(eq, nome);
+    const avatar = `<div onclick="penFotoClick('${_esc(eq)}','${_esc(nome)}')" title="Adicionar/alterar foto" style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;">${foto ? `<img src="${foto}" style="width:100%;height:100%;object-fit:cover;">` : '📷'}</div>`;
     return `<div class="card" style="margin-bottom:12px;">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-        <span style="font-weight:800;font-size:15px;">${num ? '#' + _esc(num) + ' ' : ''}${_esc(nome)}</span>
-        <span style="font-size:11px;color:var(--muted);">${_esc(eq)}${pe ? ' · pé ' + (pe === 'E' ? 'esquerdo' : 'direito') : ''}</span>
-        <span style="font-size:11px;color:var(--muted);margin-left:auto;">${arr.length} cobrança(s) · ${gols} gol(s)</span>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+        ${avatar}
+        <div style="flex:1;min-width:120px;">
+          <div style="font-weight:800;font-size:15px;">${num ? '#' + _esc(num) + ' ' : ''}${_esc(nome)}</div>
+          <div style="font-size:11px;color:var(--muted);">${_esc(eq)}${pe ? ' · pé ' + (pe === 'E' ? 'esquerdo' : 'direito') : ''}</div>
+        </div>
+        <span style="font-size:11px;color:var(--muted);">${arr.length} cobrança(s) · ${gols} gol(s)</span>
       </div>
       <div style="max-width:280px;margin:0 auto 8px;">${_penGoalSVG(arr, false)}</div>
       ${rec ? `<div style="font-size:12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:8px;padding:8px 10px;">🎯 ${rec}</div>` : ''}
@@ -9461,7 +9506,7 @@ function cloudDelete(col, id) {
    com mesclagem ao abrir. Último a escrever vence por coleção.
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
-const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances', 'penaltis'];
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances', 'penaltis', 'pen_fotos'];
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
