@@ -5669,6 +5669,33 @@ const _PEN_PAISES = {
 };
 function _penFlag(pais) { return _PEN_PAISES[pais] || ''; }
 function _penCol(gx) { return gx < 0.4 ? 'esq' : gx > 0.6 ? 'dir' : 'centro'; }
+// Agrega colocações em colunas (lado), linhas (altura) e células (canto exato).
+function _penZones(arr) {
+  const cols = { esq: 0, centro: 0, dir: 0 }, rows = { alto: 0, meio: 0, rasteiro: 0 }, cells = {};
+  arr.forEach(p => {
+    if (p.gx == null) return;
+    const c = _penCol(p.gx), r = _penRow(p.gy);
+    cols[c]++; rows[r]++; const k = c + '|' + r; cells[k] = (cells[k] || 0) + 1;
+  });
+  const tot = arr.filter(p => p.gx != null).length;
+  const domCol = Object.keys(cols).sort((a, b) => cols[b] - cols[a])[0];
+  const domRow = Object.keys(rows).sort((a, b) => rows[b] - rows[a])[0];
+  let domCell = null, domCellN = 0;
+  Object.keys(cells).forEach(k => { if (cells[k] > domCellN) { domCellN = cells[k]; domCell = k; } });
+  return { cols, rows, cells, tot, domCol, domRow, domCell, domCellN };
+}
+function _penRowLabel(r) { return r === 'alto' ? 'alto' : r === 'rasteiro' ? 'rasteiro' : 'meia altura'; }
+// #4 Confiança pela quantidade de cobranças observadas.
+function _penConf(tot) {
+  if (tot >= 5) return { label: 'tendência forte', color: '#34D399' };
+  if (tot >= 3) return { label: 'tendência moderada', color: '#F59E0B' };
+  if (tot >= 1) return { label: 'amostra pequena', color: '#94A3B8' };
+  return { label: 'sem dados', color: '#94A3B8' };
+}
+function _penConfBadge(tot) {
+  const c = _penConf(tot);
+  return `<span style="font-size:10px;font-weight:700;color:${c.color};background:${c.color}22;border-radius:20px;padding:2px 8px;">${c.label}</span>`;
+}
 function _penColLabel(c) { return c === 'esq' ? 'esquerda' : c === 'dir' ? 'direita' : 'meio'; }
 function _penRow(gy) { return gy < 0.4 ? 'alto' : gy > 0.66 ? 'rasteiro' : 'meio'; }
 
@@ -5818,10 +5845,8 @@ function gerarFichaPenaltis() {
   bat.forEach(p => { const k = p.equipe + '|' + p.jogador; (groups[k] = groups[k] || []).push(p); });
   const jogadores = Object.keys(groups).map(k => {
     const arr = groups[k];
-    const cols = { esq: 0, centro: 0, dir: 0 };
-    arr.forEach(p => { if (p.gx != null) cols[_penCol(p.gx)]++; });
-    const dom = Object.keys(cols).sort((a, b) => cols[b] - cols[a])[0];
-    return { nome: arr[0].jogador, num: arr[0].numero, pe: arr[0].pe, pais: arr[0].pais, eq: arr[0].equipe, foto: _penFoto(arr[0].equipe, arr[0].jogador), placements: arr, dom, cols, tot: arr.filter(p => p.gx != null).length };
+    const z = _penZones(arr);
+    return { nome: arr[0].jogador, num: arr[0].numero, pe: arr[0].pe, pais: arr[0].pais, eq: arr[0].equipe, foto: _penFoto(arr[0].equipe, arr[0].jogador), placements: arr, dom: z.domCol, domRow: z.domRow, cols: z.cols, tot: z.tot };
   });
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -5894,10 +5919,16 @@ function gerarFichaPenaltis() {
     // Mini gol — proporção 3:2, centralizado
     const gH = 24, gW = gH * 1.5;
     drawGoal(x + (cardW - gW) / 2, y + 16, gW, gH, j.placements, j.dom);
-    // Tendência
+    // Tendência (lado + altura) e confiança
+    const sideTxt = j.dom === 'esq' ? 'ESQ' : j.dom === 'dir' ? 'DIR' : 'MEIO';
+    const rowTxt = j.domRow === 'alto' ? 'ALTO' : j.domRow === 'rasteiro' ? 'RASTEIRO' : 'MEIA ALT.';
     doc.setFontSize(8); doc.setTextColor(20); doc.setFont(undefined, 'bold');
-    const rec = j.tot ? ('Cai: ' + (j.dom === 'esq' ? 'ESQUERDA' : j.dom === 'dir' ? 'DIREITA' : 'MEIO') + '  (' + j.cols[j.dom] + '/' + j.tot + ')') : 'Sem dados';
-    doc.text(rec, x + 3, y + cardH - 2.5);
+    doc.text(j.tot ? ('Cai: ' + sideTxt + ' ' + rowTxt + '  (' + j.cols[j.dom] + '/' + j.tot + ')') : 'Sem dados', x + 3, y + cardH - 2.5);
+    if (j.tot) {
+      const cf = _penConf(j.tot); const rgb = cf.color === '#34D399' ? [16,150,90] : cf.color === '#F59E0B' ? [180,120,10] : [130,140,150];
+      doc.setFont(undefined, 'normal'); doc.setFontSize(6.5); doc.setTextColor(rgb[0], rgb[1], rgb[2]);
+      doc.text(cf.label, x + cardW - 3, y + cardH - 2.5, { align: 'right' });
+    }
     col++; if (col >= 2) { col = 0; y += cardH + 4; }
   };
   jogadores.forEach(card);
@@ -5971,12 +6002,13 @@ function _penRenderBatedores() {
   const cards = Object.keys(groups).map(k => {
     const arr = groups[k];
     const nome = arr[0].jogador, eq = arr[0].equipe, num = arr[0].numero, pe = arr[0].pe, pais = arr[0].pais;
-    const cols = { esq: 0, centro: 0, dir: 0 };
-    arr.forEach(p => { if (p.gx != null) cols[_penCol(p.gx)]++; });
-    const domCol = Object.keys(cols).sort((a, b) => cols[b] - cols[a])[0];
-    const domN = cols[domCol], tot = arr.filter(p => p.gx != null).length;
+    const z = _penZones(arr);
+    const tot = z.tot;
+    const domN = z.cols[z.domCol];
     const gols = arr.filter(p => p.resultado === 'gol').length;
-    const rec = tot ? `Nossa goleira deve cair à <b>${_penColLabel(domCol)}</b> (${domN}/${tot} cobranças ali).` : '';
+    const rec = tot
+      ? `Nossa goleira deve cair à <b>${_penColLabel(z.domCol)}</b> — a bola costuma vir <b>${_penRowLabel(z.domRow)}</b> (${domN}/${tot} à ${_penColLabel(z.domCol)}).`
+      : '';
     const foto = _penFoto(eq, nome);
     const avatar = `<div onclick="penFotoClick('${_esc(eq)}','${_esc(nome)}')" title="Adicionar/alterar foto" style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;">${foto ? `<img src="${foto}" style="width:100%;height:100%;object-fit:cover;">` : '📷'}</div>`;
     return `<div class="card" style="margin-bottom:12px;">
@@ -5986,7 +6018,10 @@ function _penRenderBatedores() {
           <div style="font-weight:800;font-size:15px;">${pais ? _penFlag(pais) + ' ' : ''}${num ? '#' + _esc(num) + ' ' : ''}${_esc(nome)}</div>
           <div style="font-size:11px;color:var(--muted);">${_esc(eq)}${pe ? ' · pé ' + (pe === 'E' ? 'esquerdo' : 'direito') : ''}${pais ? ' · ' + _esc(pais) : ''}</div>
         </div>
-        <span style="font-size:11px;color:var(--muted);">${arr.length} cobrança(s) · ${gols} gol(s)</span>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+          <span style="font-size:11px;color:var(--muted);">${arr.length} cobrança(s) · ${gols} gol(s)</span>
+          ${_penConfBadge(tot)}
+        </div>
       </div>
       <div style="max-width:280px;margin:0 auto 8px;">${_penGoalSVG(arr, false)}</div>
       ${rec ? `<div style="font-size:12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:8px;padding:8px 10px;">🎯 ${rec}</div>` : ''}
@@ -6040,6 +6075,7 @@ function _penRenderGoleira() {
         <span style="font-weight:800;font-size:15px;">🧤 ${_esc(nome)}</span>
         <span style="font-size:11px;color:var(--muted);">${_esc(eq)}</span>
         <span style="font-size:11px;color:var(--muted);margin-left:auto;">${tot} cobrança(s) · ${defendeu} defesa(s)</span>
+        ${_penConfBadge(tot)}
       </div>
       ${bar('esq', '↙ Cai para a esquerda')}${bar('centro', '⬆ Fica no meio')}${bar('dir', '↘ Cai para a direita')}
       ${tot ? `<div style="font-size:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:8px 10px;margin-top:8px;">🎯 Ela tende a ${dom === 'centro' ? 'ficar no meio' : 'cair para a ' + _penColLabel(dom)}. <b>Recomendação:</b> bater ${dom === 'centro' ? 'nos cantos' : 'à ' + oposto}.</div>` : ''}
@@ -10399,7 +10435,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v103';
+const APP_VERSION = 'v104';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
