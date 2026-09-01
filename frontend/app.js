@@ -10332,7 +10332,9 @@ if ('serviceWorker' in navigator) {
     };
 
     // Registra SW principal
-    navigator.serviceWorker.register('./sw.js').then(reg => {
+    // updateViaCache:'none' → o navegador SEMPRE revalida o sw.js (evita ficar
+    // preso numa versão antiga, problema clássico de PWA no iOS).
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
       if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
       reg.addEventListener('updatefound', () => {
         const sw = reg.installing;
@@ -10340,6 +10342,12 @@ if ('serviceWorker' in navigator) {
           if (sw.state === 'installed') sw.postMessage({ type: 'SKIP_WAITING' });
         });
       });
+      // Checa por atualização já na abertura, a cada 60s, e sempre que o app
+      // volta ao primeiro plano (reabrir o PWA passa a puxar a versão nova).
+      const _check = () => { try { reg.update(); } catch (e) {} };
+      _check();
+      setInterval(_check, 60000);
+      document.addEventListener('visibilitychange', () => { if (!document.hidden) _check(); });
     }).catch(e => console.warn('[GKHub] SW registration failed:', e));
     // Registra SW do Firebase Messaging (para push em background)
     navigator.serviceWorker.register('./firebase-messaging-sw.js', { scope: './' })
