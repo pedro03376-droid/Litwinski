@@ -4115,7 +4115,7 @@ function pdfCompeticao() {
 // ═══════════════════════════════════════════════════════════
 // MATCH CENTER — Central de Análise Profissional
 // ═══════════════════════════════════════════════════════════
-const MC_FIELDS = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai','golgk'];
+const MC_FIELDS = ['dad','dae','dbd','dbe','dc','d1x1','esq','gda','gfa','gpe','gfl','dpc','dpe','dmc','dme','int','pose','posd','sai','golgk','ca','cv'];
 
 // Botões de defesa/distribuição/outros por MODALIDADE. Mesmos CAMPOS de dados
 // (para não quebrar notas/heatmap) — muda só rótulo/ordem/ênfase. Beach: jogo
@@ -4236,19 +4236,20 @@ const MC_NOTA_PESOS = {
   gda:-0.20, gfa:-0.20, gpe:-0.20, gfl:-0.20, // gol sofrido
   int:+0.10, sai:+0.10,             // interceptação / saída correta
   pose:+0.05, posd:+0.05,           // posicionamento
-  golgk:+0.40                       // gol marcado pela goleira (grande positivo)
+  golgk:+0.40,                      // gol marcado pela goleira (grande positivo)
+  ca:-0.15, cv:-0.35                // cartão amarelo / vermelho (disciplina)
 };
 
 const MC_ICONS = {
   def:'🧤', gol:'⚽', dist:'🎯', out:'🛡️',
-  sub:'🔄', periodo:'─', 'placar-nos':'⚽', 'placar-adv':'⚽', tt:'⏱', golgk:'🧤'
+  sub:'🔄', periodo:'─', 'placar-nos':'⚽', 'placar-adv':'⚽', tt:'⏱', golgk:'🧤', card:'🟨'
 };
 
 const MC_TIPO_ICONS = {
   dad:'🧤', dae:'🧤', dbd:'🧤', dbe:'🧤', dc:'🧤', d1x1:'🥊', esq:'💥',
   gda:'⚽', gfa:'⚽', gpe:'⚽', gfl:'⚽',
   dpc:'🎯', dpe:'❌', dmc:'🎯', dme:'❌',
-  int:'🛡️', sai:'🏃', pose:'📍', posd:'📍'
+  int:'🛡️', sai:'🏃', pose:'📍', posd:'📍', ca:'🟨', cv:'🟥'
 };
 
 function mcReset() {
@@ -4430,8 +4431,8 @@ function mcUpdateLog() {
     el.innerHTML='<div style="color:var(--muted);text-align:center;padding:20px 0;font-size:13px;">Nenhum evento registrado</div>';
     return;
   }
-  const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)',tt:'rgba(167,139,250,.15)',golgk:'rgba(16,185,129,.2)'};
-  const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)',tt:'rgba(167,139,250,.4)',golgk:'rgba(16,185,129,.6)'};
+  const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)',tt:'rgba(167,139,250,.15)',golgk:'rgba(16,185,129,.2)',card:'rgba(245,197,66,.18)'};
+  const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)',tt:'rgba(167,139,250,.4)',golgk:'rgba(16,185,129,.6)',card:'rgba(245,197,66,.5)'};
   el.innerHTML=mcLog.slice(0,60).map((e,i)=>{
     if (e.tipo==='periodo') return `<div style="text-align:center;padding:6px 0;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
     const icon=MC_TIPO_ICONS[e.key]||MC_ICONS[e.tipo]||'●';
@@ -4828,7 +4829,7 @@ function mcRenderSmartLog() {
   const events=mcLog.filter(e=>e.tipo!=='periodo').slice().reverse();
   if (!events.length){el.innerHTML='';return;}
   const fases=mcDetectFases();
-  const typeColors={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#8B5CF6','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981'};
+  const typeColors={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#8B5CF6','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981',card:'#F5C542'};
   let html='<div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:6px;">Linha do Tempo</div>';
   let lastFaseIdx=-1;
   for (const ev of events) {
@@ -5236,6 +5237,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
             <div style="font-size:18px;font-weight:800;">${gk?.nome||'—'}</div>
             <div style="font-size:22px;font-weight:800;color:${nivelColor};margin-top:2px;">${nivel}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:4px;">${gkSegs.map(s=>s.periodoLabel).join(' + ')} · Sequência máx: ${mcMaxStreak} def.</div>
+            ${(sum('ca')||sum('cv'))?`<div style="font-size:11px;margin-top:4px;">${sum('ca')?`<span style="color:#F5C542;font-weight:700;">🟨 ${sum('ca')}</span>`:''} ${sum('cv')?`<span style="color:#EF4444;font-weight:700;margin-left:6px;">🟥 ${sum('cv')} (expulsão)</span>`:''}</div>`:''}
           </div>
         </div>
 
@@ -5370,7 +5372,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
 
   const timelineEvents=mcLog.filter(e=>e.tipo!=='periodo').slice(0,20);
   if (timelineEvents.length) {
-    const typeColors2={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#F59E0B','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981'};
+    const typeColors2={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#F59E0B','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981',card:'#F5C542'};
     html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
       <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📅 Timeline do Jogo</div>
       ${timelineEvents.map(e=>{
