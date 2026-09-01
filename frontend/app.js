@@ -53,6 +53,8 @@ const DB = {
   saveSeasons(d)      { this.save('seasons', d); },
   get def_lances()    { return this.load('def_lances'); },
   saveDeflances(d)    { this.save('def_lances', d); },
+  get penaltis()      { return this.load('penaltis'); },
+  savePenaltis(d)     { this.save('penaltis', d); },
   get aianalyses()    { return this.load('aianalyses'); },
   saveAianalyses(d)   { this.save('aianalyses', d); },
   saveNotifications(d){ this.save('notifications', d); },
@@ -788,7 +790,8 @@ const pageTitles = {
   usuario: 'Meu Perfil',
   heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)',
   notificacoes: 'Notificações', 'central-relatorios': 'Central de Relatórios', auditoria: 'Auditoria',
-  clube: 'Configurações do Clube', lesoes: 'Controle de Lesões', pid: 'Plano Individual de Desenvolvimento'
+  clube: 'Configurações do Clube', lesoes: 'Controle de Lesões', pid: 'Plano Individual de Desenvolvimento',
+  penaltis: 'Pênaltis — Scouting do Adversário'
 };
 
 function navigate(page) {
@@ -809,6 +812,7 @@ function navigate(page) {
   if (page === 'performance') renderPerformance();
   if (page === 'treinos') renderTreinos();
   if (page === 'heatmap') renderHeatmap();
+  if (page === 'penaltis') renderPenaltis();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
   if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); renderBackendCard(); loadClubMembers(); renderBackupHistory(); renderAdminPanel(); }
   if (page === 'usuario') { loadUserPage(); }
@@ -5620,6 +5624,229 @@ function renderDefMap() {
     <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5;">Azul = defesa · Vermelho = gol. Toque no tempo de cada lance para abrir o vídeo naquele momento.</div>`;
 }
 
+// ═══════════════════════════════════════════════════════════
+// PÊNALTIS — Scouting do adversário (jogos decisivos)
+// Batedores: onde costumam bater. Goleira adversária: para que lado cai.
+// Gera recomendações para a disputa. Sincroniza na nuvem.
+// ═══════════════════════════════════════════════════════════
+let _penTab = 'batedores';
+let _penEquipe = '';
+let _penPend = { gx: null, gy: null };
+let _penBatResult = 'gol';
+let _penGkLado = 'esq';
+let _penGkResult = 'defendeu';
+
+function _penEquipes() {
+  return [...new Set(DB.penaltis.map(p => (p.equipe || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+}
+function _penCol(gx) { return gx < 0.4 ? 'esq' : gx > 0.6 ? 'dir' : 'centro'; }
+function _penColLabel(c) { return c === 'esq' ? 'esquerda' : c === 'dir' ? 'direita' : 'meio'; }
+function _penRow(gy) { return gy < 0.4 ? 'alto' : gy > 0.66 ? 'rasteiro' : 'meio'; }
+
+function _penGoalTap(evt) {
+  const svg = evt.currentTarget;
+  const r = svg.getBoundingClientRect();
+  const px = (evt.touches ? evt.touches[0].clientX : evt.clientX) - r.left;
+  const py = (evt.touches ? evt.touches[0].clientY : evt.clientY) - r.top;
+  _penPend = { gx: Math.max(0, Math.min(1, px / r.width)), gy: Math.max(0, Math.min(1, py / r.height)) };
+  renderPenaltis();
+}
+
+// SVG do gol com os pontos de colocação. tappable liga o toque.
+function _penGoalSVG(placements, tappable) {
+  const W = 300, H = 130;
+  const colOf = res => res === 'gol' ? '#EF4444' : res === 'defendido' ? '#3B82F6' : '#94A3B8';
+  let marks = (placements || []).map(p => {
+    if (p.gx == null) return '';
+    return `<circle cx="${(p.gx * W).toFixed(1)}" cy="${(p.gy * H).toFixed(1)}" r="5" fill="${colOf(p.resultado)}" opacity="0.9"/>`;
+  }).join('');
+  let pend = '';
+  if (tappable && _penPend.gx != null) pend = `<circle cx="${(_penPend.gx * W).toFixed(1)}" cy="${(_penPend.gy * H).toFixed(1)}" r="7" fill="none" stroke="#F5C542" stroke-width="2.5"/><circle cx="${(_penPend.gx * W).toFixed(1)}" cy="${(_penPend.gy * H).toFixed(1)}" r="3" fill="#F5C542"/>`;
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:300px;${tappable ? 'touch-action:none;cursor:crosshair;' : ''}border-radius:8px;background:rgba(255,255,255,.02);" ${tappable ? "onclick=\"_penGoalTap(event)\"" : ''}>
+    <line x1="20" y1="14" x2="280" y2="14" stroke="var(--border-h)" stroke-width="5"/>
+    <line x1="20" y1="14" x2="20" y2="120" stroke="var(--border-h)" stroke-width="5"/>
+    <line x1="280" y1="14" x2="280" y2="120" stroke="var(--border-h)" stroke-width="5"/>
+    ${[100,180].map(x=>`<line x1="${x}" y1="16" x2="${x}" y2="118" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`).join('')}
+    ${[50,84].map(y=>`<line x1="22" y1="${y}" x2="278" y2="${y}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`).join('')}
+    ${marks}${pend}
+  </svg>`;
+}
+
+function penTab(t) { _penTab = t; renderPenaltis(); }
+function _penSetEquipe(v) { _penEquipe = v; renderPenaltis(); }
+function _penSetBatResult(r) { _penBatResult = r; renderPenaltis(); }
+function _penSetGkLado(l) { _penGkLado = l; renderPenaltis(); }
+function _penSetGkResult(r) { _penGkResult = r; renderPenaltis(); }
+
+function penAddBatedor() {
+  const equipe = (document.getElementById('pen-bat-equipe')?.value || '').trim();
+  const jogador = (document.getElementById('pen-bat-jogador')?.value || '').trim();
+  if (!equipe) { toast('Informe a equipe adversária.', 'error'); return; }
+  if (!jogador) { toast('Informe o nome/número do batedor.', 'error'); return; }
+  if (_penPend.gx == null) { toast('Toque no gol para marcar a colocação.', 'error'); return; }
+  const rec = {
+    id: uid(), type: 'batedor', equipe, jogador,
+    numero: (document.getElementById('pen-bat-num')?.value || '').trim(),
+    pe: document.getElementById('pen-bat-pe')?.value || '',
+    gx: _penPend.gx, gy: _penPend.gy, resultado: _penBatResult,
+    obs: (document.getElementById('pen-bat-obs')?.value || '').trim(),
+    seasonId: (typeof _activeSeason === 'function' ? (_activeSeason() || {}).id : '') || '', ts: Date.now()
+  };
+  const list = DB.penaltis; list.push(rec); DB.savePenaltis(list);
+  try { cloudSet('penaltis', rec); } catch (e) {}
+  try { logAudit('Pênaltis', 'Batedor ' + jogador + ' (' + equipe + ')'); } catch (e) {}
+  _penPend = { gx: null, gy: null };
+  _penEquipe = _penEquipe || equipe;
+  renderPenaltis();
+  toast('Cobrança registrada.', 'success');
+}
+
+function penAddGoleira() {
+  const equipe = (document.getElementById('pen-gk-equipe')?.value || '').trim();
+  const goleira = (document.getElementById('pen-gk-nome')?.value || '').trim();
+  if (!equipe) { toast('Informe a equipe adversária.', 'error'); return; }
+  if (!goleira) { toast('Informe a goleira adversária.', 'error'); return; }
+  const rec = {
+    id: uid(), type: 'goleira', equipe, goleira,
+    lado: _penGkLado, momento: document.getElementById('pen-gk-momento')?.value || '',
+    resultado: _penGkResult, obs: (document.getElementById('pen-gk-obs')?.value || '').trim(),
+    seasonId: (typeof _activeSeason === 'function' ? (_activeSeason() || {}).id : '') || '', ts: Date.now()
+  };
+  const list = DB.penaltis; list.push(rec); DB.savePenaltis(list);
+  try { cloudSet('penaltis', rec); } catch (e) {}
+  try { logAudit('Pênaltis', 'Goleira ' + goleira + ' (' + equipe + ')'); } catch (e) {}
+  _penEquipe = _penEquipe || equipe;
+  renderPenaltis();
+  toast('Observação registrada.', 'success');
+}
+
+function penDel(id) {
+  DB.savePenaltis(DB.penaltis.filter(p => p.id !== id));
+  renderPenaltis();
+}
+
+function renderPenaltis() {
+  const el = document.getElementById('penaltis-content');
+  if (!el) return;
+  const equipes = _penEquipes();
+  const eqOpts = '<option value="">Todas as equipes</option>' + equipes.map(e => `<option value="${_esc(e)}" ${e === _penEquipe ? 'selected' : ''}>${_esc(e)}</option>`).join('');
+  const tabBtn = (t, lbl) => `<button class="btn btn-sm ${_penTab === t ? 'btn-primary' : 'btn-secondary'}" onclick="penTab('${t}')">${lbl}</button>`;
+
+  let body = '';
+  if (_penTab === 'batedores') body = _penRenderBatedores();
+  else body = _penRenderGoleira();
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <span class="card-title" style="flex-shrink:0;">🥅 Pênaltis — Adversário</span>
+        <select class="form-select" style="min-width:180px;margin-left:auto;" onchange="_penSetEquipe(this.value)">${eqOpts}</select>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px;">Prepare a disputa: registre como os adversários batem e como a goleira deles cai. Visão de frente para o gol.</div>
+      <div style="display:flex;gap:6px;margin-top:12px;">${tabBtn('batedores', '👟 Batedores')}${tabBtn('goleira', '🧤 Goleira adversária')}</div>
+    </div>
+    ${body}`;
+}
+
+function _penRenderBatedores() {
+  const all = DB.penaltis.filter(p => p.type === 'batedor' && (!_penEquipe || p.equipe === _penEquipe));
+  const rBtn = (r, lbl) => `<button class="btn btn-sm ${_penBatResult === r ? 'btn-primary' : 'btn-secondary'}" onclick="_penSetBatResult('${r}')">${lbl}</button>`;
+  // Agrupa por jogador (+equipe)
+  const groups = {};
+  all.forEach(p => { const k = p.equipe + '|' + p.jogador; (groups[k] = groups[k] || []).push(p); });
+  const cards = Object.keys(groups).map(k => {
+    const arr = groups[k];
+    const nome = arr[0].jogador, eq = arr[0].equipe, num = arr[0].numero, pe = arr[0].pe;
+    const cols = { esq: 0, centro: 0, dir: 0 };
+    arr.forEach(p => { if (p.gx != null) cols[_penCol(p.gx)]++; });
+    const domCol = Object.keys(cols).sort((a, b) => cols[b] - cols[a])[0];
+    const domN = cols[domCol], tot = arr.filter(p => p.gx != null).length;
+    const gols = arr.filter(p => p.resultado === 'gol').length;
+    const rec = tot ? `Nossa goleira deve cair à <b>${_penColLabel(domCol)}</b> (${domN}/${tot} cobranças ali).` : '';
+    return `<div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="font-weight:800;font-size:15px;">${num ? '#' + _esc(num) + ' ' : ''}${_esc(nome)}</span>
+        <span style="font-size:11px;color:var(--muted);">${_esc(eq)}${pe ? ' · pé ' + (pe === 'E' ? 'esquerdo' : 'direito') : ''}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto;">${arr.length} cobrança(s) · ${gols} gol(s)</span>
+      </div>
+      <div style="max-width:280px;margin:0 auto 8px;">${_penGoalSVG(arr, false)}</div>
+      ${rec ? `<div style="font-size:12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:8px;padding:8px 10px;">🎯 ${rec}</div>` : ''}
+      ${arr.some(p => p.obs) ? `<div style="font-size:11px;color:var(--muted);margin-top:6px;">${arr.filter(p => p.obs).map(p => '• ' + _esc(p.obs)).join('<br>')}</div>` : ''}
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">${arr.map(p => `<button class="btn btn-ghost btn-sm" onclick="penDel('${p.id}')" style="font-size:10px;color:var(--error);padding:2px 6px;">× ${_penColLabel(_penCol(p.gx))} ${_penRow(p.gy)}</button>`).join('')}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">+ Registrar cobrança</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <input id="pen-bat-equipe" class="form-input" placeholder="Equipe adversária" value="${_esc(_penEquipe)}">
+        <input id="pen-bat-jogador" class="form-input" placeholder="Batedor (nome)">
+        <input id="pen-bat-num" class="form-input" placeholder="Nº (opcional)">
+        <select id="pen-bat-pe" class="form-select"><option value="">Pé —</option><option value="D">Destro</option><option value="E">Canhoto</option></select>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Toque no gol onde ele costuma bater:</div>
+      <div style="max-width:300px;margin:0 auto 8px;">${_penGoalSVG([], true)}</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="font-size:11px;color:var(--muted);">Resultado:</span>
+        ${rBtn('gol', '⚽ Gol')}${rBtn('defendido', '🧤 Defendido')}${rBtn('fora', '❌ Fora')}
+      </div>
+      <input id="pen-bat-obs" class="form-input" placeholder="Observação (ex.: espera a goleira cair)" style="margin-bottom:10px;">
+      <button class="btn btn-primary" style="width:100%;" onclick="penAddBatedor()">+ Adicionar cobrança</button>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">🔴 Gol · 🔵 Defendido · ⚪ Fora</div>
+    </div>
+    ${cards || '<div class="card" style="color:var(--muted);font-size:13px;text-align:center;">Nenhum batedor registrado ainda.</div>'}`;
+}
+
+function _penRenderGoleira() {
+  const all = DB.penaltis.filter(p => p.type === 'goleira' && (!_penEquipe || p.equipe === _penEquipe));
+  const lBtn = (l, lbl) => `<button class="btn btn-sm ${_penGkLado === l ? 'btn-primary' : 'btn-secondary'}" onclick="_penSetGkLado('${l}')">${lbl}</button>`;
+  const rBtn = (r, lbl) => `<button class="btn btn-sm ${_penGkResult === r ? 'btn-primary' : 'btn-secondary'}" onclick="_penSetGkResult('${r}')">${lbl}</button>`;
+  const groups = {};
+  all.forEach(p => { const k = p.equipe + '|' + p.goleira; (groups[k] = groups[k] || []).push(p); });
+  const cards = Object.keys(groups).map(k => {
+    const arr = groups[k];
+    const nome = arr[0].goleira, eq = arr[0].equipe;
+    const lados = { esq: 0, centro: 0, dir: 0 };
+    arr.forEach(p => { if (lados[p.lado] != null) lados[p.lado]++; });
+    const tot = arr.length;
+    const dom = Object.keys(lados).sort((a, b) => lados[b] - lados[a])[0];
+    const pct = l => tot ? Math.round(lados[l] / tot * 100) : 0;
+    const defendeu = arr.filter(p => p.resultado === 'defendeu').length;
+    const oposto = dom === 'esq' ? 'direita' : dom === 'dir' ? 'esquerda' : 'nos cantos (ela fica no meio)';
+    const bar = (l, lbl) => `<div style="margin-bottom:6px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span>${lbl}</span><span style="color:var(--muted);">${lados[l]} (${pct(l)}%)</span></div><div style="height:8px;background:var(--bg);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${pct(l)}%;background:${l === dom ? '#EF4444' : 'var(--primary)'};"></div></div></div>`;
+    return `<div class="card" style="margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <span style="font-weight:800;font-size:15px;">🧤 ${_esc(nome)}</span>
+        <span style="font-size:11px;color:var(--muted);">${_esc(eq)}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto;">${tot} cobrança(s) · ${defendeu} defesa(s)</span>
+      </div>
+      ${bar('esq', '↙ Cai para a esquerda')}${bar('centro', '⬆ Fica no meio')}${bar('dir', '↘ Cai para a direita')}
+      ${tot ? `<div style="font-size:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:8px 10px;margin-top:8px;">🎯 Ela tende a ${dom === 'centro' ? 'ficar no meio' : 'cair para a ' + _penColLabel(dom)}. <b>Recomendação:</b> bater ${dom === 'centro' ? 'nos cantos' : 'à ' + oposto}.</div>` : ''}
+      ${arr.some(p => p.obs) ? `<div style="font-size:11px;color:var(--muted);margin-top:6px;">${arr.filter(p => p.obs).map(p => '• ' + _esc(p.obs)).join('<br>')}</div>` : ''}
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">${arr.map(p => `<button class="btn btn-ghost btn-sm" onclick="penDel('${p.id}')" style="font-size:10px;color:var(--error);padding:2px 6px;">× ${p.lado === 'esq' ? 'esq' : p.lado === 'dir' ? 'dir' : 'meio'}${p.resultado === 'defendeu' ? ' 🧤' : ''}</button>`).join('')}</div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="card" style="margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px;">+ Registrar observação da goleira</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+        <input id="pen-gk-equipe" class="form-input" placeholder="Equipe adversária" value="${_esc(_penEquipe)}">
+        <input id="pen-gk-nome" class="form-input" placeholder="Goleira adversária (nome)">
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Para que lado ela caiu?</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">${lBtn('esq', '↙ Esquerda')}${lBtn('centro', '⬆ Meio')}${lBtn('dir', '↘ Direita')}</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+        <select id="pen-gk-momento" class="form-select" style="flex:1;min-width:140px;"><option value="">Momento —</option><option value="antecipa">Antecipa (cai antes)</option><option value="espera">Espera a batida</option></select>
+        <div style="display:flex;gap:6px;">${rBtn('defendeu', '🧤 Defendeu')}${rBtn('gol', '⚽ Levou gol')}</div>
+      </div>
+      <input id="pen-gk-obs" class="form-input" placeholder="Observação (ex.: sai muito cedo)" style="margin-bottom:10px;">
+      <button class="btn btn-primary" style="width:100%;" onclick="penAddGoleira()">+ Adicionar observação</button>
+    </div>
+    ${cards || '<div class="card" style="color:var(--muted);font-size:13px;text-align:center;">Nenhuma goleira adversária registrada ainda.</div>'}`;
+}
+
 // ── PDF canvas helpers ───────────────────────────────────────
 function _pdfLineChart(history) {
   if (!history||history.length<2) return null;
@@ -9112,7 +9339,7 @@ function cloudDelete(col, id) {
    com mesclagem ao abrir. Último a escrever vence por coleção.
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
-const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances'];
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances', 'penaltis'];
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
