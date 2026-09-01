@@ -5663,20 +5663,23 @@ function _penGoalTap(evt) {
 
 // SVG do gol com os pontos de colocação. tappable liga o toque.
 function _penGoalSVG(placements, tappable) {
-  const W = 300, H = 130;
+  // Gol de futsal = 3m x 2m (proporção 3:2). viewBox 300x200 mantém a proporção.
+  const W = 300, H = 200;
   const colOf = res => res === 'gol' ? '#EF4444' : res === 'defendido' ? '#3B82F6' : '#94A3B8';
   let marks = (placements || []).map(p => {
     if (p.gx == null) return '';
-    return `<circle cx="${(p.gx * W).toFixed(1)}" cy="${(p.gy * H).toFixed(1)}" r="5" fill="${colOf(p.resultado)}" opacity="0.9"/>`;
+    return `<circle cx="${(p.gx * W).toFixed(1)}" cy="${(p.gy * H).toFixed(1)}" r="6" fill="${colOf(p.resultado)}" opacity="0.9"/>`;
   }).join('');
   let pend = '';
-  if (tappable && _penPend.gx != null) pend = `<circle cx="${(_penPend.gx * W).toFixed(1)}" cy="${(_penPend.gy * H).toFixed(1)}" r="7" fill="none" stroke="#F5C542" stroke-width="2.5"/><circle cx="${(_penPend.gx * W).toFixed(1)}" cy="${(_penPend.gy * H).toFixed(1)}" r="3" fill="#F5C542"/>`;
+  if (tappable && _penPend.gx != null) pend = `<circle cx="${(_penPend.gx * W).toFixed(1)}" cy="${(_penPend.gy * H).toFixed(1)}" r="8" fill="none" stroke="#F5C542" stroke-width="3"/><circle cx="${(_penPend.gx * W).toFixed(1)}" cy="${(_penPend.gy * H).toFixed(1)}" r="3.5" fill="#F5C542"/>`;
+  // Abertura do gol: x 16..284 (268 largura) · y 16..184 (168 altura) ≈ 3:2
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:300px;${tappable ? 'touch-action:none;cursor:crosshair;' : ''}border-radius:8px;background:rgba(255,255,255,.02);" ${tappable ? "onclick=\"_penGoalTap(event)\"" : ''}>
-    <line x1="20" y1="14" x2="280" y2="14" stroke="var(--border-h)" stroke-width="5"/>
-    <line x1="20" y1="14" x2="20" y2="120" stroke="var(--border-h)" stroke-width="5"/>
-    <line x1="280" y1="14" x2="280" y2="120" stroke="var(--border-h)" stroke-width="5"/>
-    ${[100,180].map(x=>`<line x1="${x}" y1="16" x2="${x}" y2="118" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`).join('')}
-    ${[50,84].map(y=>`<line x1="22" y1="${y}" x2="278" y2="${y}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`).join('')}
+    <line x1="16" y1="16" x2="284" y2="16" stroke="var(--border-h)" stroke-width="6"/>
+    <line x1="16" y1="16" x2="16" y2="184" stroke="var(--border-h)" stroke-width="6"/>
+    <line x1="284" y1="16" x2="284" y2="184" stroke="var(--border-h)" stroke-width="6"/>
+    <line x1="6" y1="190" x2="294" y2="190" stroke="rgba(255,255,255,.15)" stroke-width="2"/>
+    ${[105,195].map(x=>`<line x1="${x}" y1="18" x2="${x}" y2="184" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`).join('')}
+    ${[72,128].map(y=>`<line x1="18" y1="${y}" x2="282" y2="${y}" stroke="rgba(255,255,255,.06)" stroke-width="1"/>`).join('')}
     ${marks}${pend}
   </svg>`;
 }
