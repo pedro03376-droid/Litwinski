@@ -2924,7 +2924,7 @@ function applyCrop() {
   canvas.width = out; canvas.height = out;
   const ctx = canvas.getContext('2d');
   // Batedor/escudo: recorte quadrado (preenche card/PDF/menu). Demais: círculo.
-  const squareTargets = (cropTarget === 'penbat' || cropTarget === 'escudo');
+  const squareTargets = (cropTarget === 'penbat' || cropTarget === 'escudo' || cropTarget === 'onbescudo');
   if (!squareTargets) {
     ctx.beginPath();
     ctx.arc(out/2, out/2, out/2, 0, Math.PI*2);
@@ -2944,6 +2944,12 @@ function applyCrop() {
   if (cropTarget === 'escudo') {
     _clbSetEscudo(result);
     closeModal('modal-crop');
+    return;
+  }
+  if (cropTarget === 'onbescudo') {
+    _onb.escudo = result;
+    closeModal('modal-crop');
+    try { renderOnb(); } catch (e) {}
     return;
   }
   if (cropTarget === 'perfil' && cropGkId) {
@@ -4147,6 +4153,24 @@ function gerarAnalise(gkId) {
   openModal('modal-analise');
 }
 
+// Carimbo de marca do clube nos PDFs: escudo no canto + nome (opcional).
+function _pdfStampBrand(doc, PW, opts) {
+  try {
+    const o = opts || {};
+    const c = clubSettings();
+    if (c.escudo) { try { doc.addImage(c.escudo, 'JPEG', PW - (o.right || 24), o.top || 8, o.size || 14, o.size || 14); } catch (e) {} }
+    if (o.name !== false) {
+      const name = (typeof _clubName === 'function') ? _clubName() : (c.nome || '');
+      if (name && name !== 'GK Hub') {
+        doc.setFontSize(8); doc.setFont(undefined, 'bold');
+        const col = o.color || [255, 255, 255];
+        doc.setTextColor(col[0], col[1], col[2]);
+        doc.text(name, PW - (o.right || 24) + (o.size || 14) / 2, (o.top || 8) + (o.size || 14) + 3.5, { align: 'center' });
+      }
+    }
+  } catch (e) {}
+}
+
 function exportarAnalisePDF() {
   if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
   const { jsPDF } = window.jspdf;
@@ -4158,6 +4182,7 @@ function exportarAnalisePDF() {
   doc.setTextColor(238,238,248);
   doc.setFontSize(18); doc.setFont('helvetica','bold');
   doc.text('GK Hub — Análise de Desempenho', 15, 20);
+  _pdfStampBrand(doc, 210, { color: [200, 200, 220] });
   doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(90,90,122);
   doc.text(gk ? `${gk.nome} · ${gk.equipe||'—'} · ${gk.categoria||'—'}` : '—', 15, 28);
   doc.text(`Gerado em ${new Date().toLocaleDateString('pt-BR')}`, 15, 34);
@@ -6511,7 +6536,8 @@ function gerarFichaPenaltis() {
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const PW = 210, PH = 297, M = 10;
-  const clube = (localStorage.getItem('gkhub_club_name') || 'GK Hub');
+  const clube = (typeof _clubName === 'function') ? _clubName() : (localStorage.getItem('gkhub_club_name') || 'GK Hub');
+  const escudo = (typeof _clubLogo === 'function') ? _clubLogo() : '';
   let page = 0;
   const header = () => {
     page++;
@@ -6520,8 +6546,9 @@ function gerarFichaPenaltis() {
     doc.text('FICHA DE PÊNALTIS', M, 11);
     doc.setFont(undefined, 'normal'); doc.setFontSize(10);
     doc.text((equipe || 'Todas as equipes') + '  ·  ' + new Date().toLocaleDateString('pt-BR'), M, 17.5);
-    doc.setFontSize(9); doc.setTextColor(200);
-    doc.text(clube, PW - M, 12, { align: 'right' });
+    if (escudo) { try { doc.addImage(escudo, 'JPEG', PW - M - 15, 3.5, 15, 15); } catch (e) {} }
+    doc.setFontSize(9); doc.setTextColor(210);
+    doc.text(clube, PW - M - (escudo ? 18 : 0), 12, { align: 'right' });
   };
 
   // Desenha um mini-gol com os pontos de colocação (0..1).
@@ -7131,7 +7158,10 @@ function _mcExportarRelatorioPDFImpl() {
     sF(8,12,22);rr(0,0,W,H);
     sF(59,130,246);rr(0,0,W,1.5);
     sF(14,22,46);rr(0,2,W,14);
-    doc.setFontSize(6.5);doc.setFont('helvetica','bold');sT(100,116,139);doc.text('GK HUB',15,11);
+    const _cn = (typeof _clubName === 'function') ? _clubName() : 'GK HUB';
+    const _cl = (typeof _clubLogo === 'function') ? _clubLogo() : '';
+    if (_cl) { try { doc.addImage(_cl, 'JPEG', 11, 3, 10, 10); } catch (e) {} }
+    doc.setFontSize(6.5);doc.setFont('helvetica','bold');sT(150,160,180);doc.text((_cn||'GK HUB').slice(0,22),_cl?24:15,11);
     doc.setFontSize(9);doc.setFont('helvetica','bold');sT(248,250,252);doc.text(title,W/2,11,{align:'center'});
     doc.setFontSize(6.5);doc.setFont('helvetica','normal');sT(100,116,139);doc.text(gk?.nome||'',W-15,11,{align:'right'});
     sF(30,50,100);rr(0,16,W,0.5);
@@ -8460,8 +8490,103 @@ function joinClubKey() {
   toast('Código atualizado. Recarregando para sincronizar…', 'success');
   setTimeout(() => location.reload(), 900);
 }
+// ═══════════════════════════════════════════════════════════
+// ONBOARDING — assistente de primeira vez (clube → 1ª goleira)
+// ═══════════════════════════════════════════════════════════
+let _onb = { step: 1, nome: '', cor: '#E11D2A', escudo: '', gkNome: '', modalidade: 'futsal', naipe: 'feminino' };
+function startOnboarding() {
+  const c = clubSettings();
+  _onb = { step: 1, nome: c.nome || '', cor: c.cor1 || '#E11D2A', escudo: c.escudo || '', gkNome: '', modalidade: 'futsal', naipe: 'feminino' };
+  let m = document.getElementById('onb-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'onb-modal'; m.className = 'modal-backdrop'; document.body.appendChild(m); }
+  renderOnb();
+  openModal('onb-modal');
+}
+function _onbCapture() {
+  const g = id => document.getElementById(id);
+  if (g('onb-nome')) _onb.nome = g('onb-nome').value.trim();
+  if (g('onb-cor')) _onb.cor = g('onb-cor').value;
+  if (g('onb-gk-nome')) _onb.gkNome = g('onb-gk-nome').value.trim();
+  if (g('onb-mod')) _onb.modalidade = g('onb-mod').value;
+  if (g('onb-naipe')) _onb.naipe = g('onb-naipe').value;
+}
+function onbNext() { _onbCapture(); if (_onb.step === 1 && !_onb.nome) { toast('Informe o nome do clube.', 'error'); return; } _onb.step++; renderOnb(); }
+function onbBack() { _onbCapture(); _onb.step--; renderOnb(); }
+function onbSkip() { localStorage.setItem('gkhub_onboarded', '1'); closeModal('onb-modal'); }
+function onbUploadEscudo(input) {
+  const f = input.files && input.files[0]; if (!f) return;
+  _onbCapture();
+  const r = new FileReader();
+  r.onload = () => { if (typeof openCropModal === 'function') openCropModal(r.result, 'onbescudo'); };
+  r.readAsDataURL(f); input.value = '';
+}
+function onbFinish() {
+  _onbCapture();
+  const c = clubSettings();
+  const merged = { ...c, nome: _onb.nome, display: _onb.nome, cor1: _onb.cor, escudo: _onb.escudo || c.escudo || '' };
+  localStorage.setItem('gkhub_club_settings', JSON.stringify(merged));
+  try { applyClubBranding(); } catch (e) {}
+  try { _pushClubInfo(merged); } catch (e) {}
+  if (_onb.gkNome) {
+    const gk = { id: uid(), nome: _onb.gkNome, modalidade: _onb.modalidade, naipe: _onb.naipe, equipe: _onb.nome };
+    const list = DB.goleiras; list.push(gk); DB.saveGoleiras(list);
+    try { cloudSet('goleiras', gk); } catch (e) {}
+  }
+  localStorage.setItem('gkhub_onboarded', '1');
+  try { logAudit('Onboarding', 'Concluiu a configuração inicial'); } catch (e) {}
+  closeModal('onb-modal');
+  try { updateGoleiraSelects(); refreshDashboard(); } catch (e) {}
+  toast('Tudo pronto! Bem-vindo(a) ao GK Hub 🧤', 'success');
+}
+function renderOnb() {
+  const m = document.getElementById('onb-modal'); if (!m) return;
+  const dots = [1, 2, 3].map(s => `<span style="width:8px;height:8px;border-radius:50%;background:${s === _onb.step ? 'var(--primary)' : 'var(--border-h)'};display:inline-block;"></span>`).join(' ');
+  let body = '';
+  if (_onb.step === 1) {
+    body = `
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Vamos configurar o seu clube. Leva 1 minuto.</p>
+      <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Nome do clube *</label><input class="form-input" id="onb-nome" value="${_esc(_onb.nome)}" placeholder="Ex.: Associação Atlética"></div>
+      <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px;">
+        <div style="width:64px;height:64px;border-radius:14px;overflow:hidden;background:var(--card-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;">${_onb.escudo ? `<img src="${_onb.escudo}" style="width:100%;height:100%;object-fit:cover;">` : '🏛️'}</div>
+        <div>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">Enviar escudo<input type="file" accept="image/*" style="display:none;" onchange="onbUploadEscudo(this)"></label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><label class="form-label" style="margin:0;">Cor:</label><input type="color" id="onb-cor" value="${_onb.cor}" style="width:46px;height:32px;border:none;background:none;"></div>
+        </div>
+      </div>`;
+  } else if (_onb.step === 2) {
+    body = `
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Cadastre sua primeira goleira (opcional — pode fazer depois).</p>
+      <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Nome do(a) goleiro(a)</label><input class="form-input" id="onb-gk-nome" value="${_esc(_onb.gkNome)}" placeholder="Ex.: Maria Silva"></div>
+      <div style="display:flex;gap:10px;">
+        <div class="form-group" style="flex:1;"><label class="form-label">Modalidade</label><select class="form-select" id="onb-mod"><option value="futsal" ${_onb.modalidade === 'futsal' ? 'selected' : ''}>Futsal</option><option value="beach" ${_onb.modalidade === 'beach' ? 'selected' : ''}>Beach Soccer</option></select></div>
+        <div class="form-group" style="flex:1;"><label class="form-label">Naipe</label><select class="form-select" id="onb-naipe"><option value="feminino" ${_onb.naipe === 'feminino' ? 'selected' : ''}>Feminino</option><option value="masculino" ${_onb.naipe === 'masculino' ? 'selected' : ''}>Masculino</option></select></div>
+      </div>`;
+  } else {
+    body = `
+      <div style="text-align:center;padding:10px 0;">
+        <div style="font-size:44px;">🎉</div>
+        <div style="font-size:16px;font-weight:800;margin:8px 0;">Tudo pronto, ${_esc(_onb.nome || 'treinador')}!</div>
+        <p style="font-size:13px;color:var(--muted);line-height:1.6;">Seu clube está configurado. Agora você pode registrar partidas no <b>Match Center</b>, acompanhar o <b>GK Rating</b> e gerar relatórios.</p>
+      </div>`;
+  }
+  const footer = _onb.step < 3
+    ? `<button class="btn btn-ghost" onclick="onbSkip()">Pular</button>${_onb.step > 1 ? '<button class="btn btn-secondary" onclick="onbBack()">Voltar</button>' : ''}<button class="btn btn-primary" onclick="onbNext()">Continuar</button>`
+    : `${'<button class="btn btn-secondary" onclick="onbBack()">Voltar</button>'}<button class="btn btn-primary" onclick="onbFinish()">🚀 Começar a usar</button>`;
+  m.innerHTML = `
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header"><span class="modal-title">👋 Configuração inicial</span></div>
+      <div class="modal-body">${body}<div style="text-align:center;margin-top:16px;">${dots}</div></div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end;">${footer}</div>
+    </div>`;
+}
+
 // Aviso único: mostra o código do clube e alerta para não usar de outro clube
 function _maybeShowWelcome() {
+  if (document.getElementById('twofa-lock')) return;              // aguarda 2FA
+  const _ov0 = document.getElementById('auth-overlay');
+  if (_ov0 && !_ov0.classList.contains('hidden')) return;        // ainda no login
+  // Primeiro acesso (sem clube e sem goleiras) → assistente de configuração
+  if (!localStorage.getItem('gkhub_onboarded') && DB.goleiras.length === 0 && !(clubSettings().nome)) { startOnboarding(); return; }
   if (localStorage.getItem('gkhub_welcome_seen')) return;
   if (document.getElementById('twofa-lock')) return;              // aguarda 2FA
   const ov = document.getElementById('auth-overlay');
@@ -9964,6 +10089,32 @@ function _gkRestore(snapshot) {
   if (!data || typeof data !== 'object') throw new Error('formato inválido');
   Object.keys(data).forEach(k => { if (k.startsWith('gkhub_') && !_BACKUP_SKIP.includes(k)) localStorage.setItem(k, data[k]); });
 }
+// Verificação de integridade: conta registros e mostra o estado do backup.
+function verificarDados() {
+  const el = document.getElementById('clb-integridade');
+  const cols = [
+    ['Goleiros(as)', 'goleiras'], ['Partidas', 'partidas'], ['Scouts', 'scouts'],
+    ['Temporadas', 'seasons'], ['Pênaltis', 'penaltis'], ['Mapa de defesas', 'def_lances'],
+    ['Lesões', 'lesoes'], ['Treinos+', 'tp_sessions'],
+  ];
+  const rows = cols.map(([lbl, k]) => `<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;"><span style="color:var(--muted);">${lbl}</span><b>${(DB.load(k) || []).length}</b></div>`).join('');
+  // Tamanho aproximado dos dados
+  let bytes = 0; try { for (let i = 0; i < localStorage.length; i++) { const kk = localStorage.key(i); if (kk && kk.startsWith('gkhub_')) bytes += (localStorage.getItem(kk) || '').length; } } catch (e) {}
+  const kb = Math.round(bytes / 1024);
+  const lastAuto = +(localStorage.getItem('gkhub_last_autobackup') || 0);
+  const bkTxt = lastAuto ? 'último backup automático: ' + new Date(lastAuto).toLocaleString('pt-BR') : 'nenhum backup automático ainda';
+  const orfaos = DB.scouts.filter(s => s.goalkeeperId && !DB.goleiras.some(g => g.id === s.goalkeeperId)).length;
+  if (el) el.innerHTML =
+    `<div style="background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:12px;">
+      <div style="font-weight:700;font-size:12px;margin-bottom:8px;">🔎 Integridade dos dados</div>
+      ${rows}
+      <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;font-size:11px;color:var(--muted);">
+        Tamanho: ~${kb} KB · ${bkTxt}${orfaos ? ` · <span style="color:var(--warning);">${orfaos} scout(s) sem goleira vinculada</span>` : ' · ✅ sem inconsistências'}
+      </div>
+    </div>`;
+  toast('Verificação concluída.', 'success');
+}
+
 function exportBackup() {
   const blob = new Blob([JSON.stringify(_gkSnapshot(), null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -11096,7 +11247,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v116';
+const APP_VERSION = 'v117';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
