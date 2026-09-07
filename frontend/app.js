@@ -623,9 +623,28 @@ function _hexLum(hex) {
   const r = parseInt(h.slice(0, 2), 16) / 255, g = parseInt(h.slice(2, 4), 16) / 255, b = parseInt(h.slice(4, 6), 16) / 255;
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
+// Identidade do clube (nome/logo) — fonte única para todo o app.
+function _clubName() {
+  const c = clubSettings();
+  return c.display || c.nome || (document.getElementById('sidebar-club-name')?.textContent) || localStorage.getItem('gkhub_club_name') || 'GK Hub';
+}
+function _clubLogo() { return clubSettings().escudo || ''; }
+
 function applyClubBranding() {
   const c = clubSettings();
   const root = document.documentElement.style;
+  // Escudo + nome do clube no menu lateral
+  try {
+    const logo = document.getElementById('sidebar-club-logo');
+    if (logo) {
+      if (c.escudo) { logo.innerHTML = `<img src="${c.escudo}" style="width:100%;height:100%;object-fit:cover;">`; logo.style.display = ''; }
+      else { logo.innerHTML = ''; logo.style.display = 'none'; }
+    }
+    if (c.display || c.nome) {
+      const n = document.getElementById('sidebar-club-name'); if (n) n.textContent = c.display || c.nome;
+      const sub = document.getElementById('sidebar-club-sub'); if (sub && (c.cidade || c.estado)) sub.textContent = [c.cidade, c.estado].filter(Boolean).join(' · ');
+    }
+  } catch (e) {}
   const lum = _hexLum(c.cor1);
   // Só aplica a cor do clube se for válida E não for clara demais (evita botão
   // "Perfil" branco/ilegível). Cores muito claras são ignoradas no --primary.
@@ -2446,7 +2465,8 @@ async function renderExecutivo() {
 function renderDashHero(goleiras, partidas, scouts) {
   const el = document.getElementById('dash-hero');
   if (!el) return;
-  const clube = (localStorage.getItem('gkhub_club_name') || 'GK Hub');
+  const clube = _clubName();
+  const logo = _clubLogo();
   const hora = new Date().getHours();
   const saud = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
   const season = (typeof _activeSeason === 'function') ? _activeSeason() : null;
@@ -2468,7 +2488,11 @@ function renderDashHero(goleiras, partidas, scouts) {
         <div style="font-weight:800;font-size:15px;">${_esc(top.nome)}</div></div>
       </div>`
     : '';
+  const logoHtml = logo
+    ? `<div style="width:56px;height:56px;border-radius:14px;overflow:hidden;flex-shrink:0;border:1px solid var(--border);background:var(--card-2);"><img src="${logo}" style="width:100%;height:100%;object-fit:cover;"></div>`
+    : '';
   el.innerHTML = `
+    ${logoHtml}
     <div class="dash-hero-main">
       <div class="dash-hero-greet">${saud}, treinador 👋</div>
       <div class="dash-hero-title">${_esc(clube)}</div>
@@ -3571,7 +3595,7 @@ function openGkCard(gkId) {
         </div>
         <!-- Nome -->
         <div style="text-align:center;font-size:20px;font-weight:800;letter-spacing:.5px;padding:0 12px 6px;">${_esc((gk.nome || '').toUpperCase())}</div>
-        <div style="text-align:center;font-size:11px;opacity:.8;padding-bottom:8px;border-bottom:1px solid rgba(245,197,66,.35);margin:0 16px;">${_esc(gk.equipe || (localStorage.getItem('gkhub_club_name') || ''))}${gk.modalidade === 'beach' ? ' · Beach' : ' · Futsal'}</div>
+        <div style="text-align:center;font-size:11px;opacity:.8;padding-bottom:8px;border-bottom:1px solid rgba(245,197,66,.35);margin:0 16px;">${_esc(gk.equipe || _clubName())}${gk.modalidade === 'beach' ? ' · Beach' : ' · Futsal'}</div>
         <!-- Atributos + QR -->
         <div style="display:flex;gap:14px;padding:10px 18px 16px;">
           <div style="flex:1;">${attrHtml}</div>
@@ -10991,7 +11015,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v112';
+const APP_VERSION = 'v113';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
