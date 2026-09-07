@@ -3206,11 +3206,26 @@ function renderPerfilGSAA(gkId) {
 // TREINO DE REAÇÃO — mini-jogo: a bola acende num canto do gol e a
 // goleira toca o mais rápido possível. Mede o tempo de reação (ms).
 // ═══════════════════════════════════════════════════════════
-const _REACAO_ROUNDS = 6;
-let _reacao = { gkId: '', round: 0, times: [], target: -1, startTs: 0, waiting: false, timer: null, running: false };
+// Modos baseados na literatura de tempo de reação no esporte e automobilismo (F1):
+// SRT (reação simples), largada de F1 (antecipação), Go/No-Go (inibição),
+// escolha (Lei de Hick) e visão periférica.
+const REACAO_MODES = {
+  reflexo:    { label: 'Reflexo', icon: '⚡', rounds: 6, ref: 220, desc: 'Reação simples (SRT): toque no ⚽ assim que ele acender. Referência de elite: ~200 ms; média adulta ~250 ms.' },
+  largada:    { label: 'Largada F1', icon: '🏁', rounds: 4, ref: 300, desc: 'As 5 luzes acendem; toque quando APAGAREM. Tocar antes = queima de largada. Pilotos de F1 reagem em ~0,2 s.' },
+  gonogo:     { label: 'Vai / Não-vai', icon: '🚦', rounds: 8, ref: 400, acc: true, desc: 'Toque no VERDE (vai) e NÃO toque no VERMELHO (segure). Treina inibição e tomada de decisão.' },
+  escolha:    { label: 'Escolha', icon: '🔀', rounds: 6, ref: 430, acc: true, desc: 'A bola tem cor: 🔵 AZUL toque à ESQUERDA, 🔴 VERMELHA à DIREITA (Lei de Hick — decidir custa tempo).' },
+  periferico: { label: 'Periférica', icon: '👁️', rounds: 6, ref: 320, desc: 'Olhe no ponto central e toque o alvo que piscar na borda. Treina a visão periférica.' },
+};
+let _reac = { gkId: '', mode: 'reflexo', round: 0, times: [], errors: 0, running: false, waiting: false, target: -1, color: '', isGo: true, startTs: 0, lights: 0, phase: '', timers: [] };
+
+function _reacClear() { (_reac.timers || []).forEach(t => clearTimeout(t)); _reac.timers = []; }
+function reacaoStop() { _reacClear(); _reac.running = false; }
+function _reacaoSetGk(v) { _reac.gkId = v; renderReacao(); }
+function reacaoMode(m) { if (_reac.running) return; _reac.mode = m; _reac.times = []; _reac.errors = 0; renderReacao(); }
 
 function openReacao() {
-  _reacao = { gkId: _reacao.gkId || (DB.goleiras[0] && DB.goleiras[0].id) || '', round: 0, times: [], target: -1, startTs: 0, waiting: false, timer: null, running: false };
+  _reacClear();
+  _reac = { gkId: _reac.gkId || (DB.goleiras[0] && DB.goleiras[0].id) || '', mode: _reac.mode || 'reflexo', round: 0, times: [], errors: 0, running: false, waiting: false, target: -1, color: '', isGo: true, startTs: 0, lights: 0, phase: '', timers: [] };
   let modal = document.getElementById('reacao-modal');
   if (!modal) { modal = document.createElement('div'); modal.id = 'reacao-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
   modal.innerHTML = `
@@ -3221,83 +3236,168 @@ function openReacao() {
   openModal('reacao-modal');
   renderReacao();
 }
-function reacaoStop() { if (_reacao.timer) { clearTimeout(_reacao.timer); _reacao.timer = null; } _reacao.running = false; }
-function _reacaoSetGk(v) { _reacao.gkId = v; renderReacao(); }
 
 function reacaoStart() {
-  if (!_reacao.gkId) { toast('Selecione a goleira.', 'error'); return; }
-  _reacao.round = 0; _reacao.times = []; _reacao.running = true;
-  _reacaoNext();
+  if (!_reac.gkId) { toast('Selecione a goleira.', 'error'); return; }
+  _reacClear();
+  _reac.round = 0; _reac.times = []; _reac.errors = 0; _reac.running = true;
+  _reacNext();
 }
-function _reacaoNext() {
-  _reacao.round++;
-  _reacao.target = -1; _reacao.waiting = true; _reacao.startTs = 0;
+function _reacRounds() { return REACAO_MODES[_reac.mode].rounds; }
+function _reacNext() {
+  if (_reac.round >= _reacRounds()) { _reacFinish(); return; }
+  _reac.round++;
+  _reac.waiting = true; _reac.target = -1; _reac.color = ''; _reac.startTs = 0; _reac.lights = 0; _reac.phase = 'wait';
   renderReacao();
-  const delay = 700 + Math.random() * 1800;
-  _reacao.timer = setTimeout(() => {
-    _reacao.target = Math.floor(Math.random() * 9);
-    _reacao.waiting = false; _reacao.startTs = performance.now();
+  const m = _reac.mode;
+  if (m === 'largada') {
+    // Sequência das 5 luzes, depois apaga num momento aleatório
+    for (let i = 1; i <= 5; i++) _reac.timers.push(setTimeout(() => { _reac.lights = i; renderReacao(); }, i * 700));
+    const off = 5 * 700 + 300 + Math.random() * 2600;
+    _reac.timers.push(setTimeout(() => { _reac.lights = 0; _reac.phase = 'go'; _reac.waiting = false; _reac.startTs = performance.now(); renderReacao(); }, off));
+    return;
+  }
+  const delay = 700 + Math.random() * 1900;
+  _reac.timers.push(setTimeout(() => {
+    _reac.waiting = false; _reac.phase = 'go'; _reac.startTs = performance.now();
+    if (m === 'reflexo') { _reac.target = Math.floor(Math.random() * 9); }
+    else if (m === 'periferico') { const outer = [0,1,2,3,5,6,7,8]; _reac.target = outer[Math.floor(Math.random() * outer.length)]; }
+    else if (m === 'gonogo') { _reac.isGo = Math.random() < 0.68; _reac.target = Math.floor(Math.random() * 9); _reac.color = _reac.isGo ? 'go' : 'nogo';
+      if (!_reac.isGo) _reac.timers.push(setTimeout(() => { _reac.times.push(-1); _reac.target = -1; _reac.phase = 'wait'; setTimeout(_reacNext, 250); }, 1100)); // inibiu com sucesso
+      else _reac.timers.push(setTimeout(() => { _reac.errors++; _reac.target = -1; setTimeout(_reacNext, 250); }, 1500)); }
+    else if (m === 'escolha') { _reac.color = Math.random() < 0.5 ? 'azul' : 'verm'; }
     renderReacao();
-  }, delay);
+  }, delay));
 }
-function reacaoHit(cell) {
-  if (!_reacao.running) return;
-  if (_reacao.waiting) { // tocou antes de acender
-    if (_reacao.timer) clearTimeout(_reacao.timer);
-    toast('Cedo demais! Espere acender.', 'error');
-    _reacao.round--; _reacaoNext(); return;
+function _reacRecord(ms) { _reac.times.push(ms); _reac.target = -1; _reac.phase = 'wait'; renderReacao(); setTimeout(_reacNext, 320); }
+function _reacFalseStart(msg) { _reacClear(); _reac.errors++; toast(msg || 'Cedo demais!', 'error'); _reac.round--; _reac.phase = 'wait'; renderReacao(); setTimeout(_reacNext, 500); }
+
+// Toque genérico: kind = 'cell'|'side'|'go'
+function reacaoTap(kind, val) {
+  if (!_reac.running) return;
+  const m = _reac.mode;
+  if (_reac.waiting && m !== 'gonogo') { _reacFalseStart('Cedo demais! Espere o sinal.'); return; }
+  if (m === 'largada') { if (_reac.phase !== 'go') return; _reacRecord(Math.round(performance.now() - _reac.startTs)); return; }
+  if (m === 'reflexo' || m === 'periferico') {
+    if (_reac.target < 0) return;
+    if (kind === 'cell' && val === _reac.target) _reacRecord(Math.round(performance.now() - _reac.startTs));
+    else { _reac.errors++; toast('Alvo errado!', 'error'); }
+    return;
   }
-  if (_reacao.target < 0) return;
-  if (cell !== _reacao.target) { toast('Canto errado!', 'error'); return; }
-  const ms = Math.round(performance.now() - _reacao.startTs);
-  _reacao.times.push(ms);
-  _reacao.target = -1;
-  if (_reacao.round >= _REACAO_ROUNDS) { _reacaoFinish(); }
-  else { setTimeout(_reacaoNext, 350); renderReacao(); }
+  if (m === 'gonogo') {
+    if (_reac.target < 0) return;
+    if (_reac.isGo) { if (kind === 'cell' && val === _reac.target) { _reacClear(); _reacRecord(Math.round(performance.now() - _reac.startTs)); } else { _reac.errors++; toast('Célula errada!', 'error'); } }
+    else { _reacClear(); _reac.errors++; toast('Era VERMELHO — não devia tocar!', 'error'); _reac.target = -1; _reac.phase = 'wait'; renderReacao(); setTimeout(_reacNext, 300); }
+    return;
+  }
+  if (m === 'escolha') {
+    if (!_reac.color) return;
+    const correct = (_reac.color === 'azul' && val === 'esq') || (_reac.color === 'verm' && val === 'dir');
+    if (kind === 'side' && correct) _reacRecord(Math.round(performance.now() - _reac.startTs));
+    else { _reac.errors++; toast('Lado errado!', 'error'); }
+    return;
+  }
 }
-function _reacaoFinish() {
-  _reacao.running = false;
-  const times = _reacao.times;
-  const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
-  const best = Math.min(...times);
-  const gk = DB.goleiras.find(g => g.id === _reacao.gkId);
-  // Salva o melhor (menor média) por goleira
-  const list = DB.reacao; const i = list.findIndex(x => x.id === _reacao.gkId);
-  const prev = i >= 0 ? list[i] : null;
-  if (!prev || avg < prev.bestAvg) {
-    const rec = { id: _reacao.gkId, gkId: _reacao.gkId, nome: gk ? gk.nome : '—', bestAvg: avg, bestSingle: best, ts: Date.now() };
-    if (i >= 0) list[i] = rec; else list.push(rec);
-    DB.saveReacao(list);
-    try { cloudSet('reacao', rec); } catch (e) {}
-    if (prev) toast('🏆 Novo recorde: ' + avg + ' ms!', 'success');
+
+function _reacLevel(avg, ref) {
+  if (avg <= ref) return { t: 'Elite', c: '#F5C542' };
+  if (avg <= ref * 1.15) return { t: 'Muito bom', c: '#10B981' };
+  if (avg <= ref * 1.35) return { t: 'Bom', c: '#3B82F6' };
+  return { t: 'Treine mais', c: '#94A3B8' };
+}
+function _reacFinish() {
+  _reacClear(); _reac.running = false;
+  const valid = _reac.times.filter(t => t > 0);
+  const avg = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
+  const cfg = REACAO_MODES[_reac.mode];
+  const totalTries = _reacRounds();
+  const acc = Math.round(((_reac.times.filter(t => t !== 0).length - _reac.errors) / totalTries) * 100);
+  if (avg > 0) {
+    const gk = DB.goleiras.find(g => g.id === _reac.gkId);
+    const id = _reac.gkId + '_' + _reac.mode;
+    const list = DB.reacao; const i = list.findIndex(x => x.id === id);
+    const prev = i >= 0 ? list[i] : null;
+    if (!prev || avg < prev.bestAvg) {
+      const rec = { id, gkId: _reac.gkId, mode: _reac.mode, nome: gk ? gk.nome : '—', bestAvg: avg, acc: Math.max(0, acc), ts: Date.now() };
+      if (i >= 0) list[i] = rec; else list.push(rec);
+      DB.saveReacao(list);
+      try { cloudSet('reacao', rec); } catch (e) {}
+      if (prev) toast('🏆 Novo recorde em ' + cfg.label + ': ' + avg + ' ms!', 'success');
+    }
   }
   renderReacao();
 }
+
 function renderReacao() {
   const body = document.getElementById('reacao-body');
   if (!body) return;
-  const gkOpts = DB.goleiras.map(g => `<option value="${g.id}" ${g.id === _reacao.gkId ? 'selected' : ''}>${_esc(g.nome)}</option>`).join('');
-  const cellBg = i => {
-    if (_reacao.target === i) return 'radial-gradient(circle,#F5C542,#E0A000)';
-    return 'var(--card-2)';
-  };
-  const grid = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:340px;margin:0 auto;background:var(--border-h);padding:6px;border-radius:10px;border:3px solid var(--border-h);">' +
-    Array.from({ length: 9 }, (_, i) =>
-      `<div onclick="reacaoHit(${i})" style="aspect-ratio:1;border-radius:8px;background:${cellBg(i)};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:26px;transition:background .05s;">${_reacao.target === i ? '⚽' : ''}</div>`
-    ).join('') + '</div>';
+  const cfg = REACAO_MODES[_reac.mode];
+  const gkOpts = DB.goleiras.map(g => `<option value="${g.id}" ${g.id === _reac.gkId ? 'selected' : ''}>${_esc(g.nome)}</option>`).join('');
+  const modeTabs = Object.keys(REACAO_MODES).map(k =>
+    `<button class="btn btn-sm ${_reac.mode === k ? 'btn-primary' : 'btn-secondary'}" onclick="reacaoMode('${k}')" ${_reac.running ? 'disabled' : ''} style="flex:0 0 auto;">${REACAO_MODES[k].icon} ${REACAO_MODES[k].label}</button>`
+  ).join('');
 
-  const times = _reacao.times;
-  const avg = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
-  const ranking = DB.reacao.slice().sort((a, b) => a.bestAvg - b.bestAvg).slice(0, 5);
-  const status = !_reacao.running
-    ? (times.length ? `<div style="text-align:center;font-size:14px;margin:10px 0;"><b>Resultado:</b> média <b style="color:var(--primary-text);">${avg} ms</b> · melhor ${Math.min(...times)} ms</div>` : '<div style="text-align:center;color:var(--muted);font-size:13px;margin:10px 0;">Toque no ⚽ assim que ele acender. 6 rodadas.</div>')
-    : (_reacao.waiting ? `<div style="text-align:center;color:var(--warning);font-size:14px;margin:10px 0;font-weight:700;">Prepare-se… (${_reacao.round}/${_REACAO_ROUNDS})</div>` : `<div style="text-align:center;color:#F5C542;font-size:16px;margin:10px 0;font-weight:800;">TOQUE! (${_reacao.round}/${_REACAO_ROUNDS})</div>`);
+  // Área de jogo por modo
+  let play = '';
+  if (_reac.mode === 'largada') {
+    const lightRow = Array.from({ length: 5 }, (_, i) =>
+      `<div style="width:34px;height:34px;border-radius:50%;background:${_reac.lights > i ? '#EF4444' : 'rgba(255,255,255,.08)'};box-shadow:${_reac.lights > i ? '0 0 12px #EF4444' : 'none'};"></div>`
+    ).join('');
+    const go = _reac.phase === 'go';
+    play = `<div style="text-align:center;">
+      <div style="display:flex;gap:10px;justify-content:center;margin-bottom:14px;">${lightRow}</div>
+      <div onclick="reacaoTap('go')" style="height:150px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;background:${go ? 'radial-gradient(circle,#10B981,#0a7a4f)' : 'var(--card-2)'};color:#fff;">${go ? 'TOQUE!' : (_reac.running ? 'aguarde apagar…' : 'toque quando apagar')}</div>
+    </div>`;
+  } else if (_reac.mode === 'escolha') {
+    const ball = _reac.color === 'azul' ? '🔵' : _reac.color === 'verm' ? '🔴' : '';
+    play = `<div style="text-align:center;">
+      <div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:60px;background:var(--card-2);border-radius:12px;margin-bottom:10px;">${ball}</div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="reacaoTap('side','esq')" style="flex:1;padding:18px;border-radius:12px;border:2px solid #3B82F6;background:rgba(59,130,246,.15);color:#93C5FD;font-weight:800;font-size:15px;cursor:pointer;font-family:var(--font);">◀ ESQUERDA (azul)</button>
+        <button onclick="reacaoTap('side','dir')" style="flex:1;padding:18px;border-radius:12px;border:2px solid #EF4444;background:rgba(239,68,68,.15);color:#FCA5A5;font-weight:800;font-size:15px;cursor:pointer;font-family:var(--font);">DIREITA (verm) ▶</button>
+      </div></div>`;
+  } else {
+    // Grades 3x3 (reflexo / gonogo / periferico)
+    const center = _reac.mode === 'periferico';
+    const cellBg = i => {
+      if (i === _reac.target) {
+        if (_reac.mode === 'gonogo') return _reac.isGo ? 'radial-gradient(circle,#10B981,#0a7a4f)' : 'radial-gradient(circle,#EF4444,#8f1d1d)';
+        return 'radial-gradient(circle,#F5C542,#E0A000)';
+      }
+      return 'var(--card-2)';
+    };
+    const cellContent = i => {
+      if (i === _reac.target) return _reac.mode === 'gonogo' ? (_reac.isGo ? '⚽' : '🛑') : '⚽';
+      if (center && i === 4) return '<span style="color:var(--muted);font-size:14px;">+</span>';
+      return '';
+    };
+    play = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:340px;margin:0 auto;background:var(--border-h);padding:6px;border-radius:10px;border:3px solid var(--border-h);">' +
+      Array.from({ length: 9 }, (_, i) =>
+        `<div onclick="reacaoTap('cell',${i})" style="aspect-ratio:1;border-radius:8px;background:${cellBg(i)};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:26px;transition:background .05s;">${cellContent(i)}</div>`
+      ).join('') + '</div>';
+  }
+
+  // Status
+  const valid = _reac.times.filter(t => t > 0);
+  const avg = valid.length ? Math.round(valid.reduce((a, b) => a + b, 0) / valid.length) : 0;
+  let status;
+  if (_reac.running) {
+    status = `<div style="text-align:center;font-size:13px;margin:8px 0;color:var(--muted);">Rodada ${_reac.round}/${_reacRounds()}${_reac.waiting ? ' · prepare-se…' : ''}</div>`;
+  } else if (avg) {
+    const lvl = _reacLevel(avg, cfg.ref);
+    status = `<div style="text-align:center;margin:8px 0;"><span style="font-size:22px;font-weight:800;color:${lvl.c};">${avg} ms</span> <span style="font-size:12px;color:${lvl.c};font-weight:700;">${lvl.t}</span>${cfg.acc ? `<div style="font-size:11px;color:var(--muted);">precisão ${Math.max(0, Math.round(((_reacRounds() - _reac.errors) / _reacRounds()) * 100))}%</div>` : ''}<div style="font-size:11px;color:var(--muted);">referência do modo: ${cfg.ref} ms</div></div>`;
+  } else {
+    status = `<div style="font-size:12px;color:var(--muted);margin:8px 0;text-align:center;">${cfg.desc}</div>`;
+  }
+
+  const ranking = DB.reacao.filter(r => r.mode === _reac.mode).sort((a, b) => a.bestAvg - b.bestAvg).slice(0, 5);
 
   body.innerHTML =
-    `<select class="form-select" style="width:100%;margin-bottom:12px;" onchange="_reacaoSetGk(this.value)" ${_reacao.running ? 'disabled' : ''}><option value="">— goleira —</option>${gkOpts}</select>` +
-    status + grid +
-    `<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="reacaoStart()" ${_reacao.running ? 'disabled' : ''}>${times.length && !_reacao.running ? '↻ Jogar de novo' : '▶ Começar'}</button>` +
-    (ranking.length ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">🏆 Recordes (menor média)</div>` +
+    `<select class="form-select" style="width:100%;margin-bottom:10px;" onchange="_reacaoSetGk(this.value)" ${_reac.running ? 'disabled' : ''}><option value="">— goleira —</option>${gkOpts}</select>` +
+    `<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;">${modeTabs}</div>` +
+    status + play +
+    `<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="reacaoStart()" ${_reac.running ? 'disabled' : ''}>${avg && !_reac.running ? '↻ Repetir' : '▶ Começar'}</button>` +
+    (ranking.length ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">🏆 Recordes — ${cfg.label}</div>` +
       ranking.map((r, i) => `<div style="display:flex;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);"><span style="width:20px;color:var(--muted);">${i + 1}º</span><span style="flex:1;">${_esc(r.nome)}</span><b>${r.bestAvg} ms</b></div>`).join('') + '</div>' : '');
 }
 
@@ -3340,20 +3440,25 @@ function openGkCard(gkId) {
   modal.innerHTML = `
     <div class="modal" style="max-width:380px;background:transparent;box-shadow:none;padding:0;">
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="modal-close" style="color:#fff;" onclick="closeModal('gkcard-modal')">&times;</button></div>
-      <div id="gkcard-el" style="width:320px;margin:0 auto;border-radius:18px;overflow:hidden;background:linear-gradient(160deg,#1b3a5b 0%,#0d2136 55%,#0a1826 100%);border:2px solid #F5C542;color:#fff;font-family:var(--font);">
-        <div style="display:flex;align-items:flex-start;gap:10px;padding:16px 16px 8px;">
-          <div style="text-align:center;">
-            <div style="font-size:44px;font-weight:900;line-height:.9;color:#F5C542;">${overall}</div>
-            <div style="font-size:13px;font-weight:800;letter-spacing:1px;">GOL</div>
-            ${idade ? `<div style="font-size:10px;opacity:.7;margin-top:2px;">${idade} anos</div>` : ''}
-          </div>
-          <div style="flex:1;height:118px;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;">
-            ${foto ? `<img src="${foto}" crossorigin="anonymous" style="width:100%;height:100%;object-fit:cover;">` : '<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5" style="width:52px;height:52px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>'}
+      <div id="gkcard-el" style="width:320px;margin:0 auto;border-radius:18px;overflow:hidden;background:linear-gradient(160deg,#22456b 0%,#12294080 40%,#0a1826 100%);border:2px solid #F5C542;color:#fff;font-family:var(--font);position:relative;">
+        <!-- Hero: foto grande -->
+        <div style="position:relative;height:230px;background:radial-gradient(circle at 50% 25%,#2c5580,#0d2136);overflow:hidden;">
+          ${foto
+            ? `<img id="gkcard-photo" src="${foto}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;">`
+            : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.2" style="width:90px;height:90px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></div>'}
+          <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,24,38,0) 55%,rgba(10,24,38,.95) 100%);"></div>
+          <!-- Nota + posição -->
+          <div style="position:absolute;top:12px;left:14px;text-shadow:0 2px 6px rgba(0,0,0,.6);">
+            <div style="font-size:52px;font-weight:900;line-height:.85;color:#F5C542;">${overall}</div>
+            <div style="font-size:15px;font-weight:800;letter-spacing:2px;">GOL</div>
+            ${idade ? `<div style="font-size:11px;opacity:.85;margin-top:2px;">${idade} anos</div>` : ''}
           </div>
         </div>
-        <div style="text-align:center;font-size:19px;font-weight:800;letter-spacing:.5px;padding:2px 12px;border-bottom:1px solid rgba(245,197,66,.35);padding-bottom:8px;">${_esc((gk.nome || '').toUpperCase())}</div>
-        <div style="text-align:center;font-size:11px;opacity:.8;padding:4px 0;">${_esc(gk.equipe || (localStorage.getItem('gkhub_club_name') || ''))}${gk.modalidade === 'beach' ? ' · Beach' : ' · Futsal'}</div>
-        <div style="display:flex;gap:14px;padding:6px 18px 14px;">
+        <!-- Nome -->
+        <div style="text-align:center;font-size:20px;font-weight:800;letter-spacing:.5px;padding:0 12px 6px;">${_esc((gk.nome || '').toUpperCase())}</div>
+        <div style="text-align:center;font-size:11px;opacity:.8;padding-bottom:8px;border-bottom:1px solid rgba(245,197,66,.35);margin:0 16px;">${_esc(gk.equipe || (localStorage.getItem('gkhub_club_name') || ''))}${gk.modalidade === 'beach' ? ' · Beach' : ' · Futsal'}</div>
+        <!-- Atributos + QR -->
+        <div style="display:flex;gap:14px;padding:10px 18px 16px;">
           <div style="flex:1;">${attrHtml}</div>
           <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;">
             <div id="gkcard-qr" style="background:#fff;padding:5px;border-radius:6px;line-height:0;"></div>
@@ -3379,12 +3484,17 @@ function baixarGkCard(nome) {
   const el = document.getElementById('gkcard-el');
   if (!el || typeof html2canvas === 'undefined') { toast('Recurso de imagem indisponível offline. Tente online.', 'error'); return; }
   toast('Gerando imagem…', 'info');
-  html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true }).then(canvas => {
-    const a = document.createElement('a');
-    a.href = canvas.toDataURL('image/png');
-    a.download = 'card_' + String(nome || 'goleira').replace(/\s+/g, '_') + '.png';
-    document.body.appendChild(a); a.click(); a.remove();
-  }).catch(() => toast('Não foi possível gerar a imagem.', 'error'));
+  const doCapture = () => {
+    html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true }).then(canvas => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'card_' + String(nome || 'goleira').replace(/\s+/g, '_') + '.png';
+      document.body.appendChild(a); a.click(); a.remove();
+    }).catch(() => toast('Não foi possível gerar a imagem.', 'error'));
+  };
+  const img = document.getElementById('gkcard-photo');
+  if (img && !img.complete) { img.onload = doCapture; img.onerror = doCapture; }
+  else doCapture();
 }
 
 // Mapa do gol: distribuição das defesas por zona (força/onde é mais exigida)
@@ -10766,7 +10876,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v105';
+const APP_VERSION = 'v106';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
