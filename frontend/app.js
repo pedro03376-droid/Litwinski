@@ -378,6 +378,20 @@ function renomearTemporada(id) {
   renderSeasonManager();
 }
 
+function vincularPartidasSeason(id) {
+  const s = DB.seasons.find(x => x.id === id);
+  if (!s) return;
+  const partidas = DB.partidas;
+  const semTemp = partidas.filter(p => !p.seasonId);
+  if (!semTemp.length) { toast('Não há partidas sem temporada.', 'info'); return; }
+  if (!confirm('Vincular ' + semTemp.length + ' partida(s) sem temporada à temporada "' + s.nome + '"?')) return;
+  semTemp.forEach(p => { p.seasonId = id; try { cloudSet('partidas', p); } catch (e) {} });
+  DB.savePartidas(partidas);
+  try { logAudit('Temporada', 'Vinculou ' + semTemp.length + ' partida(s) a "' + s.nome + '"'); } catch (e) {}
+  renderSeasonManager();
+  toast(semTemp.length + ' partida(s) vinculada(s) a "' + s.nome + '"! 🔗', 'success');
+}
+
 function excluirTemporada(id) {
   const s = DB.seasons.find(x => x.id === id);
   if (!s) return;
@@ -412,6 +426,7 @@ function renderSeasonManager() {
         <button class="btn btn-sm btn-ghost" onclick="renomearTemporada('${s.id}')">Renomear</button>
         <button class="btn btn-sm btn-ghost" onclick="excluirTemporada('${s.id}')" style="color:var(--error);">Excluir</button>
       </div>
+      ${parts.some(p => !p.seasonId) ? `<button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="vincularPartidasSeason('${s.id}')">🔗 Vincular ${parts.filter(p => !p.seasonId).length} partida(s) sem temporada a esta</button>` : ''}
     </div>`;
   }).join('') : '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhuma temporada criada ainda. Comece iniciando a sua primeira temporada — as próximas partidas ficarão vinculadas a ela.</div>';
 
@@ -10934,7 +10949,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v110';
+const APP_VERSION = 'v111';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
