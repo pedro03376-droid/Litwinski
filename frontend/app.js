@@ -600,10 +600,32 @@ function saveMetodologia() {
   toast('Referências de ' + GKHUB_MODALIDADES[mod] + ' salvas.', 'success');
   if (typeof refreshDashboard === 'function') refreshDashboard();
 }
+// Luminância relativa (0=preto, 1=branco) de uma cor hex.
+function _hexLum(hex) {
+  const m = String(hex || '').trim().replace('#', '');
+  if (!/^([0-9a-f]{3}|[0-9a-f]{6})$/i.test(m)) return null;
+  const h = m.length === 3 ? m.split('').map(x => x + x).join('') : m;
+  const r = parseInt(h.slice(0, 2), 16) / 255, g = parseInt(h.slice(2, 4), 16) / 255, b = parseInt(h.slice(4, 6), 16) / 255;
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
 function applyClubBranding() {
   const c = clubSettings();
-  if (c.cor1) { document.documentElement.style.setProperty('--primary', c.cor1); document.documentElement.style.setProperty('--primary-d', c.cor1); }
-  if (c.cor1 && c.cor2) document.documentElement.style.setProperty('--primary-g', `linear-gradient(135deg,${c.cor1},${c.cor2})`);
+  const root = document.documentElement.style;
+  const lum = _hexLum(c.cor1);
+  // Só aplica a cor do clube se for válida E não for clara demais (evita botão
+  // "Perfil" branco/ilegível). Cores muito claras são ignoradas no --primary.
+  if (c.cor1 && lum != null && lum < 0.8) {
+    root.setProperty('--primary', c.cor1);
+    root.setProperty('--primary-d', c.cor1);
+    // Texto do botão: escuro se a cor for clara, branco se for escura.
+    root.setProperty('--primary-on', lum > 0.6 ? '#0B1120' : '#ffffff');
+  } else {
+    // Cor inválida/clara demais → volta ao azul padrão do app.
+    root.removeProperty('--primary');
+    root.removeProperty('--primary-d');
+    root.setProperty('--primary-on', '#ffffff');
+  }
+  if (c.cor1 && c.cor2 && _hexLum(c.cor1) != null && _hexLum(c.cor2) != null) root.setProperty('--primary-g', `linear-gradient(135deg,${c.cor1},${c.cor2})`);
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -10912,7 +10934,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v109';
+const APP_VERSION = 'v110';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
