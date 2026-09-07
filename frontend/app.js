@@ -3018,6 +3018,16 @@ function initCropDrag() {
 }
 initCropDrag();
 
+// Botões − / + do recorte: aumenta/diminui a imagem em passos.
+function cropZoomStep(dir) {
+  const zoom = document.getElementById('crop-zoom');
+  if (!zoom) return;
+  const min = parseFloat(zoom.min) || 1, max = parseFloat(zoom.max) || 3;
+  const step = (max - min) / 12 || 0.1;
+  zoom.value = Math.max(min, Math.min(max, (parseFloat(zoom.value) || min) + dir * step));
+  zoom.dispatchEvent(new Event('input'));
+}
+
 function handleFotoUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -11083,7 +11093,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v114';
+const APP_VERSION = 'v115';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
