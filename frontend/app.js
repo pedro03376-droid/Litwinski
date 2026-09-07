@@ -2443,6 +2443,45 @@ async function renderExecutivo() {
   }
 }
 
+function renderDashHero(goleiras, partidas, scouts) {
+  const el = document.getElementById('dash-hero');
+  if (!el) return;
+  const clube = (localStorage.getItem('gkhub_club_name') || 'GK Hub');
+  const hora = new Date().getHours();
+  const saud = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
+  const season = (typeof _activeSeason === 'function') ? _activeSeason() : null;
+  // Melhor goleira (por GK Rating quando houver; senão média)
+  const comScout = goleiras.filter(g => scouts.some(s => s.goalkeeperId === g.id));
+  let top = null, topScore = -1;
+  comScout.forEach(g => {
+    const r = (typeof computeGKRating === 'function') ? (computeGKRating(g.id).score) : null;
+    const sc = r != null ? r : (avgPerformance(g.id) || 0) * 10;
+    if (sc > topScore) { topScore = sc; top = g; }
+  });
+  const chip = season
+    ? `<span class="dash-hero-chip">🗓️ ${_esc(season.nome)}</span>`
+    : `<span class="dash-hero-chip" style="cursor:pointer;" onclick="renderSeasonManager()">🗓️ Iniciar temporada</span>`;
+  const topHtml = top
+    ? `<div class="dash-hero-top">
+        <div class="rank">${Math.round(topScore)}</div>
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">🏆 Destaque</div>
+        <div style="font-weight:800;font-size:15px;">${_esc(top.nome)}</div></div>
+      </div>`
+    : '';
+  el.innerHTML = `
+    <div class="dash-hero-main">
+      <div class="dash-hero-greet">${saud}, treinador 👋</div>
+      <div class="dash-hero-title">${_esc(clube)}</div>
+      ${chip}
+    </div>
+    <div class="dash-hero-stats">
+      <div class="dash-hero-stat"><div class="v" style="color:var(--primary-text);">${goleiras.length}</div><div class="l">Goleiros(as)</div></div>
+      <div class="dash-hero-stat"><div class="v" style="color:#34D399;">${partidas.length}</div><div class="l">Partidas</div></div>
+      <div class="dash-hero-stat"><div class="v" style="color:#F59E0B;">${scouts.length}</div><div class="l">Scouts</div></div>
+    </div>
+    ${topHtml}`;
+}
+
 function refreshDashboard() {
   const goleiras = DB.goleiras;
   const partidas = DB.partidas.filter(p => {
@@ -2467,6 +2506,9 @@ function refreshDashboard() {
   } else {
     elAvg.textContent = '—';
   }
+
+  // ── Hero ──
+  try { renderDashHero(goleiras, partidas, scouts); } catch (e) {}
 
   // ── Central de Inteligência (cross-module insights) ──
   renderDashIntelligence(goleiras, partidas, scouts);
@@ -10949,7 +10991,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v111';
+const APP_VERSION = 'v112';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
