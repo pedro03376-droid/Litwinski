@@ -696,31 +696,34 @@ function applyClubBranding() {
   const root = document.documentElement.style;
   // Escudo + nome do clube no menu lateral
   try {
+    const lumX = _hexLum(c.cor1);
+    const teamOk = c.cor1 && lumX != null && lumX < 0.92;
     const logo = document.getElementById('sidebar-club-logo');
     if (logo) {
       if (c.escudo) { logo.innerHTML = `<img src="${c.escudo}" style="width:100%;height:100%;object-fit:cover;">`; logo.style.display = ''; }
       else { logo.innerHTML = ''; logo.style.display = 'none'; }
+      logo.style.borderColor = teamOk ? c.cor1 : '';   // anel do escudo na cor do clube
     }
     if (c.display || c.nome) {
       const n = document.getElementById('sidebar-club-name'); if (n) n.textContent = c.display || c.nome;
       const sub = document.getElementById('sidebar-club-sub'); if (sub && (c.cidade || c.estado)) sub.textContent = [c.cidade, c.estado].filter(Boolean).join(' · ');
     }
   } catch (e) {}
+  // A cor do clube NÃO altera mais a UI global (botões, gráficos, status, notas,
+  // texto). Ela vira um token de MARCA (--team) usado só no escudo/logo e no hero.
+  root.removeProperty('--primary');
+  root.removeProperty('--primary-d');
+  root.removeProperty('--primary-g');
   const lum = _hexLum(c.cor1);
-  // Só aplica a cor do clube se for válida E não for clara demais (evita botão
-  // "Perfil" branco/ilegível). Cores muito claras são ignoradas no --primary.
-  if (c.cor1 && lum != null && lum < 0.8) {
-    root.setProperty('--primary', c.cor1);
-    root.setProperty('--primary-d', c.cor1);
-    // Texto do botão: escuro se a cor for clara, branco se for escura.
-    root.setProperty('--primary-on', lum > 0.6 ? '#0B1120' : '#ffffff');
+  if (c.cor1 && lum != null && lum < 0.92) {
+    root.setProperty('--team', c.cor1);
+    root.setProperty('--team-on', lum > 0.6 ? '#0B1120' : '#ffffff');
   } else {
-    // Cor inválida/clara demais → volta ao azul padrão do app.
-    root.removeProperty('--primary');
-    root.removeProperty('--primary-d');
-    root.setProperty('--primary-on', '#ffffff');
+    root.removeProperty('--team');
+    root.removeProperty('--team-on');
   }
-  if (c.cor1 && c.cor2 && _hexLum(c.cor1) != null && _hexLum(c.cor2) != null) root.setProperty('--primary-g', `linear-gradient(135deg,${c.cor1},${c.cor2})`);
+  if (c.cor1 && c.cor2 && _hexLum(c.cor1) != null && _hexLum(c.cor2) != null) root.setProperty('--team-g', `linear-gradient(135deg,${c.cor1},${c.cor2})`);
+  else root.removeProperty('--team-g');
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -2550,7 +2553,7 @@ function renderDashHero(goleiras, partidas, scouts) {
       </div>`
     : '';
   const logoHtml = logo
-    ? `<div style="width:56px;height:56px;border-radius:14px;overflow:hidden;flex-shrink:0;border:1px solid var(--border);background:var(--card-2);"><img src="${logo}" style="width:100%;height:100%;object-fit:cover;"></div>`
+    ? `<div style="width:56px;height:56px;border-radius:14px;overflow:hidden;flex-shrink:0;border:2px solid var(--team, var(--border));background:var(--card-2);"><img src="${logo}" style="width:100%;height:100%;object-fit:cover;"></div>`
     : '';
   el.innerHTML = `
     ${logoHtml}
@@ -11093,7 +11096,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v115';
+const APP_VERSION = 'v116';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
