@@ -59,6 +59,8 @@ const DB = {
   savePenfotos(d)     { this.save('pen_fotos', d); },
   get reacao()        { return this.load('reacao'); },
   saveReacao(d)       { this.save('reacao', d); },
+  get reacao_hist()   { return this.load('reacao_hist'); },
+  saveReacaoHist(d)   { this.save('reacao_hist', d); },
   get periodizacao()  { return this.load('periodizacao'); },
   savePeriodizacao(d) { this.save('periodizacao', d); },
   get aianalyses()    { return this.load('aianalyses'); },
@@ -3314,6 +3316,13 @@ function _reacFinish() {
   const acc = Math.round(((_reac.times.filter(t => t !== 0).length - _reac.errors) / totalTries) * 100);
   if (avg > 0) {
     const gk = DB.goleiras.find(g => g.id === _reac.gkId);
+    // Histórico (evolução ao longo do tempo)
+    try {
+      const h = DB.reacao_hist;
+      const hrec = { id: _uid(), gkId: _reac.gkId, mode: _reac.mode, avg, acc: Math.max(0, acc), ts: Date.now() };
+      h.push(hrec); DB.saveReacaoHist(h.slice(-300));
+      cloudSet('reacao_hist', hrec);
+    } catch (e) {}
     const id = _reac.gkId + '_' + _reac.mode;
     const list = DB.reacao; const i = list.findIndex(x => x.id === id);
     const prev = i >= 0 ? list[i] : null;
@@ -3391,15 +3400,41 @@ function renderReacao() {
   }
 
   const ranking = DB.reacao.filter(r => r.mode === _reac.mode).sort((a, b) => a.bestAvg - b.bestAvg).slice(0, 5);
+  const hist = DB.reacao_hist.filter(h => h.gkId === _reac.gkId && h.mode === _reac.mode).sort((a, b) => a.ts - b.ts);
 
   body.innerHTML =
     `<select class="form-select" style="width:100%;margin-bottom:10px;" onchange="_reacaoSetGk(this.value)" ${_reac.running ? 'disabled' : ''}><option value="">— goleira —</option>${gkOpts}</select>` +
     `<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;">${modeTabs}</div>` +
     status + play +
     `<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="reacaoStart()" ${_reac.running ? 'disabled' : ''}>${avg && !_reac.running ? '↻ Repetir' : '▶ Começar'}</button>` +
+    (hist.length >= 2 && !_reac.running ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">📈 Evolução (${cfg.label})</div><div style="height:130px;"><canvas id="reac-evol"></canvas></div></div>` : '') +
     (ranking.length ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">🏆 Recordes — ${cfg.label}</div>` +
       ranking.map((r, i) => `<div style="display:flex;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);"><span style="width:20px;color:var(--muted);">${i + 1}º</span><span style="flex:1;">${_esc(r.nome)}</span><b>${r.bestAvg} ms</b></div>`).join('') + '</div>' : '');
+
+  // Gráfico de evolução (após o HTML estar no DOM)
+  if (hist.length >= 2 && !_reac.running) {
+    try {
+      if (_reacChart) { _reacChart.destroy(); _reacChart = null; }
+      const cv = document.getElementById('reac-evol');
+      if (cv && typeof Chart !== 'undefined') {
+        const last = hist.slice(-15);
+        const ctx = cv.getContext('2d');
+        const grad = ctx.createLinearGradient(0, 0, 0, 130);
+        grad.addColorStop(0, 'rgba(59,130,246,.35)'); grad.addColorStop(1, 'rgba(59,130,246,0)');
+        _reacChart = new Chart(ctx, {
+          type: 'line',
+          data: { labels: last.map(h => new Date(h.ts).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })),
+            datasets: [{ data: last.map(h => h.avg), borderColor: '#3B82F6', backgroundColor: grad, fill: true, tension: .35, pointRadius: 2, borderWidth: 2 },
+              { data: last.map(() => cfg.ref), borderColor: 'rgba(245,197,66,.7)', borderDash: [4, 4], pointRadius: 0, borderWidth: 1.5, fill: false }] },
+          options: { responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: it => it.datasetIndex === 1 ? 'Referência ' + cfg.ref + ' ms' : it.formattedValue + ' ms' } } },
+            scales: { y: { ticks: { color: 'rgba(148,163,184,.8)', font: { size: 9 } }, grid: { color: 'rgba(148,163,184,.12)' } }, x: { ticks: { color: 'rgba(148,163,184,.8)', font: { size: 8 }, maxTicksLimit: 6 }, grid: { display: false } } } }
+        });
+      }
+    } catch (e) {}
+  }
 }
+let _reacChart = null;
 
 // ═══════════════════════════════════════════════════════════
 // CARD DIGITAL DO GOLEIRO — cartão estilo FIFA (foto + nota + atributos)
@@ -10036,7 +10071,7 @@ function cloudDelete(col, id) {
    com mesclagem ao abrir. Último a escrever vence por coleção.
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
-const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances', 'penaltis', 'pen_fotos', 'reacao', 'periodizacao'];
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances', 'penaltis', 'pen_fotos', 'reacao', 'reacao_hist', 'periodizacao'];
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
@@ -10876,7 +10911,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v106';
+const APP_VERSION = 'v107';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
