@@ -297,6 +297,8 @@
       font-size: 13px;
       font-weight: 600;
       border: none;
+      background: var(--card-2);   /* fallback: nunca renderiza branco padrão */
+      color: var(--text);
       transition: all .2s ease;
       position: relative;
       overflow: hidden;
@@ -1666,3 +1668,7 @@ body.theme-light {
   .skeleton::after { animation: none; }
   .btn:active { transform: none; }
 }
+
+/* Controles nativos seguem o tema (evita botões/inputs brancos ao carregar) */
+:root { color-scheme: dark; }
+body.theme-light { color-scheme: light; }

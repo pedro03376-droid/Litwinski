@@ -3342,9 +3342,9 @@ function renderReacao() {
   if (!body) return;
   const cfg = REACAO_MODES[_reac.mode];
   const gkOpts = DB.goleiras.map(g => `<option value="${g.id}" ${g.id === _reac.gkId ? 'selected' : ''}>${_esc(g.nome)}</option>`).join('');
-  const modeTabs = Object.keys(REACAO_MODES).map(k =>
-    `<button class="btn btn-sm ${_reac.mode === k ? 'btn-primary' : 'btn-secondary'}" onclick="reacaoMode('${k}')" ${_reac.running ? 'disabled' : ''} style="flex:0 0 auto;">${REACAO_MODES[k].icon} ${REACAO_MODES[k].label}</button>`
-  ).join('');
+  const modeSel = `<select class="form-select" style="width:100%;margin-bottom:8px;" onchange="reacaoMode(this.value)" ${_reac.running ? 'disabled' : ''}>` +
+    Object.keys(REACAO_MODES).map(k => `<option value="${k}" ${_reac.mode === k ? 'selected' : ''}>${REACAO_MODES[k].icon} ${REACAO_MODES[k].label}</option>`).join('') +
+    `</select>`;
 
   // Área de jogo por modo
   let play = '';
@@ -3404,7 +3404,8 @@ function renderReacao() {
 
   body.innerHTML =
     `<select class="form-select" style="width:100%;margin-bottom:10px;" onchange="_reacaoSetGk(this.value)" ${_reac.running ? 'disabled' : ''}><option value="">— goleira —</option>${gkOpts}</select>` +
-    `<div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:6px;">${modeTabs}</div>` +
+    `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;">Estilo de exercício</div>` +
+    modeSel +
     status + play +
     `<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="reacaoStart()" ${_reac.running ? 'disabled' : ''}>${avg && !_reac.running ? '↻ Repetir' : '▶ Começar'}</button>` +
     (hist.length >= 2 && !_reac.running ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">📈 Evolução (${cfg.label})</div><div style="height:130px;"><canvas id="reac-evol"></canvas></div></div>` : '') +
@@ -10911,7 +10912,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v108';
+const APP_VERSION = 'v109';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
