@@ -1578,3 +1578,91 @@
       }
       .btn:hover, .card:hover, .stat-card:hover { transform: none !important; }
     }
+
+/* ════════════════════════════════════════════════════════
+   CLEAN MINIMAL 2026 — refinamento (A cores · B cards · C microinterações)
+   Camada final: sobrepõe tokens/estilos para um visual mais limpo e sóbrio.
+   ════════════════════════════════════════════════════════ */
+:root {
+  /* A — Paleta mais calma e sóbria (menos saturação, mais respiro) */
+  --bg:        #0B1120;
+  --surface:   #0E1626;
+  --card:      #141C2B;
+  --card-2:    #1B2536;
+  --border:    rgba(255,255,255,0.07);
+  --border-h:  rgba(255,255,255,0.14);
+  --muted:     #8A97A8;
+  --primary:   #4F8DF7;
+  --primary-d: #3B74E0;
+  --primary-text: #9CC0FF;
+  /* Sombras suaves (profundidade sem exagero) */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.25);
+  --shadow:    0 6px 20px -8px rgba(0,0,0,.45);
+  --shadow-lg: 0 18px 48px -16px rgba(0,0,0,.55);
+  --radius:    14px;
+  --radius-lg: 18px;
+  --transition: .22s cubic-bezier(.4,0,.2,1);
+}
+body.theme-light {
+  --bg:        #F4F6FB;
+  --surface:   #FFFFFF;
+  --card:      #FFFFFF;
+  --card-2:    #F1F4F9;
+  --border:    rgba(15,23,42,0.08);
+  --border-h:  rgba(15,23,42,0.16);
+  --muted:     #64748B;
+  --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
+  --shadow:    0 6px 20px -8px rgba(15,23,42,.12);
+  --shadow-lg: 0 18px 48px -16px rgba(15,23,42,.18);
+}
+
+/* B — Cards premium: hairline + sombra suave + mais respiro; sem brilho pesado */
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+}
+.card:hover { box-shadow: var(--shadow-lg); border-color: var(--border-h); transform: none; }
+.stat-card { box-shadow: var(--shadow-sm); }
+
+/* A — Botões minimalistas: primário chapado (sem degradê), acento contido */
+.btn-primary { background: var(--primary); box-shadow: none; }
+.btn-primary:hover { background: var(--primary-d); box-shadow: var(--shadow-sm); }
+.btn { transition: background var(--transition), border-color var(--transition), transform .08s ease, box-shadow var(--transition); }
+/* C — Microinteração: leve "afundar" ao pressionar */
+.btn:active { transform: scale(.97); }
+.nav-item { transition: background var(--transition), color var(--transition); }
+.nav-item:active { transform: scale(.99); }
+
+/* C — Skeleton de carregamento (shimmer) */
+.skeleton {
+  position: relative; overflow: hidden;
+  background: var(--card-2); border-radius: var(--radius-sm); color: transparent !important;
+}
+.skeleton::after {
+  content: ''; position: absolute; inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.06), transparent);
+  animation: gk-shimmer 1.2s infinite;
+}
+@keyframes gk-shimmer { 100% { transform: translateX(100%); } }
+
+/* C — Entrada suave da página ativa */
+.page.active { animation: gk-fadein .28s ease; }
+@keyframes gk-fadein { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* A — Menos "glow": glows viram sombras discretas */
+:root {
+  --glow-primary: var(--shadow);
+  --glow-success: var(--shadow);
+  --glow-warning: var(--shadow);
+  --glow-error:   var(--shadow);
+}
+
+/* Respeita reduced-motion também aqui */
+@media (prefers-reduced-motion: reduce) {
+  .page.active { animation: none; }
+  .skeleton::after { animation: none; }
+  .btn:active { transform: none; }
+}
