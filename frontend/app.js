@@ -57,6 +57,10 @@ const DB = {
   savePenaltis(d)     { this.save('penaltis', d); },
   get pen_fotos()     { return this.load('pen_fotos'); },
   savePenfotos(d)     { this.save('pen_fotos', d); },
+  get reacao()        { return this.load('reacao'); },
+  saveReacao(d)       { this.save('reacao', d); },
+  get periodizacao()  { return this.load('periodizacao'); },
+  savePeriodizacao(d) { this.save('periodizacao', d); },
   get aianalyses()    { return this.load('aianalyses'); },
   saveAianalyses(d)   { this.save('aianalyses', d); },
   saveNotifications(d){ this.save('notifications', d); },
@@ -419,6 +423,92 @@ function renderSeasonManager() {
       </div>
     </div>`;
   openModal('season-modal');
+}
+
+// ═══════════════════════════════════════════════════════════
+// PERIODIZAÇÃO — planejamento da temporada por semanas, com intensidade
+// (carga) e foco, marcando jogos e sugerindo polimento (taper) antes deles.
+// ═══════════════════════════════════════════════════════════
+const PER_INT = {
+  descanso: { v: 0, label: 'Descanso', color: '#64748B' },
+  leve:     { v: 1, label: 'Leve', color: '#10B981' },
+  moderado: { v: 2, label: 'Moderado', color: '#3B82F6' },
+  forte:    { v: 3, label: 'Forte', color: '#F59E0B' },
+  taper:    { v: 1, label: 'Polimento', color: '#A78BFA' },
+};
+function _perParse(s) { const [y, m, d] = String(s || '').split('-').map(Number); return new Date(y, (m || 1) - 1, d || 1); }
+function _perAddDays(dt, n) { const x = new Date(dt); x.setDate(x.getDate() + n); return x; }
+function _perMonday(dt) { const x = new Date(dt); const g = (x.getDay() + 6) % 7; x.setDate(x.getDate() - g); x.setHours(0,0,0,0); return x; }
+function _perFmt(dt) { return String(dt.getDate()).padStart(2,'0') + '/' + String(dt.getMonth()+1).padStart(2,'0'); }
+function _perISO(dt) { return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0'); }
+function _perGet(sid, idx) { return DB.periodizacao.find(r => r.seasonId === sid && r.idx === idx); }
+function _perSet(sid, idx, patch) {
+  const list = DB.periodizacao;
+  const i = list.findIndex(r => r.seasonId === sid && r.idx === idx);
+  let rec = i >= 0 ? list[i] : { id: sid + '_w' + idx, seasonId: sid, idx, intensidade: '', foco: '' };
+  rec = { ...rec, ...patch, ts: Date.now() };
+  if (i >= 0) list[i] = rec; else list.push(rec);
+  DB.savePeriodizacao(list);
+  try { cloudSet('periodizacao', rec); } catch (e) {}
+}
+function perSetInt(idx, v) { const s = _activeSeason(); if (s) { _perSet(s.id, idx, { intensidade: v }); renderPeriodizacao(); } }
+function perSetFoco(idx, v) { const s = _activeSeason(); if (s) _perSet(s.id, idx, { foco: v }); }
+
+function renderPeriodizacao() {
+  const el = document.getElementById('periodizacao-content');
+  if (!el) return;
+  const s = _activeSeason();
+  if (!s) {
+    el.innerHTML = '<div class="card" style="text-align:center;color:var(--muted);"><p>Nenhuma temporada ativa.</p><p style="font-size:12px;">Inicie uma temporada (clique em “Temporada” no topo) para planejar as semanas.</p></div>';
+    return;
+  }
+  const start = _perMonday(_perParse(s.inicio));
+  const end = s.fim ? _perParse(s.fim) : _perAddDays(start, 7 * 20 - 1);
+  const partidas = DB.partidas.filter(p => p.data && (p.seasonId === s.id || (!p.seasonId && p.data >= (s.inicio || '') && (!s.fim || p.data <= s.fim))));
+  const weeks = [];
+  let d = new Date(start), idx = 0;
+  while (d <= end && idx < 40) { weeks.push({ idx, start: new Date(d), end: _perAddDays(d, 6) }); d = _perAddDays(d, 7); idx++; }
+
+  // Carga média planejada
+  let loadSum = 0, loadN = 0;
+  weeks.forEach(w => { const r = _perGet(s.id, w.idx); if (r && r.intensidade) { loadSum += PER_INT[r.intensidade].v; loadN++; } });
+  const media = loadN ? (loadSum / loadN).toFixed(1) : '—';
+
+  const rows = weeks.map(w => {
+    const r = _perGet(s.id, w.idx) || {};
+    const jogos = partidas.filter(p => { const pd = _perParse(p.data); return pd >= w.start && pd <= w.end; });
+    // Sugestão de taper: semana com jogo e sem intensidade definida
+    const nextHasGame = partidas.some(p => { const pd = _perParse(p.data); return pd >= _perAddDays(w.start, 7) && pd <= _perAddDays(w.start, 13); });
+    const intInfo = r.intensidade ? PER_INT[r.intensidade] : null;
+    const barW = intInfo ? Math.round(intInfo.v / 3 * 100) : 0;
+    const opts = Object.keys(PER_INT).map(k => `<option value="${k}" ${r.intensidade === k ? 'selected' : ''}>${PER_INT[k].label}</option>`).join('');
+    const jogosBadge = jogos.length ? jogos.map(j => `<span style="font-size:10px;background:rgba(239,68,68,.15);color:#EF4444;border-radius:4px;padding:1px 6px;font-weight:700;">⚽ ${_esc(j.adversario || 'Jogo')}</span>`).join(' ') : '';
+    const tip = (nextHasGame && r.intensidade === 'forte') ? '<div style="font-size:10px;color:#A78BFA;margin-top:3px;">💡 Jogo na próxima semana — considere “Polimento” para chegar descansada.</div>' : '';
+    return `<div style="border:1px solid ${jogos.length ? 'rgba(239,68,68,.3)' : 'var(--border)'};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:800;font-size:13px;min-width:70px;">Semana ${w.idx + 1}</span>
+        <span style="font-size:11px;color:var(--muted);">${_perFmt(w.start)}–${_perFmt(w.end)}</span>
+        <span style="margin-left:auto;display:flex;gap:4px;flex-wrap:wrap;">${jogosBadge}</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+        <select class="form-select" style="width:150px;font-size:12px;padding:6px;" onchange="perSetInt(${w.idx}, this.value)"><option value="">Intensidade —</option>${opts}</select>
+        <input class="form-input" style="flex:1;min-width:140px;font-size:12px;padding:6px;" placeholder="Foco da semana (ex.: reflexo, 1×1)" value="${_esc(r.foco || '')}" onchange="perSetFoco(${w.idx}, this.value)">
+      </div>
+      <div style="height:8px;border-radius:4px;background:var(--bg);overflow:hidden;margin-top:8px;"><div style="height:100%;width:${barW}%;background:${intInfo ? intInfo.color : 'transparent'};transition:width .3s;"></div></div>
+      ${tip}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span class="card-title">🗓️ Planejamento — ${_esc(s.nome)}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto;">${weeks.length} semanas · carga média ${media}/3</span>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px;">Defina a intensidade e o foco de cada semana. Semanas com jogo aparecem destacadas; antes delas, o app sugere polimento (taper).</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">${Object.keys(PER_INT).map(k => `<span style="font-size:10px;display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;border-radius:3px;background:${PER_INT[k].color};display:inline-block;"></span>${PER_INT[k].label}</span>`).join('')}</div>
+    </div>
+    ${rows}`;
 }
 
 // Metodologia — transparência das notas e referências por naipe (editável)
@@ -793,7 +883,8 @@ const pageTitles = {
   heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)',
   notificacoes: 'Notificações', 'central-relatorios': 'Central de Relatórios', auditoria: 'Auditoria',
   clube: 'Configurações do Clube', lesoes: 'Controle de Lesões', pid: 'Plano Individual de Desenvolvimento',
-  penaltis: 'Pênaltis — Scouting do Adversário'
+  penaltis: 'Pênaltis — Scouting do Adversário',
+  periodizacao: 'Planejamento da Temporada'
 };
 
 function navigate(page) {
@@ -815,6 +906,7 @@ function navigate(page) {
   if (page === 'treinos') renderTreinos();
   if (page === 'heatmap') renderHeatmap();
   if (page === 'penaltis') renderPenaltis();
+  if (page === 'periodizacao') renderPeriodizacao();
   if (page === 'relatorios') { updatePdfSelects(); updateCompSelect(); }
   if (page === 'config') { renderConfigStatus(); _renderBackendStatus(); renderBackendCard(); loadClubMembers(); renderBackupHistory(); renderAdminPanel(); }
   if (page === 'usuario') { loadUserPage(); }
@@ -3057,6 +3149,244 @@ function renderGKRating(gkId) {
     (r.confidence === 'baixa' ? '<div style="font-size:11px;color:var(--muted);margin-top:10px;">ℹ️ Poucos jogos — a nota fica mais precisa a cada partida registrada.</div>' : '');
 }
 
+// ═══════════════════════════════════════════════════════════
+// GOLS EVITADOS (GSAA) — estima a dificuldade de cada chute (xG pós-chute)
+// a partir do Mapa de Defesas e compara com os gols realmente sofridos.
+// GSAA > 0 = a goleira evitou mais gols do que o esperado.
+// ═══════════════════════════════════════════════════════════
+function _shotXG(l) {
+  // Probabilidade de gol pela COLOCAÇÃO (canto é mais difícil de defender)
+  const cornerX = Math.min(l.gx, 1 - l.gx);   // 0 = na trave, .5 = centro
+  const cornerY = Math.min(l.gy, 1 - l.gy);   // 0 = travessão/chão, .5 = meio
+  const corner = 1 - Math.min(1, cornerX * 1.3 + cornerY * 0.9); // 1 = canto perfeito
+  let p = 0.22 + corner * 0.6;                 // 0.22 (centro) .. 0.82 (canto)
+  // Distância da origem (gol no centro-baixo da meia-quadra: 0.5, 1.0)
+  if (l.ox != null && l.oy != null) {
+    const d = Math.hypot(l.ox - 0.5, l.oy - 1);   // 0 = coladinho, ~1 = longe
+    p *= Math.max(0.55, Math.min(1.3, 1.28 - d)); // perto aumenta, longe reduz
+  }
+  return Math.max(0.03, Math.min(0.96, p));
+}
+function computeGSAA(gkId) {
+  const shots = DB.def_lances.filter(l => l.gkId === gkId && l.gx != null);
+  if (!shots.length) return { shots: 0 };
+  let xg = 0, goals = 0;
+  shots.forEach(l => { xg += _shotXG(l); if (l.result === 'gol') goals++; });
+  const gsaa = xg - goals;                       // + = evitou mais que o esperado
+  return { shots: shots.length, xg: +xg.toFixed(1), goals, gsaa: +gsaa.toFixed(1),
+           saved: shots.length - goals, per: +(gsaa / shots.length * 10).toFixed(1) };
+}
+function renderPerfilGSAA(gkId) {
+  const card = document.getElementById('perfil-gsaa-card');
+  const el = document.getElementById('perfil-gsaa');
+  if (!card || !el) return;
+  const g = computeGSAA(gkId);
+  if (!g.shots) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const pos = g.gsaa >= 0;
+  const col = g.gsaa >= 1 ? '#10B981' : g.gsaa <= -1 ? '#EF4444' : '#94A3B8';
+  const txt = pos
+    ? `Evitou <b>${g.gsaa}</b> gol(s) além do esperado — desempenho acima da média.`
+    : `Sofreu <b>${Math.abs(g.gsaa)}</b> gol(s) a mais que o esperado — abaixo da média nesses lances.`;
+  el.innerHTML =
+    '<div class="card-header"><span class="card-title">🧤 Gols Evitados (GSAA)</span><span style="font-size:11px;color:var(--muted);">estimado</span></div>' +
+    '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">' +
+      '<div style="text-align:center;min-width:96px;">' +
+        '<div style="font-size:40px;font-weight:800;line-height:1;color:' + col + ';">' + (pos ? '+' : '') + g.gsaa + '</div>' +
+        '<div style="font-size:10px;color:var(--muted);letter-spacing:.5px;">GOLS EVITADOS</div>' +
+      '</div>' +
+      '<div style="flex:1;min-width:180px;font-size:13px;line-height:1.6;">' + txt +
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px;">Baseado em ' + g.shots + ' finalização(ões) mapeada(s) · gols esperados ' + g.xg + ' · sofridos ' + g.goals + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-top:10px;">A dificuldade de cada chute é estimada pela colocação e distância. Quanto mais lances você mapear (aba Mapa de Defesas), mais preciso fica.</div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TREINO DE REAÇÃO — mini-jogo: a bola acende num canto do gol e a
+// goleira toca o mais rápido possível. Mede o tempo de reação (ms).
+// ═══════════════════════════════════════════════════════════
+const _REACAO_ROUNDS = 6;
+let _reacao = { gkId: '', round: 0, times: [], target: -1, startTs: 0, waiting: false, timer: null, running: false };
+
+function openReacao() {
+  _reacao = { gkId: _reacao.gkId || (DB.goleiras[0] && DB.goleiras[0].id) || '', round: 0, times: [], target: -1, startTs: 0, waiting: false, timer: null, running: false };
+  let modal = document.getElementById('reacao-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'reacao-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
+  modal.innerHTML = `
+    <div class="modal" style="max-width:460px;">
+      <div class="modal-header"><span class="modal-title">⚡ Treino de Reação</span><button class="modal-close" onclick="reacaoStop();closeModal('reacao-modal')">&times;</button></div>
+      <div class="modal-body" id="reacao-body"></div>
+    </div>`;
+  openModal('reacao-modal');
+  renderReacao();
+}
+function reacaoStop() { if (_reacao.timer) { clearTimeout(_reacao.timer); _reacao.timer = null; } _reacao.running = false; }
+function _reacaoSetGk(v) { _reacao.gkId = v; renderReacao(); }
+
+function reacaoStart() {
+  if (!_reacao.gkId) { toast('Selecione a goleira.', 'error'); return; }
+  _reacao.round = 0; _reacao.times = []; _reacao.running = true;
+  _reacaoNext();
+}
+function _reacaoNext() {
+  _reacao.round++;
+  _reacao.target = -1; _reacao.waiting = true; _reacao.startTs = 0;
+  renderReacao();
+  const delay = 700 + Math.random() * 1800;
+  _reacao.timer = setTimeout(() => {
+    _reacao.target = Math.floor(Math.random() * 9);
+    _reacao.waiting = false; _reacao.startTs = performance.now();
+    renderReacao();
+  }, delay);
+}
+function reacaoHit(cell) {
+  if (!_reacao.running) return;
+  if (_reacao.waiting) { // tocou antes de acender
+    if (_reacao.timer) clearTimeout(_reacao.timer);
+    toast('Cedo demais! Espere acender.', 'error');
+    _reacao.round--; _reacaoNext(); return;
+  }
+  if (_reacao.target < 0) return;
+  if (cell !== _reacao.target) { toast('Canto errado!', 'error'); return; }
+  const ms = Math.round(performance.now() - _reacao.startTs);
+  _reacao.times.push(ms);
+  _reacao.target = -1;
+  if (_reacao.round >= _REACAO_ROUNDS) { _reacaoFinish(); }
+  else { setTimeout(_reacaoNext, 350); renderReacao(); }
+}
+function _reacaoFinish() {
+  _reacao.running = false;
+  const times = _reacao.times;
+  const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+  const best = Math.min(...times);
+  const gk = DB.goleiras.find(g => g.id === _reacao.gkId);
+  // Salva o melhor (menor média) por goleira
+  const list = DB.reacao; const i = list.findIndex(x => x.id === _reacao.gkId);
+  const prev = i >= 0 ? list[i] : null;
+  if (!prev || avg < prev.bestAvg) {
+    const rec = { id: _reacao.gkId, gkId: _reacao.gkId, nome: gk ? gk.nome : '—', bestAvg: avg, bestSingle: best, ts: Date.now() };
+    if (i >= 0) list[i] = rec; else list.push(rec);
+    DB.saveReacao(list);
+    try { cloudSet('reacao', rec); } catch (e) {}
+    if (prev) toast('🏆 Novo recorde: ' + avg + ' ms!', 'success');
+  }
+  renderReacao();
+}
+function renderReacao() {
+  const body = document.getElementById('reacao-body');
+  if (!body) return;
+  const gkOpts = DB.goleiras.map(g => `<option value="${g.id}" ${g.id === _reacao.gkId ? 'selected' : ''}>${_esc(g.nome)}</option>`).join('');
+  const cellBg = i => {
+    if (_reacao.target === i) return 'radial-gradient(circle,#F5C542,#E0A000)';
+    return 'var(--card-2)';
+  };
+  const grid = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-width:340px;margin:0 auto;background:var(--border-h);padding:6px;border-radius:10px;border:3px solid var(--border-h);">' +
+    Array.from({ length: 9 }, (_, i) =>
+      `<div onclick="reacaoHit(${i})" style="aspect-ratio:1;border-radius:8px;background:${cellBg(i)};cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:26px;transition:background .05s;">${_reacao.target === i ? '⚽' : ''}</div>`
+    ).join('') + '</div>';
+
+  const times = _reacao.times;
+  const avg = times.length ? Math.round(times.reduce((a, b) => a + b, 0) / times.length) : 0;
+  const ranking = DB.reacao.slice().sort((a, b) => a.bestAvg - b.bestAvg).slice(0, 5);
+  const status = !_reacao.running
+    ? (times.length ? `<div style="text-align:center;font-size:14px;margin:10px 0;"><b>Resultado:</b> média <b style="color:var(--primary-text);">${avg} ms</b> · melhor ${Math.min(...times)} ms</div>` : '<div style="text-align:center;color:var(--muted);font-size:13px;margin:10px 0;">Toque no ⚽ assim que ele acender. 6 rodadas.</div>')
+    : (_reacao.waiting ? `<div style="text-align:center;color:var(--warning);font-size:14px;margin:10px 0;font-weight:700;">Prepare-se… (${_reacao.round}/${_REACAO_ROUNDS})</div>` : `<div style="text-align:center;color:#F5C542;font-size:16px;margin:10px 0;font-weight:800;">TOQUE! (${_reacao.round}/${_REACAO_ROUNDS})</div>`);
+
+  body.innerHTML =
+    `<select class="form-select" style="width:100%;margin-bottom:12px;" onchange="_reacaoSetGk(this.value)" ${_reacao.running ? 'disabled' : ''}><option value="">— goleira —</option>${gkOpts}</select>` +
+    status + grid +
+    `<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="reacaoStart()" ${_reacao.running ? 'disabled' : ''}>${times.length && !_reacao.running ? '↻ Jogar de novo' : '▶ Começar'}</button>` +
+    (ranking.length ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">🏆 Recordes (menor média)</div>` +
+      ranking.map((r, i) => `<div style="display:flex;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);"><span style="width:20px;color:var(--muted);">${i + 1}º</span><span style="flex:1;">${_esc(r.nome)}</span><b>${r.bestAvg} ms</b></div>`).join('') + '</div>' : '');
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARD DIGITAL DO GOLEIRO — cartão estilo FIFA (foto + nota + atributos)
+// com QR, exportável como imagem para compartilhar/imprimir.
+// ═══════════════════════════════════════════════════════════
+function _gkCardAttrs(gkId) {
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
+  const sum = k => scouts.reduce((a, s) => a + (+s[k] || 0), 0);
+  const def = sum('dad') + sum('dae') + sum('dbd') + sum('dbe') + sum('dc') + sum('d1x1') + sum('esq');
+  const gols = sum('gda') + sum('gfa') + sum('gpe') + sum('gfl');
+  const distC = sum('dpc') + sum('dmc'), distT = distC + sum('dpe') + sum('dme');
+  const scale = r => Math.max(45, Math.min(99, Math.round(45 + Math.max(0, Math.min(1, r)) * 54)));
+  const taxaDef = (def + gols) > 0 ? def / (def + gols) : 0.7;
+  const taxaDist = distT > 0 ? distC / distT : 0.6;
+  return {
+    DEF: scale(taxaDef),
+    REP: scale(taxaDist),
+    REF: scale((sum('dad') + sum('dae') + sum('esq')) / Math.max(1, def)),
+    '1X1': scale(sum('d1x1') / Math.max(1, def) * 1.6),
+    CMD: scale((sum('int') + sum('sai')) / Math.max(6, def)),
+    MEN: scale(0.55 + ((typeof computeGKRating === 'function' ? (computeGKRating(gkId).score || 60) : 60) / 100) * 0.45),
+  };
+}
+function openGkCard(gkId) {
+  gkId = gkId || _perfilGkId;
+  const gk = DB.goleiras.find(g => g.id === gkId);
+  if (!gk) { toast('Selecione uma goleira.', 'error'); return; }
+  const rating = (typeof computeGKRating === 'function') ? computeGKRating(gkId) : { score: null };
+  const attrs = _gkCardAttrs(gkId);
+  const overall = rating.score != null ? rating.score : Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 6);
+  const idade = (typeof calcIdade === 'function') ? calcIdade(gk.nasc) : '';
+  let modal = document.getElementById('gkcard-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'gkcard-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
+  const foto = (gk.foto && String(gk.foto).startsWith('data:image/')) ? gk.foto : '';
+  const attrHtml = Object.keys(attrs).map(k =>
+    `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;"><span style="opacity:.85;">${k}</span><b>${attrs[k]}</b></div>`
+  ).join('');
+  modal.innerHTML = `
+    <div class="modal" style="max-width:380px;background:transparent;box-shadow:none;padding:0;">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="modal-close" style="color:#fff;" onclick="closeModal('gkcard-modal')">&times;</button></div>
+      <div id="gkcard-el" style="width:320px;margin:0 auto;border-radius:18px;overflow:hidden;background:linear-gradient(160deg,#1b3a5b 0%,#0d2136 55%,#0a1826 100%);border:2px solid #F5C542;color:#fff;font-family:var(--font);">
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:16px 16px 8px;">
+          <div style="text-align:center;">
+            <div style="font-size:44px;font-weight:900;line-height:.9;color:#F5C542;">${overall}</div>
+            <div style="font-size:13px;font-weight:800;letter-spacing:1px;">GOL</div>
+            ${idade ? `<div style="font-size:10px;opacity:.7;margin-top:2px;">${idade} anos</div>` : ''}
+          </div>
+          <div style="flex:1;height:118px;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;">
+            ${foto ? `<img src="${foto}" crossorigin="anonymous" style="width:100%;height:100%;object-fit:cover;">` : '<svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.5" style="width:52px;height:52px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>'}
+          </div>
+        </div>
+        <div style="text-align:center;font-size:19px;font-weight:800;letter-spacing:.5px;padding:2px 12px;border-bottom:1px solid rgba(245,197,66,.35);padding-bottom:8px;">${_esc((gk.nome || '').toUpperCase())}</div>
+        <div style="text-align:center;font-size:11px;opacity:.8;padding:4px 0;">${_esc(gk.equipe || (localStorage.getItem('gkhub_club_name') || ''))}${gk.modalidade === 'beach' ? ' · Beach' : ' · Futsal'}</div>
+        <div style="display:flex;gap:14px;padding:6px 18px 14px;">
+          <div style="flex:1;">${attrHtml}</div>
+          <div style="display:flex;flex-direction:column;align-items:center;justify-content:flex-end;">
+            <div id="gkcard-qr" style="background:#fff;padding:5px;border-radius:6px;line-height:0;"></div>
+            <div style="font-size:8px;opacity:.7;margin-top:4px;">GK HUB</div>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;max-width:320px;margin:12px auto 0;">
+        <button class="btn btn-primary" style="flex:1;" onclick="baixarGkCard('${_esc(gk.nome)}')">⬇️ Baixar imagem</button>
+      </div>
+    </div>`;
+  openModal('gkcard-modal');
+  // QR (link do app) — se a lib carregou
+  try {
+    const qrEl = document.getElementById('gkcard-qr');
+    if (qrEl && typeof QRCode !== 'undefined') {
+      qrEl.innerHTML = '';
+      new QRCode(qrEl, { text: (location.origin + location.pathname), width: 56, height: 56, correctLevel: QRCode.CorrectLevel.M });
+    } else if (qrEl) { qrEl.style.display = 'none'; }
+  } catch (e) {}
+}
+function baixarGkCard(nome) {
+  const el = document.getElementById('gkcard-el');
+  if (!el || typeof html2canvas === 'undefined') { toast('Recurso de imagem indisponível offline. Tente online.', 'error'); return; }
+  toast('Gerando imagem…', 'info');
+  html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true }).then(canvas => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'card_' + String(nome || 'goleira').replace(/\s+/g, '_') + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  }).catch(() => toast('Não foi possível gerar a imagem.', 'error'));
+}
+
 // Mapa do gol: distribuição das defesas por zona (força/onde é mais exigida)
 // + gols sofridos por origem. Usa os dados de scout que já existem.
 function renderPerfilGoalMap(gkId) {
@@ -3123,6 +3453,7 @@ function renderPerfil() {
   content.style.display='block'; empty.style.display='none';
   _perfilGkId = gkId;
   renderGKRating(gkId);
+  renderPerfilGSAA(gkId);
   renderPerfilTreinos(gkId);
   renderPerfilExtras(gkId);
   renderPerfilGoalMap(gkId);
@@ -9595,7 +9926,7 @@ function cloudDelete(col, id) {
    com mesclagem ao abrir. Último a escrever vence por coleção.
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
-const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances', 'penaltis', 'pen_fotos'];
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances', 'penaltis', 'pen_fotos', 'reacao', 'periodizacao'];
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
@@ -10435,7 +10766,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v104';
+const APP_VERSION = 'v105';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
