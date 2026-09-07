@@ -261,12 +261,37 @@ function exportAuditCsv() {
    CONFIGURAÇÕES DO CLUBE
    ═══════════════════════════════════════════════════════════ */
 function clubSettings() { try { return JSON.parse(localStorage.getItem('gkhub_club_settings') || '{}'); } catch (e) { return {}; } }
+const _UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
+// Carrega municípios do estado (IBGE) com cache offline; popula o datalist de cidade.
+async function _loadCidades(uf, resetCidade) {
+  const dl = document.getElementById('clb-cidades-list');
+  const cidadeInput = document.getElementById('clb-cidade');
+  if (cidadeInput) cidadeInput.placeholder = uf ? 'Digite ou escolha a cidade' : 'Selecione o estado primeiro';
+  if (resetCidade && cidadeInput) cidadeInput.value = '';
+  if (!dl || !uf) { if (dl) dl.innerHTML = ''; return; }
+  let cidades = null;
+  try { cidades = JSON.parse(localStorage.getItem('gkhub_cidades_' + uf) || 'null'); } catch (e) {}
+  if (!cidades) {
+    try {
+      const r = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados/' + uf + '/municipios?orderBy=nome');
+      const d = await r.json();
+      cidades = (d || []).map(m => m.nome);
+      if (cidades.length) localStorage.setItem('gkhub_cidades_' + uf, JSON.stringify(cidades));
+    } catch (e) { cidades = []; }
+  }
+  dl.innerHTML = (cidades || []).map(n => `<option value="${_esc(n)}"></option>`).join('');
+}
 let _clbEscudo = '';
 function renderClube() {
   const c = clubSettings();
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
-  set('clb-nome', c.nome); set('clb-cidade', c.cidade); set('clb-estado', c.estado);
+  // Popula o seletor de estados (UF) uma vez
+  const ufSel = document.getElementById('clb-estado');
+  if (ufSel && ufSel.options.length <= 1) ufSel.innerHTML = '<option value="">— UF —</option>' + _UFS.map(u => `<option value="${u}">${u}</option>`).join('');
+  set('clb-nome', c.nome); set('clb-estado', c.estado);
   set('clb-pais', c.pais || 'Brasil'); set('clb-display', c.display);
+  // Carrega cidades do estado salvo e depois preenche a cidade
+  if (c.estado) { _loadCidades(c.estado, false).then(() => set('clb-cidade', c.cidade)); } else { set('clb-cidade', c.cidade); }
   set('clb-escala', c.escala || 10); set('clb-treino-min', c.treinoMin || 60);
   if (c.cor1) set('clb-cor1', c.cor1); if (c.cor2) set('clb-cor2', c.cor2);
   _clbEscudo = c.escudo || '';
@@ -282,8 +307,22 @@ function renderClube() {
 function clbUploadEscudo(input) {
   const f = input.files && input.files[0]; if (!f) return;
   const r = new FileReader();
-  r.onload = () => { _clbEscudo = r.result; const p = document.getElementById('clb-escudo-prev'); if (p) p.innerHTML = `<img src="${_clbEscudo}" style="width:100%;height:100%;object-fit:cover;">`; };
+  r.onload = () => {
+    // Abre o recortador (arrastar/zoom) para ajustar o escudo antes de salvar.
+    if (typeof openCropModal === 'function') openCropModal(r.result, 'escudo');
+    else { _clbEscudo = r.result; const p = document.getElementById('clb-escudo-prev'); if (p) p.innerHTML = `<img src="${_clbEscudo}" style="width:100%;height:100%;object-fit:cover;">`; }
+  };
   r.readAsDataURL(f);
+  input.value = '';
+}
+function ajustarEscudo() {
+  if (_clbEscudo && typeof openCropModal === 'function') openCropModal(_clbEscudo, 'escudo');
+  else toast('Envie um escudo primeiro.', 'info');
+}
+function _clbSetEscudo(dataUrl) {
+  _clbEscudo = dataUrl;
+  const p = document.getElementById('clb-escudo-prev');
+  if (p) p.innerHTML = `<img src="${_clbEscudo}" style="width:100%;height:100%;object-fit:cover;">`;
 }
 function saveClube() {
   const val = (id) => (document.getElementById(id)?.value || '').trim();
@@ -299,8 +338,30 @@ function saveClube() {
   Object.keys(IGD_DIM_LABEL).forEach(k => { w[k] = parseInt(document.getElementById('clb-w-' + k)?.value, 10) || 0; });
   localStorage.setItem('gkhub_igd_weights', JSON.stringify(w));
   applyClubBranding();
+  try { _pushClubInfo({ ...c, igdWeights: w }); } catch (e) {}   // sincroniza identidade na nuvem
   logAudit('Clube', 'Atualizou as configurações do clube');
   toast('Configurações salvas!', 'success');
+}
+// Sincroniza a identidade do clube (nome/logo/cores) na nuvem — todos os
+// aparelhos do clube veem o mesmo. Guarda em /<clube>/clubinfo.
+function _pushClubInfo(c) {
+  if (typeof rtdbUrl === 'undefined' || !rtdbUrl) return;
+  try { netSetStatus('syncing'); rtdbPut(_cp('/clubinfo'), c).then(() => netMarkSynced()).catch(() => netSetStatus(navigator.onLine ? 'online' : 'offline')); } catch (e) {}
+}
+async function _pullClubInfo() {
+  if (typeof rtdbUrl === 'undefined' || !rtdbUrl) return;
+  try {
+    const ci = await rtdbGet(_cp('/clubinfo'));
+    if (ci && typeof ci === 'object') {
+      const local = clubSettings();
+      const merged = { ...local, ...ci };   // remoto (definido pelo clube) vence
+      localStorage.setItem('gkhub_club_settings', JSON.stringify(merged));
+      if (ci.igdWeights) localStorage.setItem('gkhub_igd_weights', JSON.stringify(ci.igdWeights));
+      applyClubBranding();
+      const a = document.querySelector('.page.active')?.id;
+      if (a === 'page-clube') renderClube();
+    }
+  } catch (e) {}
 }
 function resetIgdWeights() { localStorage.removeItem('gkhub_igd_weights'); renderClube(); toast('Pesos do IGD restaurados.', 'info'); }
 
@@ -2859,8 +2920,9 @@ function applyCrop() {
   const canvas = document.createElement('canvas');
   canvas.width = out; canvas.height = out;
   const ctx = canvas.getContext('2d');
-  // Batedor: recorte quadrado (preenche o card/PDF). Demais: círculo.
-  if (cropTarget !== 'penbat') {
+  // Batedor/escudo: recorte quadrado (preenche card/PDF/menu). Demais: círculo.
+  const squareTargets = (cropTarget === 'penbat' || cropTarget === 'escudo');
+  if (!squareTargets) {
     ctx.beginPath();
     ctx.arc(out/2, out/2, out/2, 0, Math.PI*2);
     ctx.clip();
@@ -2873,6 +2935,11 @@ function applyCrop() {
 
   if (cropTarget === 'penbat') {
     _penSaveFoto(result);
+    closeModal('modal-crop');
+    return;
+  }
+  if (cropTarget === 'escudo') {
+    _clbSetEscudo(result);
     closeModal('modal-crop');
     return;
   }
@@ -10212,6 +10279,7 @@ async function cloudPullNew(silent) {
 async function cloudPullCore(silent) {
   if (!rtdbUrl) return 0;
   await _ensureClubMembership();   // garante acesso do usuário ao clube antes de ler
+  try { await _pullClubInfo(); } catch (e) {}   // identidade do clube (nome/logo/cores)
   let changed = 0;
   for (const col of ['goleiras', 'partidas', 'scouts']) {
     try {
@@ -11015,7 +11083,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v113';
+const APP_VERSION = 'v114';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

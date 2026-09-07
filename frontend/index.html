@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.workers.dev https://gkhub-backend.onrender.com; frame-src https://gkhub-4717d.firebaseapp.com https://accounts.google.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.workers.dev https://gkhub-backend.onrender.com https://servicodados.ibge.gov.br; frame-src https://gkhub-4717d.firebaseapp.com https://accounts.google.com;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GK Hub — Goalkeeper Performance Platform</title>
   <!-- PWA -->
@@ -562,8 +562,8 @@
           <div class="card-header"><span class="card-title">🏛️ Identidade</span></div>
           <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Nome do clube</label><input class="form-input" id="clb-nome" placeholder="Ex.: Associação Atlética"></div>
           <div class="form-grid">
-            <div class="form-group"><label class="form-label">Cidade</label><input class="form-input" id="clb-cidade"></div>
-            <div class="form-group"><label class="form-label">Estado</label><input class="form-input" id="clb-estado"></div>
+            <div class="form-group"><label class="form-label">Estado</label><select class="form-select" id="clb-estado" onchange="_loadCidades(this.value, true)"><option value="">— UF —</option></select></div>
+            <div class="form-group"><label class="form-label">Cidade</label><input class="form-input" id="clb-cidade" list="clb-cidades-list" placeholder="Selecione o estado primeiro"><datalist id="clb-cidades-list"></datalist></div>
             <div class="form-group"><label class="form-label">País</label><input class="form-input" id="clb-pais" value="Brasil"></div>
             <div class="form-group"><label class="form-label">Nome exibido (topo/PDF)</label><input class="form-input" id="clb-display"></div>
           </div>
@@ -573,8 +573,11 @@
           <div style="display:flex;gap:16px;align-items:center;margin-bottom:14px;">
             <div class="gk-avatar" id="clb-escudo-prev" style="width:72px;height:72px;">—</div>
             <div>
-              <label class="btn btn-secondary btn-sm" style="cursor:pointer;">Enviar escudo<input type="file" accept="image/*" style="display:none;" onchange="clbUploadEscudo(this)"></label>
-              <div style="font-size:11px;color:var(--muted);margin-top:6px;">PNG/JPG · quadrado ideal</div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;">
+                <label class="btn btn-secondary btn-sm" style="cursor:pointer;">Enviar escudo<input type="file" accept="image/*" style="display:none;" onchange="clbUploadEscudo(this)"></label>
+                <button class="btn btn-ghost btn-sm" onclick="ajustarEscudo()">✂️ Ajustar</button>
+              </div>
+              <div style="font-size:11px;color:var(--muted);margin-top:6px;">PNG/JPG · arraste e dê zoom para enquadrar</div>
             </div>
           </div>
           <div class="form-grid">
