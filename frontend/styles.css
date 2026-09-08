@@ -1715,3 +1715,18 @@ body.theme-light { color-scheme: light; }
   .dash-hero-title { font-size: 21px; }
   .dash-hero-stat .v { font-size: 22px; }
 }
+
+/* ── Sidebar recolhida: corrige espaçamentos e alinhamento ── */
+body.sidebar-collapsed .nav-section-label,
+body.sidebar-collapsed .sidebar-footer,
+body.sidebar-collapsed .sidebar-logo-text,
+body.sidebar-collapsed .nav-item-label { display: none !important; }
+/* Topo: escudo + botão empilhados e centralizados */
+body.sidebar-collapsed .sidebar-logo {
+  flex-direction: column; gap: 10px; padding: 14px 0 12px; min-height: 0;
+}
+body.sidebar-collapsed #sidebar-club-logo { width: 40px; height: 40px; }
+/* Itens do menu: ícones centralizados e espaçamento uniforme */
+body.sidebar-collapsed .nav-item { margin: 3px 8px; padding: 10px 0; }
+body.sidebar-collapsed .nav-item svg { width: 19px; height: 19px; }
+body.sidebar-collapsed .sidebar-nav { padding-top: 6px; }
