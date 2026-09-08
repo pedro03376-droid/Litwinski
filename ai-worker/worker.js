@@ -10,7 +10,14 @@ const ALLOW_ORIGIN = 'https://pedro03376-droid.github.io';
 function cors(){return{'Access-Control-Allow-Origin':ALLOW_ORIGIN,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type'};}
 function json(o,s){return new Response(JSON.stringify(o),{status:s||200,headers:{'Content-Type':'application/json',...cors()}});}
 function buildPrompt(ctx){
-  return 'Você é um analista de goleiros(as) de Futsal e Beach Soccer. Analise os dados (JSON) e responda SOMENTE com JSON válido no formato: {"overallScore":number,"strengths":[string],"attentionPoints":[string],"evolutionNotes":[string],"trainingSuggestions":[string]}. Em português do Brasil. Sem texto fora do JSON.\n\nDADOS:\n'+JSON.stringify(ctx||{}).slice(0,6000);
+  return 'Você é um analista técnico de goleiros(as) de Futsal e Beach Soccer, especialista em ciência do esporte. '
+    + 'Analise os DADOS (JSON) e produza uma avaliação PRESCRITIVA e específica. Use, quando presentes: '
+    + 'gkRating/nivelForma/tendencia/projecao6Semanas (forma atual), golsEvitados/golsEsperados (GSAA — desempenho vs esperado), '
+    + 'defesasPorZona e golsPorOrigem (identifique a ZONA MAIS FRÁGIL e cite-a), precisaoDistribuicaoPct, interceptacoes/saidasDoGol (comando de área), '
+    + 'tempoReacaoMs (reflexo/decisão) e dimensoesIGD. '
+    + 'Regras: seja concreto (cite números e a zona/origem específica); trainingSuggestions devem ser EXERCÍCIOS acionáveis (o quê, foco e volume), não conselhos genéricos; adapte à modalidade e ao naipe. '
+    + 'Responda SOMENTE com JSON válido no formato: {"overallScore":number,"strengths":[string],"attentionPoints":[string],"evolutionNotes":[string],"trainingSuggestions":[string]}. Em português do Brasil. Sem texto fora do JSON.\n\nDADOS:\n'
+    + JSON.stringify(ctx||{}).slice(0,6000);
 }
 function coerce(obj){const arr=v=>Array.isArray(v)?v.filter(x=>typeof x==='string'&&x.trim()):[];let s=Number(obj&&obj.overallScore);if(!isFinite(s))s=null;return{overallScore:s,strengths:arr(obj&&obj.strengths),attentionPoints:arr(obj&&obj.attentionPoints),evolutionNotes:arr(obj&&obj.evolutionNotes),trainingSuggestions:arr(obj&&obj.trainingSuggestions)};}
 

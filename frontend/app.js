@@ -2183,8 +2183,9 @@ function _gkAIContext(gkId) {
   const distC = sum('dpc') + sum('dmc'), distT = distC + sum('dpe') + sum('dme');
   const igd = computeIGD(gkId);
   const line = _gkMatchTimeline(gkId, DB.partidas, DB.scouts);
-  return {
+  const ctx = {
     nome: g.nome, modalidade: g.modalidade === 'beach' ? 'beach soccer' : 'futsal', naipe: g.naipe || 'feminino', categoria: g.categoria || null, equipe: g.equipe || null,
+    idade: (typeof calcIdade === 'function') ? calcIdade(g.nasc) : null,
     partidasAnalisadas: scouts.length,
     igd: igd.score, dimensoesIGD: igd.dims,
     performanceMedia: avgPerformance(gkId),
@@ -2192,7 +2193,35 @@ function _gkAIContext(gkId) {
     precisaoDistribuicaoPct: distT ? +(distC / distT * 100).toFixed(1) : null,
     totalDefesas: def, golsSofridos: gols, interceptacoes: sum('int'), saidasDoGol: sum('sai'),
     ultimasNotas: line.slice(-6).map(r => r.nota),
+    // Defesas por zona da baliza (onde é mais/menos exigida e onde falha)
+    defesasPorZona: { altaEsq: sum('dae'), altaDir: sum('dad'), baixaEsq: sum('dbe'), baixaDir: sum('dbd'), central: sum('dc') },
+    golsPorOrigem: { dentroArea: sum('gda'), foraArea: sum('gfa'), penalti: sum('gpe'), falta: sum('gfl') },
   };
+  // GK Rating (forma atual 0–100) + tendência + projeção
+  try {
+    if (typeof computeGKRating === 'function') {
+      const r = computeGKRating(gkId);
+      if (r && r.score != null) {
+        ctx.gkRating = r.score;
+        ctx.nivelForma = r.tier ? r.tier.label : null;
+        ctx.tendencia = r.trend ? r.trend.status : null;
+        if (r.projection) ctx.projecao6Semanas = r.projection.value;
+      }
+    }
+  } catch (e) {}
+  // GSAA — gols evitados (estimado) a partir do mapa de defesas
+  try {
+    if (typeof computeGSAA === 'function') {
+      const gs = computeGSAA(gkId);
+      if (gs && gs.shots) { ctx.golsEvitados = gs.gsaa; ctx.golsEsperados = gs.xg; ctx.finalizacoesMapeadas = gs.shots; }
+    }
+  } catch (e) {}
+  // Treino de reação (tempo em ms por modo, se houver)
+  try {
+    const rec = DB.reacao.filter(r => r.gkId === gkId);
+    if (rec.length) ctx.tempoReacaoMs = rec.reduce((o, r) => { o[r.mode] = r.bestAvg; return o; }, {});
+  } catch (e) {}
+  return ctx;
 }
 async function gerarAnaliseIA() {
   const gkId = _perfilGkId;
@@ -11247,7 +11276,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v118';
+const APP_VERSION = 'v119';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
