@@ -8513,11 +8513,113 @@ function copyClubKey() { const k = _cloudClubKey(); if (navigator.clipboard) nav
 function joinClubKey() {
   const k = (prompt('Cole o código do clube com quem deseja sincronizar.\n\nATENÇÃO: isso troca o clube da nuvem DESTE aparelho.') || '').trim();
   if (!k) return;
-  if (!confirm('Trocar o código da nuvem deste aparelho para:\n\n' + k + '\n\nAo sincronizar, seus dados locais passam a se juntar aos desse clube. Faça um backup antes se tiver dúvida. Continuar?')) return;
-  localStorage.setItem('gkhub_club_key', k);
-  try { logAudit('Nuvem', 'Entrou no código de clube ' + k); } catch (e) {}
-  toast('Código atualizado. Recarregando para sincronizar…', 'success');
-  setTimeout(() => location.reload(), 900);
+  if (!confirm('Entrar no clube com o código:\n\n' + k + '\n\nSeu clube atual é guardado neste aparelho e você pode voltar depois. Continuar?')) return;
+  _clubRegister(k, 'Clube ' + k.slice(-4));
+  _switchToClub(k);
+}
+
+// ═══════════════════════════════════════════════════════════
+// GERENCIADOR DE CLUBES — criar / selecionar / entrar por código.
+// Cada clube fica ISOLADO: ao trocar, os dados locais do clube atual são
+// guardados (gkhub_clubdata_<key>) e os do clube destino são carregados.
+// A nuvem já é separada por código (namespace), então nada se mistura.
+// ═══════════════════════════════════════════════════════════
+const _CLUB_GLOBAL_SKIP = ['gkhub_session', 'gkhub_google_redirect', 'gkhub_fcm_token', 'gkhub_push_sub', 'gkhub_2fa_ok', 'gkhub_2fa_secret', 'gkhub_sidebar_collapsed', 'gkhub_club_key', 'gkhub_clubs', 'gkhub_active_workspace', 'gkhub_onboarded', 'gkhub_welcome_seen', 'gkhub_ai_url', 'gkhub_backend_email', 'gkhub_user_name', 'gkhub_last_autobackup'];
+function _isClubScoped(k) { return k && k.startsWith('gkhub_') && !_CLUB_GLOBAL_SKIP.includes(k) && !k.startsWith('gkhub_clubdata_') && !k.startsWith('gkhub_cidades_'); }
+function _clubList() { try { return JSON.parse(localStorage.getItem('gkhub_clubs') || '[]'); } catch (e) { return []; } }
+function _clubRegister(key, nome) {
+  const list = _clubList();
+  const i = list.findIndex(c => c.key === key);
+  if (i >= 0) { if (nome) list[i].nome = nome; } else list.push({ key, nome: nome || 'Meu Clube' });
+  localStorage.setItem('gkhub_clubs', JSON.stringify(list));
+}
+function _snapshotClub(key) {
+  if (!key) return;
+  const data = {};
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (_isClubScoped(k)) data[k] = localStorage.getItem(k); }
+  try { localStorage.setItem('gkhub_clubdata_' + key, JSON.stringify(data)); } catch (e) {}
+}
+function _clearClubScoped() {
+  const rm = [];
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (_isClubScoped(k)) rm.push(k); }
+  rm.forEach(k => localStorage.removeItem(k));
+}
+function _switchToClub(key) {
+  const cur = localStorage.getItem('gkhub_club_key') || '';
+  if (cur) _snapshotClub(cur);                     // guarda o clube atual
+  _clearClubScoped();                              // limpa dados do atual
+  try { const raw = localStorage.getItem('gkhub_clubdata_' + key); if (raw) { const d = JSON.parse(raw); Object.entries(d).forEach(([k, v]) => localStorage.setItem(k, v)); } } catch (e) {}
+  localStorage.setItem('gkhub_club_key', key);
+  try { logAudit('Clube', 'Trocou de clube'); } catch (e) {}
+  toast('Trocando de clube… recarregando.', 'success');
+  setTimeout(() => location.reload(), 700);
+}
+function switchClub(key) {
+  if (key === (localStorage.getItem('gkhub_club_key') || '')) { closeModal('clubmgr-modal'); return; }
+  if (!confirm('Trocar para este clube? Seu clube atual fica guardado e você pode voltar quando quiser.')) return;
+  _switchToClub(key);
+}
+function criarClube() {
+  const nome = (prompt('Nome do novo clube:') || '').trim();
+  if (!nome) return;
+  const key = 'clb_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  _clubRegister(key, nome);
+  const cur = localStorage.getItem('gkhub_club_key') || '';
+  if (cur) _snapshotClub(cur);
+  _clearClubScoped();                              // novo clube começa vazio
+  localStorage.setItem('gkhub_club_key', key);
+  localStorage.setItem('gkhub_club_settings', JSON.stringify({ nome, display: nome }));
+  localStorage.removeItem('gkhub_onboarded');      // roda o onboarding no novo clube
+  try { logAudit('Clube', 'Criou o clube ' + nome); } catch (e) {}
+  toast('Clube "' + nome + '" criado! Recarregando…', 'success');
+  setTimeout(() => location.reload(), 700);
+}
+function renomearClube(key) {
+  const list = _clubList(); const c = list.find(x => x.key === key); if (!c) return;
+  const nome = (prompt('Novo nome do clube:', c.nome) || '').trim(); if (!nome) return;
+  c.nome = nome; localStorage.setItem('gkhub_clubs', JSON.stringify(list));
+  if (key === (localStorage.getItem('gkhub_club_key') || '')) { const s = clubSettings(); s.nome = nome; s.display = nome; localStorage.setItem('gkhub_club_settings', JSON.stringify(s)); try { applyClubBranding(); } catch (e) {} }
+  renderClubManager();
+}
+function removerClube(key) {
+  const cur = localStorage.getItem('gkhub_club_key') || '';
+  if (key === cur) { toast('Não dá para remover o clube ativo. Troque para outro primeiro.', 'error'); return; }
+  if (!confirm('Remover este clube DESTE aparelho? Os dados na nuvem continuam; você pode voltar pelo código. Continuar?')) return;
+  localStorage.setItem('gkhub_clubs', JSON.stringify(_clubList().filter(c => c.key !== key)));
+  try { localStorage.removeItem('gkhub_clubdata_' + key); } catch (e) {}
+  renderClubManager();
+}
+function renderClubManager() {
+  // Garante que o clube atual esteja no registro
+  const cur = localStorage.getItem('gkhub_club_key') || (typeof _cloudClubKey === 'function' ? _cloudClubKey() : '');
+  if (cur) _clubRegister(cur, (clubSettings().nome || _clubList().find(c => c.key === cur)?.nome || 'Meu Clube'));
+  let m = document.getElementById('clubmgr-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'clubmgr-modal'; m.className = 'modal-backdrop'; document.body.appendChild(m); }
+  const list = _clubList();
+  const rows = list.map(c => {
+    const active = c.key === cur;
+    return `<div style="display:flex;align-items:center;gap:8px;border:1px solid ${active ? 'var(--primary)' : 'var(--border)'};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+      <span style="width:8px;height:8px;border-radius:50%;background:${active ? 'var(--primary)' : 'var(--muted)'};flex-shrink:0;"></span>
+      <div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:14px;">${_esc(c.nome)}</div><div style="font-size:10px;color:var(--muted);word-break:break-all;">${_esc(c.key)}</div></div>
+      ${active ? '<span style="font-size:10px;font-weight:800;color:#34D399;">ATUAL</span>'
+        : `<button class="btn btn-primary btn-sm" onclick="switchClub('${_esc(c.key)}')">Entrar</button>`}
+      <button class="btn btn-ghost btn-sm" onclick="renomearClube('${_esc(c.key)}')" title="Renomear" style="padding:4px 8px;">✎</button>
+      ${active ? '' : `<button class="btn btn-ghost btn-sm" onclick="removerClube('${_esc(c.key)}')" title="Remover deste aparelho" style="padding:4px 8px;color:var(--error);">×</button>`}
+    </div>`;
+  }).join('');
+  m.innerHTML = `
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header"><span class="modal-title">🏛️ Meus Clubes</span><button class="modal-close" onclick="closeModal('clubmgr-modal')">&times;</button></div>
+      <div class="modal-body">
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <button class="btn btn-primary" style="flex:1;" onclick="criarClube()">+ Criar clube</button>
+          <button class="btn btn-secondary" style="flex:1;" onclick="joinClubKey()">🔑 Entrar por código</button>
+        </div>
+        ${rows || '<div style="color:var(--muted);font-size:13px;">Nenhum clube ainda.</div>'}
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">Cada clube tem seus próprios dados, isolados. Ao trocar, o clube atual fica guardado neste aparelho e sincronizado na nuvem pelo código.</div>
+      </div>
+    </div>`;
+  openModal('clubmgr-modal');
 }
 // ═══════════════════════════════════════════════════════════
 // ONBOARDING — assistente de primeira vez (clube → 1ª goleira)
@@ -11276,7 +11378,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v119';
+const APP_VERSION = 'v120';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
