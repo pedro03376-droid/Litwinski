@@ -708,6 +708,11 @@ function applyClubBranding() {
       const n = document.getElementById('sidebar-club-name'); if (n) n.textContent = c.display || c.nome;
       const sub = document.getElementById('sidebar-club-sub'); if (sub && (c.cidade || c.estado)) sub.textContent = [c.cidade, c.estado].filter(Boolean).join(' · ');
     }
+    // Seletor rápido de clube no topo
+    const tName = document.getElementById('topbar-club-name');
+    if (tName) tName.textContent = (typeof _clubName === 'function') ? _clubName() : (c.display || c.nome || 'Meu Clube');
+    const tLogo = document.getElementById('topbar-club-logo');
+    if (tLogo) { if (c.escudo) { tLogo.innerHTML = `<img src="${c.escudo}">`; tLogo.style.display = ''; } else { tLogo.innerHTML = ''; tLogo.style.display = 'none'; } }
   } catch (e) {}
   // A cor do clube NÃO altera mais a UI global (botões, gráficos, status, notas,
   // texto). Ela vira um token de MARCA (--team) usado só no escudo/logo e no hero.
@@ -11378,7 +11383,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v120';
+const APP_VERSION = 'v121';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
