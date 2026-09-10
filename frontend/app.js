@@ -51,6 +51,8 @@ const DB = {
   get pid()           { return this.load('pid'); },
   get seasons()       { return this.load('seasons'); },
   saveSeasons(d)      { this.save('seasons', d); },
+  get competicoes()   { return this.load('competicoes'); },
+  saveCompeticoes(d)  { this.save('competicoes', d); },
   get def_lances()    { return this.load('def_lances'); },
   saveDeflances(d)    { this.save('def_lances', d); },
   get penaltis()      { return this.load('penaltis'); },
@@ -491,16 +493,95 @@ function renderSeasonManager() {
     </div>`;
   }).join('') : '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhuma temporada criada ainda. Comece iniciando a sua primeira temporada — as próximas partidas ficarão vinculadas a ela.</div>';
 
+  // ── Competições da temporada ativa ──
+  const sAtiva = _activeSeason();
+  const comps = sAtiva ? _compsDaTemporada(sAtiva.id) : [];
+  const compCount = (c) => parts.filter(p => p.competicaoId === c.id).length;
+  const compRows = comps.length ? comps.map(c => {
+    const badge = c.active
+      ? '<span style="font-size:10px;font-weight:800;color:#0d2c40;background:#F5C542;border-radius:20px;padding:2px 8px;">ATIVA</span>'
+      : '<span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:2px 8px;">encerrada</span>';
+    return `<div style="border:1px solid ${c.active ? 'rgba(245,197,66,.4)' : 'var(--border)'};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-weight:700;font-size:14px;">🏆 ${_esc(c.nome)}</span>${badge}
+        <span style="font-size:11px;color:var(--muted);margin-left:auto;">${compCount(c)} partida(s)</span>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+        ${!c.active ? `<button class="btn btn-sm btn-primary" onclick="ativarCompeticao('${c.id}')">Ativar</button>` : `<button class="btn btn-sm btn-secondary" onclick="encerrarCompeticao('${c.id}')">Encerrar</button>`}
+        <button class="btn btn-sm btn-ghost" onclick="renomearCompeticao('${c.id}')">Renomear</button>
+        <button class="btn btn-sm btn-ghost" onclick="excluirCompeticao('${c.id}')" style="color:var(--error);">Excluir</button>
+      </div>
+    </div>`;
+  }).join('') : `<div style="color:var(--muted);font-size:12px;padding:4px 0;">${sAtiva ? 'Nenhuma competição nesta temporada ainda.' : 'Inicie uma temporada para criar competições.'}</div>`;
+
   modal.innerHTML = `
     <div class="modal" style="max-width:520px;">
-      <div class="modal-header"><span class="modal-title">🗓️ Temporadas</span><button class="modal-close" onclick="closeModal('season-modal')">&times;</button></div>
+      <div class="modal-header"><span class="modal-title">🗓️ Temporadas & Competições</span><button class="modal-close" onclick="closeModal('season-modal')">&times;</button></div>
       <div class="modal-body">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Temporadas</div>
         <button class="btn btn-primary" style="width:100%;margin-bottom:14px;" onclick="iniciarTemporada()">🏁 Iniciar nova temporada</button>
         ${rows}
-        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">Ao iniciar uma nova temporada, a anterior é encerrada automaticamente. As novas partidas ficam vinculadas à temporada ativa. Nada é apagado ao encerrar ou excluir.</div>
+        <div style="border-top:1px solid var(--border);margin:16px 0 12px;"></div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Competições ${sAtiva ? '· ' + _esc(sAtiva.nome) : ''}</div>
+        <button class="btn btn-secondary" style="width:100%;margin-bottom:12px;" onclick="iniciarCompeticao()" ${!sAtiva ? 'disabled' : ''}>🏆 Iniciar competição</button>
+        ${compRows}
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">As novas partidas ficam vinculadas à temporada e à competição ativas. Nada é apagado ao encerrar ou excluir.</div>
       </div>
     </div>`;
   openModal('season-modal');
+}
+
+// ═══════════════════════════════════════════════════════════
+// COMPETIÇÕES — dentro da temporada (Estadual, Copa, Liga…).
+// Uma competição ativa por vez; novas partidas ficam vinculadas a ela.
+// ═══════════════════════════════════════════════════════════
+function _activeCompeticao() { return DB.competicoes.find(c => c.active) || null; }
+function _compsDaTemporada(sid) { return DB.competicoes.filter(c => !sid || c.seasonId === sid); }
+function iniciarCompeticao() {
+  const s = _activeSeason();
+  if (!s) { toast('Inicie uma temporada primeiro.', 'info'); return; }
+  const nome = (prompt('Nome da competição (ex.: Estadual, Copa, Liga):') || '').trim();
+  if (!nome) return;
+  const list = DB.competicoes;
+  list.forEach(c => { c.active = false; });   // uma ativa por vez
+  const nova = { id: uid(), nome, seasonId: s.id, inicio: _today(), fim: null, active: true };
+  list.push(nova);
+  DB.saveCompeticoes(list);
+  try { cloudSet('competicoes', nova); } catch (e) {}
+  try { logAudit('Competição', 'Iniciou "' + nome + '"'); } catch (e) {}
+  renderSeasonManager();
+  toast('Competição "' + nome + '" iniciada! 🏆', 'success');
+}
+function ativarCompeticao(id) {
+  const list = DB.competicoes;
+  list.forEach(c => { c.active = (c.id === id); });
+  DB.saveCompeticoes(list);
+  try { const a = list.find(c => c.id === id); if (a) cloudSet('competicoes', a); } catch (e) {}
+  renderSeasonManager();
+  toast('Competição ativada.', 'success');
+}
+function encerrarCompeticao(id) {
+  const list = DB.competicoes; const c = list.find(x => x.id === id); if (!c) return;
+  if (!confirm('Encerrar a competição "' + c.nome + '"? Os dados continuam salvos.')) return;
+  c.active = false; c.fim = c.fim || _today();
+  DB.saveCompeticoes(list);
+  try { cloudSet('competicoes', c); } catch (e) {}
+  renderSeasonManager();
+  toast('Competição encerrada.', 'info');
+}
+function renomearCompeticao(id) {
+  const list = DB.competicoes; const c = list.find(x => x.id === id); if (!c) return;
+  const nome = (prompt('Novo nome da competição:', c.nome) || '').trim(); if (!nome) return;
+  c.nome = nome; DB.saveCompeticoes(list);
+  try { cloudSet('competicoes', c); } catch (e) {}
+  renderSeasonManager();
+}
+function excluirCompeticao(id) {
+  const c = DB.competicoes.find(x => x.id === id); if (!c) return;
+  if (!confirm('Excluir a competição "' + c.nome + '"? Isso NÃO apaga partidas — só remove o rótulo.')) return;
+  DB.saveCompeticoes(DB.competicoes.filter(x => x.id !== id));
+  renderSeasonManager();
+  toast('Competição excluída (partidas preservadas).', 'info');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1370,6 +1451,8 @@ function salvarPartida() {
   } else {
     const _as = (typeof _activeSeason === 'function') ? _activeSeason() : null;
     if (_as) obj.seasonId = _as.id;
+    const _ac = (typeof _activeCompeticao === 'function') ? _activeCompeticao() : null;
+    if (_ac) { obj.competicaoId = _ac.id; if (!obj.competicao) obj.competicao = _ac.nome; }
     partidas.push(obj);
   }
   DB.savePartidas(partidas);
@@ -10542,7 +10625,7 @@ function cloudDelete(col, id) {
    com mesclagem ao abrir. Último a escrever vence por coleção.
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
-const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'def_lances', 'penaltis', 'pen_fotos', 'reacao', 'reacao_hist', 'periodizacao'];
+const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'competicoes', 'def_lances', 'penaltis', 'pen_fotos', 'reacao', 'reacao_hist', 'periodizacao'];
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
@@ -11383,7 +11466,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v122';
+const APP_VERSION = 'v123';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
