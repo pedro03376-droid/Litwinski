@@ -511,6 +511,7 @@ function renderSeasonManager() {
         <button class="btn btn-sm btn-ghost" onclick="renomearCompeticao('${c.id}')">Renomear</button>
         <button class="btn btn-sm btn-ghost" onclick="excluirCompeticao('${c.id}')" style="color:var(--error);">Excluir</button>
       </div>
+      ${_compCandidatas(c).length ? `<button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="vincularPartidasCompeticao('${c.id}')">🔗 Vincular partidas antigas a esta</button>` : ''}
     </div>`;
   }).join('') : `<div style="color:var(--muted);font-size:12px;padding:4px 0;">${sAtiva ? 'Nenhuma competição nesta temporada ainda.' : 'Inicie uma temporada para criar competições.'}</div>`;
 
@@ -582,6 +583,27 @@ function excluirCompeticao(id) {
   DB.saveCompeticoes(DB.competicoes.filter(x => x.id !== id));
   renderSeasonManager();
   toast('Competição excluída (partidas preservadas).', 'info');
+}
+// Candidatas a vincular: partidas sem competição, da mesma temporada (ou sem temporada).
+function _compCandidatas(c) {
+  return DB.partidas.filter(p => !p.competicaoId && (p.seasonId === c.seasonId || !p.seasonId));
+}
+function vincularPartidasCompeticao(id) {
+  const c = DB.competicoes.find(x => x.id === id); if (!c) return;
+  const partidas = DB.partidas;   // uma única instância para filtrar E salvar
+  const cand = partidas.filter(p => !p.competicaoId && (p.seasonId === c.seasonId || !p.seasonId));
+  // Preferência: partidas cujo nome de competição (texto) casa com esta.
+  const porNome = cand.filter(p => (p.competicao || '').trim().toLowerCase() === c.nome.trim().toLowerCase());
+  let alvo, msg;
+  if (porNome.length) { alvo = porNome; msg = 'Vincular ' + porNome.length + ' partida(s) chamada(s) "' + c.nome + '" a esta competição?'; }
+  else if (cand.length) { alvo = cand; msg = 'Nenhuma partida com o nome "' + c.nome + '". Vincular TODAS as ' + cand.length + ' partida(s) sem competição a esta?'; }
+  else { toast('Não há partidas sem competição para vincular.', 'info'); return; }
+  if (!confirm(msg)) return;
+  alvo.forEach(p => { p.competicaoId = c.id; if (!p.competicao) p.competicao = c.nome; if (!p.seasonId) p.seasonId = c.seasonId; try { cloudSet('partidas', p); } catch (e) {} });
+  DB.savePartidas(partidas);
+  try { logAudit('Competição', 'Vinculou ' + alvo.length + ' partida(s) a "' + c.nome + '"'); } catch (e) {}
+  renderSeasonManager();
+  toast(alvo.length + ' partida(s) vinculada(s) a "' + c.nome + '"! 🔗', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -11466,7 +11488,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v123';
+const APP_VERSION = 'v124';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
