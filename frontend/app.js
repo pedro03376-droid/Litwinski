@@ -2715,9 +2715,12 @@ function renderDashHero(goleiras, partidas, scouts) {
         <div style="font-weight:800;font-size:15px;">${_esc(top.nome)}</div></div>
       </div>`
     : '';
-  const logoHtml = logo
-    ? `<div style="width:56px;height:56px;border-radius:14px;overflow:hidden;flex-shrink:0;border:2px solid var(--team, var(--border));background:var(--card-2);"><img src="${logo}" style="width:100%;height:100%;object-fit:cover;"></div>`
-    : '';
+  // Marca do clube sempre presente: escudo se houver, senão as iniciais do
+  // clube no círculo, tingidas pela cor do time — âncora visual da identidade.
+  const brandInner = logo
+    ? `<img src="${logo}" style="width:100%;height:100%;object-fit:cover;">`
+    : `<span class="avatar-initials" style="font-size:24px;color:var(--team, var(--primary-text));">${_esc(_gkInitials(clube))}</span>`;
+  const logoHtml = `<div class="dash-hero-brand">${brandInner}</div>`;
   el.innerHTML = `
     ${logoHtml}
     <div class="dash-hero-main">
@@ -11535,7 +11538,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v127';
+const APP_VERSION = 'v128';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
