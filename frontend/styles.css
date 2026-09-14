@@ -39,7 +39,9 @@
       --radius:        12px;
       --radius-lg:     20px;
       --transition:    .25s cubic-bezier(.4,0,.2,1);
-      --font:          'Inter', sans-serif;
+      /* Emoji explícitos no fim da pilha → ícones (emoji) renderizam da MESMA
+         fonte por plataforma, com tamanho/alinhamento consistentes. */
+      --font:          'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1649,6 +1651,12 @@ body.theme-light {
   animation: gk-shimmer 1.2s infinite;
 }
 @keyframes gk-shimmer { 100% { transform: translateX(100%); } }
+.skeleton-line { height: 12px; border-radius: 6px; margin-bottom: 10px; }
+
+/* Skeleton dos painéis de IA (enquanto gera a análise) */
+.ai-skel { padding: 2px 0; }
+.ai-skel-status { color: var(--muted); font-size: 13px; margin-bottom: 12px; }
+.ai-skel-score { height: 34px; width: 120px; border-radius: 10px; margin-bottom: 14px; }
 
 /* C — Entrada suave da página ativa */
 .page.active { animation: gk-fadein .28s ease; }

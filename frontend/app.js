@@ -2115,6 +2115,28 @@ async function _aiPost(context) {
   try { const r = await api.post('/ai-analysis/insights', { context }); const d = r && (r.data !== undefined ? r.data : r); return (d && d.analysis) || null; }
   catch (e) { return null; }
 }
+// Skeleton (shimmer) enquanto a IA gera a resposta — dá sensação de progresso
+// no lugar de um texto estático "Analisando…". `label` é a linha de status.
+function _aiSkeleton(label) {
+  return '<div class="ai-skel">'
+    + '<div class="ai-skel-status">' + (label || '🤖 Analisando com IA…') + '</div>'
+    + '<div class="skeleton ai-skel-score"></div>'
+    + '<div class="skeleton skeleton-line" style="width:92%"></div>'
+    + '<div class="skeleton skeleton-line" style="width:78%"></div>'
+    + '<div class="skeleton skeleton-line" style="width:85%"></div>'
+    + '<div class="skeleton skeleton-line" style="width:60%"></div>'
+    + '</div>';
+}
+// Linhas de skeleton genéricas para listas que buscam dados da nuvem.
+function _skelLines(n, widths) {
+  n = n || 3;
+  let h = '';
+  for (let i = 0; i < n; i++) {
+    const w = (widths && widths[i]) || (70 + (i % 3) * 10) + '%';
+    h += '<div class="skeleton skeleton-line" style="width:' + w + '"></div>';
+  }
+  return h;
+}
 function _aiRenderResult(a, bodyEl, scoreLabel, opts) {
   opts = opts || {};
   // Tolera resposta em texto puro (versões antigas do worker): embrulha num objeto.
@@ -2227,7 +2249,7 @@ async function mcAnaliseIA() {
   const btn = document.getElementById('mc-ai-btn');
   if (!wrap || !bodyEl) return;
   wrap.style.display = 'block';
-  bodyEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">🤖 Analisando a partida com IA…</div>';
+  bodyEl.innerHTML = _aiSkeleton('🤖 Analisando a partida com IA…');
   if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
   const p = (typeof mcPendingPId !== 'undefined' && mcPendingPId) ? DB.partidas.find(x => x.id === mcPendingPId) : null;
   const gk = p ? DB.goleiras.find(g => g.id === p.goalkeeperId) : null;
@@ -2262,7 +2284,7 @@ async function tpAnaliseIA() {
   const btn = document.getElementById('tp-ai-btn');
   if (!wrap || !bodyEl) return;
   wrap.style.display = 'block';
-  bodyEl.innerHTML = '<div style="color:var(--muted);font-size:13px;">🤖 Gerando sugestão de treino com IA…</div>';
+  bodyEl.innerHTML = _aiSkeleton('🤖 Gerando sugestão de treino com IA…');
   if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
   const dash = _tpDashCache || {};
   // fraquezas agregadas do elenco (dimensões IGD mais baixas)
@@ -2340,7 +2362,7 @@ async function gerarAnaliseIA() {
   if (!gkId || !body) return;
   const ctx = _gkAIContext(gkId);
   if (!ctx.partidasAnalisadas) { body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Registre ao menos um scout deste(a) goleiro(a) para gerar a análise.</div>'; return; }
-  body.innerHTML = '<div style="color:var(--muted);font-size:13px;">🤖 Analisando com IA…</div>';
+  body.innerHTML = _aiSkeleton('🤖 Analisando com IA…');
   if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
   let res = null, errMsg = '';
   try { res = await api.post('/ai-analysis/insights', { context: ctx }); } catch (e) { res = null; errMsg = String(e && e.message || e); }
@@ -9310,7 +9332,7 @@ async function renderTreinos() {
   const kpis = document.getElementById('tp-kpis');
   const nextEl = document.getElementById('tp-next');
   const sessEl = document.getElementById('tp-sessions');
-  if (kpis) kpis.innerHTML = '<div style="color:var(--muted);font-size:13px;">Carregando…</div>';
+  if (kpis) kpis.innerHTML = _skelLines(3, ['100%','88%','76%']);
 
   // Treinos+ é local (aparelho + Firebase). Absorve qualquer item de fila antiga.
   try { await _tpFlushPending(); } catch (e) {}
@@ -10418,7 +10440,7 @@ async function renderBackupHistory() {
   const el = document.getElementById('backup-history');
   if (!el) return;
   if (!rtdbUrl) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);">Conecte a nuvem para ver o histórico.</div>'; return; }
-  el.innerHTML = '<div style="font-size:12px;color:var(--muted);">Carregando histórico…</div>';
+  el.innerHTML = _skelLines(4, ['90%','80%','85%','70%']);
   try {
     const keys = await _rtdbShallow(_cp('/backups/history'));
     const days = keys ? Object.keys(keys).sort().reverse() : [];
@@ -10485,7 +10507,7 @@ async function renderAdminPanel() {
   if (!card || !body) return;
   if (!_isAdmin()) { card.style.display = 'none'; return; }
   card.style.display = 'block';
-  body.innerHTML = '<div style="font-size:12px;color:var(--muted);">Carregando…</div>';
+  body.innerHTML = _skelLines(5, ['100%','92%','96%','88%','80%']);
   try {
     const reg = await rtdbGet('/registry');
     const rows = reg ? Object.values(reg) : [];
@@ -11488,7 +11510,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v124';
+const APP_VERSION = 'v125';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
