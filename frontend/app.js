@@ -35,8 +35,10 @@ const DB = {
   load(key) { try { return JSON.parse(localStorage.getItem('gkhub_'+key) || '[]'); } catch { return []; } },
   save(key, data) {
     localStorage.setItem('gkhub_'+key, JSON.stringify(data));
-    // Auto-sync the newer collections to the cloud (see _NEW_SYNC below)
-    if (!DB._suppressSync && typeof _schedulePush === 'function' && typeof _NEW_SYNC !== 'undefined' && _NEW_SYNC.includes(key)) _schedulePush(key, data);
+    // Sincronização automática a cada ação: todo save de uma coleção do clube
+    // envia a coleção à nuvem (debounce). Inclui as principais (goleiras/
+    // partidas/scouts) e as novas — ver _isAutoSync/_NEW_SYNC/_CORE_SYNC.
+    if (!DB._suppressSync && typeof _schedulePush === 'function' && typeof _isAutoSync === 'function' && _isAutoSync(key)) _schedulePush(key, data);
   },
   get goleiras()  { return this.load('goleiras'); },
   get partidas()  { return this.load('partidas'); },
@@ -10670,6 +10672,12 @@ function cloudDelete(col, id) {
    Observação: 2FA e sessão nunca vão para a nuvem, por segurança.
    ═══════════════════════════════════════════════════════════ */
 const _NEW_SYNC = ['lesoes', 'pid', 'aianalyses', 'notifications', 'tp_sessions', 'tp_exercises', 'tp_goals', 'seasons', 'competicoes', 'def_lances', 'penaltis', 'pen_fotos', 'reacao', 'reacao_hist', 'periodizacao'];
+// Coleções principais — também sincronizadas automaticamente a cada ação
+// (todo DB.save envia a coleção afetada à nuvem, com debounce). Assim nenhuma
+// operação escapa: criar, editar, excluir, em lote ou restaurar.
+const _CORE_SYNC = ['goleiras', 'partidas', 'scouts'];
+// É uma coleção sincronizável na nuvem? (auditlog/reports/2FA/sessão nunca sobem)
+function _isAutoSync(key) { return _NEW_SYNC.includes(key) || _CORE_SYNC.includes(key); }
 const _syncTimers = {};
 function _mapById(arr) { const m = {}; (arr || []).forEach(it => { if (it && it.id) { const { id, ...rest } = it; m[String(id)] = rest; } }); return m; }
 function _schedulePush(col, arr) {
@@ -10715,7 +10723,9 @@ async function cloudPullCore(silent) {
         const byId = {};
         DB.load(col).forEach(l => { if (l && l.id != null) byId[String(l.id)] = l; });
         Object.entries(remote).forEach(([id, val]) => { byId[String(id)] = { id, ...(val || {}) }; });
+        DB._suppressSync = true; // evita re-push do que acabou de ser baixado
         DB.save(col, Object.values(byId));
+        DB._suppressSync = false;
         changed++;
       }
     } catch (e) { /* coleção ausente/permite offline */ }
@@ -11510,7 +11520,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v125';
+const APP_VERSION = 'v126';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
