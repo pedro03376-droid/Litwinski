@@ -2833,9 +2833,7 @@ function refreshDashboard() {
 
     destaquesGrid.innerHTML = destaques.map((d,i) => {
       if (!d.gk) return '';
-      const foto = d.gk.foto && d.gk.foto.startsWith('data:image/')
-        ? `<img src="${d.gk.foto}" style="width:100%;height:100%;object-fit:cover;">`
-        : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:26px;height:26px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
+      const foto = _gkAvatarInner(d.gk, d.color);
       return `<div class="destaque-card" onclick="verPerfil('${d.gk.id}')"
         style="--accent:${d.color};--accent-color:${d.color};animation-delay:${i*50}ms;">
         <span class="destaque-icon">${d.emoji}</span>
@@ -3962,9 +3960,9 @@ function renderPerfil() {
 
   // Foto + nome
   const fotoEl = document.getElementById('perfil-foto');
-  fotoEl.innerHTML = gk.foto
-    ? `<img src="${(gk.foto||'').startsWith('data:image/') ? gk.foto : ''}" style="width:100%;height:100%;object-fit:cover;">`
-    : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:48px;height:48px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
+  fotoEl.innerHTML = (gk.foto && String(gk.foto).startsWith('data:image/'))
+    ? `<img src="${gk.foto}" style="width:100%;height:100%;object-fit:cover;">`
+    : `<span class="avatar-initials" style="font-size:28px;">${_esc(_gkInitials(gk.nome))}</span>`;
   document.getElementById('perfil-nome').textContent = gk.nome;
   const idade = calcIdade(gk.nasc);
   const sub = [gk.equipe, gk.categoria, idade ? idade+' anos' : null].filter(Boolean).join(' • ');
@@ -7918,6 +7916,23 @@ function _randToken() {
 function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Iniciais de um nome (ex.: "Ana Souza" → "AS") — usadas quando não há foto.
+function _gkInitials(nome) {
+  const parts = String(nome || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  const first = parts[0][0] || '';
+  const last = parts.length > 1 ? (parts[parts.length - 1][0] || '') : '';
+  return (first + last).toUpperCase();
+}
+// Conteúdo do avatar do goleiro(a): foto se houver, senão iniciais coloridas.
+// `color` tinge as iniciais; a foto ocupa 100% do círculo.
+function _gkAvatarInner(gk, color) {
+  gk = gk || {};
+  if (gk.foto && String(gk.foto).startsWith('data:image/')) {
+    return `<img src="${gk.foto}" style="width:100%;height:100%;object-fit:cover;">`;
+  }
+  return `<span class="avatar-initials" style="color:${color || 'var(--text)'};">${_esc(_gkInitials(gk.nome))}</span>`;
+}
 
 /* ═══════════════════════════════════════════════════════════
    AUTENTICAÇÃO DE 2 FATORES (TOTP — app autenticador)
@@ -11520,7 +11535,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v126';
+const APP_VERSION = 'v127';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

@@ -1156,6 +1156,11 @@
       display: flex; align-items: center; justify-content: center; overflow: hidden;
       border: 2px solid var(--accent-color, var(--primary));
     }
+    /* Iniciais no lugar de foto: mais identificável que um ícone genérico */
+    .avatar-initials {
+      font-weight: 800; letter-spacing: .5px; line-height: 1;
+      font-size: 18px; user-select: none;
+    }
     .destaque-name {
       font-weight: 700; font-size: 13px; margin-bottom: 4px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
