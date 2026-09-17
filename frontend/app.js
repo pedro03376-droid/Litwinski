@@ -3797,7 +3797,10 @@ function _gkCardAttrs(gkId) {
   const scale = r => Math.max(45, Math.min(99, Math.round(45 + Math.max(0, Math.min(1, r)) * 54)));
   const taxaDef = (def + gols) > 0 ? def / (def + gols) : 0.7;
   const taxaDist = distT > 0 ? distC / distT : 0.6;
+  // Sem nenhuma ação registrada não há base p/ atributos — não inventar números.
+  const semDados = scouts.length === 0 || (def + gols + distT) === 0;
   return {
+    _semDados: semDados,
     DEF: scale(taxaDef),
     REP: scale(taxaDist),
     REF: scale((sum('dad') + sum('dae') + sum('esq')) / Math.max(1, def)),
@@ -3806,19 +3809,27 @@ function _gkCardAttrs(gkId) {
     MEN: scale(0.55 + ((typeof computeGKRating === 'function' ? (computeGKRating(gkId).score || 60) : 60) / 100) * 0.45),
   };
 }
+// Rótulos legíveis dos atributos do card (evita siglas crípticas).
+const _GK_CARD_LABELS = { DEF: 'Defesa', REP: 'Reposição', REF: 'Reflexo', '1X1': '1×1', CMD: 'Comando', MEN: 'Mental' };
 function openGkCard(gkId) {
   gkId = gkId || _perfilGkId;
   const gk = DB.goleiras.find(g => g.id === gkId);
   if (!gk) { toast('Selecione uma goleira.', 'error'); return; }
   const rating = (typeof computeGKRating === 'function') ? computeGKRating(gkId) : { score: null };
   const attrs = _gkCardAttrs(gkId);
-  const overall = rating.score != null ? rating.score : Math.round(Object.values(attrs).reduce((a, b) => a + b, 0) / 6);
+  const semDados = attrs._semDados;
+  let overall = rating.score != null ? rating.score : Math.round(Object.values(attrs).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0) / 6);
+  overall = Math.min(99, Math.round(overall)); // escala 0–99, igual aos atributos
   const idade = (typeof calcIdade === 'function') ? calcIdade(gk.nasc) : '';
   let modal = document.getElementById('gkcard-modal');
   if (!modal) { modal = document.createElement('div'); modal.id = 'gkcard-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
   const foto = (gk.foto && String(gk.foto).startsWith('data:image/')) ? gk.foto : '';
-  const attrHtml = Object.keys(attrs).map(k =>
-    `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;"><span style="opacity:.85;">${k}</span><b>${attrs[k]}</b></div>`
+  // Fallback sem foto: iniciais grandes (consistente com o resto do app), não boneco.
+  const heroFallback = `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;">
+    <span style="font-size:96px;font-weight:800;letter-spacing:2px;color:rgba(255,255,255,.9);">${_esc(_gkInitials(gk.nome))}</span></div>`;
+  // Atributos: valores reais quando há dados; senão "—" + aviso claro.
+  const attrHtml = Object.keys(attrs).filter(k => k !== '_semDados').map(k =>
+    `<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;"><span style="opacity:.85;">${_GK_CARD_LABELS[k] || k}</span><b>${semDados ? '—' : attrs[k]}</b></div>`
   ).join('');
   modal.innerHTML = `
     <div class="modal" style="max-width:380px;background:transparent;box-shadow:none;padding:0;">
@@ -3828,11 +3839,11 @@ function openGkCard(gkId) {
         <div style="position:relative;height:230px;background:radial-gradient(circle at 50% 25%,#2c5580,#0d2136);overflow:hidden;">
           ${foto
             ? `<img id="gkcard-photo" src="${foto}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;">`
-            : '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;"><svg viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="1.2" style="width:90px;height:90px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></div>'}
+            : heroFallback}
           <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,24,38,0) 55%,rgba(10,24,38,.95) 100%);"></div>
           <!-- Nota + posição -->
           <div style="position:absolute;top:12px;left:14px;text-shadow:0 2px 6px rgba(0,0,0,.6);">
-            <div style="font-size:52px;font-weight:900;line-height:.85;color:#F5C542;">${overall}</div>
+            <div style="font-size:52px;font-weight:900;line-height:.85;color:#F5C542;">${semDados ? '—' : overall}</div>
             <div style="font-size:15px;font-weight:800;letter-spacing:2px;">GOL</div>
             ${idade ? `<div style="font-size:11px;opacity:.85;margin-top:2px;">${idade} anos</div>` : ''}
           </div>
@@ -3848,12 +3859,20 @@ function openGkCard(gkId) {
             <div style="font-size:8px;opacity:.7;margin-top:4px;">GK HUB</div>
           </div>
         </div>
+        ${semDados ? `<div style="text-align:center;font-size:11px;color:#F5C542;background:rgba(245,197,66,.12);padding:7px 12px;">⚠️ Dados insuficientes — registre scouts para calcular os atributos.</div>` : ''}
       </div>
       <div style="display:flex;gap:8px;max-width:320px;margin:12px auto 0;">
-        <button class="btn btn-primary" style="flex:1;" onclick="baixarGkCard('${_esc(gk.nome)}')">⬇️ Baixar imagem</button>
+        <button class="btn btn-ghost" id="gkcard-share-btn" style="flex:1;" onclick="compartilharGkCard('${_esc(gk.nome)}')">📤 Compartilhar</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="baixarGkCard('${_esc(gk.nome)}')">⬇️ Baixar</button>
       </div>
     </div>`;
   openModal('gkcard-modal');
+  // Some com "Compartilhar" onde não há Web Share de arquivos (ex.: desktop) → sobra "Baixar".
+  try {
+    const canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob()], 'x.png', { type: 'image/png' })] }));
+    const sb = document.getElementById('gkcard-share-btn');
+    if (sb && !canShareFiles) sb.style.display = 'none';
+  } catch (e) { const sb = document.getElementById('gkcard-share-btn'); if (sb) sb.style.display = 'none'; }
   // QR (link do app) — se a lib carregou
   try {
     const qrEl = document.getElementById('gkcard-qr');
@@ -3863,21 +3882,50 @@ function openGkCard(gkId) {
     } else if (qrEl) { qrEl.style.display = 'none'; }
   } catch (e) {}
 }
-function baixarGkCard(nome) {
+// Gera o PNG do card e entrega o canvas ao callback (aguarda a foto carregar).
+function _gkCardCanvas(cb) {
   const el = document.getElementById('gkcard-el');
   if (!el || typeof html2canvas === 'undefined') { toast('Recurso de imagem indisponível offline. Tente online.', 'error'); return; }
-  toast('Gerando imagem…', 'info');
   const doCapture = () => {
-    html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true }).then(canvas => {
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = 'card_' + String(nome || 'goleira').replace(/\s+/g, '_') + '.png';
-      document.body.appendChild(a); a.click(); a.remove();
-    }).catch(() => toast('Não foi possível gerar a imagem.', 'error'));
+    html2canvas(el, { backgroundColor: null, scale: 2, useCORS: true, allowTaint: true })
+      .then(cb)
+      .catch(() => toast('Não foi possível gerar a imagem.', 'error'));
   };
   const img = document.getElementById('gkcard-photo');
   if (img && !img.complete) { img.onload = doCapture; img.onerror = doCapture; }
   else doCapture();
+}
+function baixarGkCard(nome) {
+  toast('Gerando imagem…', 'info');
+  _gkCardCanvas(canvas => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = 'card_' + String(nome || 'goleira').replace(/\s+/g, '_') + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  });
+}
+// Compartilha o card via folha nativa do sistema (Web Share API com arquivo);
+// se não houver suporte, cai para o download.
+function compartilharGkCard(nome) {
+  const fname = 'card_' + String(nome || 'goleira').replace(/\s+/g, '_') + '.png';
+  toast('Gerando imagem…', 'info');
+  _gkCardCanvas(canvas => {
+    canvas.toBlob(async (blob) => {
+      if (!blob) { return baixarGkCard(nome); }
+      const file = new File([blob], fname, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({ files: [file], title: 'Card — ' + (nome || 'Goleiro(a)'), text: 'Card de desempenho · GK Hub' });
+        } catch (e) { /* usuário cancelou: sem erro */ }
+      } else {
+        // sem suporte a compartilhar arquivo → baixa
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = fname;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      }
+    }, 'image/png');
+  });
 }
 
 // Mapa do gol: distribuição das defesas por zona (força/onde é mais exigida)
@@ -11535,7 +11583,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v130';
+const APP_VERSION = 'v131';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
