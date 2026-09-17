@@ -1161,6 +1161,37 @@
       font-weight: 800; letter-spacing: .5px; line-height: 1;
       font-size: 18px; user-select: none;
     }
+    /* Estado vazio do gráfico: barras-esqueleto + mensagem (evita box em branco) */
+    .chart-empty {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+      text-align: center; padding: 16px;
+    }
+    .chart-empty p { color: var(--muted); font-size: 13px; max-width: 260px; }
+    .chart-skel-bars {
+      display: flex; align-items: flex-end; justify-content: center; gap: 12px;
+      height: 110px; width: 100%; max-width: 260px;
+    }
+    .chart-skel-bars span {
+      flex: 1; border-radius: 8px 8px 0 0;
+      background: linear-gradient(180deg, var(--card-2), var(--border));
+      animation: skelPulse 1.6s ease-in-out infinite;
+    }
+    .chart-skel-bars span:nth-child(2) { animation-delay: .2s; }
+    .chart-skel-bars span:nth-child(3) { animation-delay: .4s; }
+    .chart-skel-bars span:nth-child(4) { animation-delay: .6s; }
+    .chart-skel-bars span:nth-child(5) { animation-delay: .8s; }
+    @keyframes skelPulse { 0%,100% { opacity:.45; } 50% { opacity:.9; } }
+    @media (prefers-reduced-motion: reduce) { .chart-skel-bars span { animation: none; } }
+    /* Resultado V/D/E como pílula colorida — legível de relance */
+    .result-pill {
+      display: inline-flex; align-items: center;
+      font-size: 12px; font-weight: 800; line-height: 1;
+      padding: 4px 9px; border-radius: 20px; white-space: nowrap;
+      color: var(--pill, var(--muted));
+      background: color-mix(in srgb, var(--pill, var(--muted)) 15%, transparent);
+      border: 1px solid color-mix(in srgb, var(--pill, var(--muted)) 35%, transparent);
+    }
     .destaque-name {
       font-weight: 700; font-size: 13px; margin-bottom: 4px;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;

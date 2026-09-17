@@ -1571,12 +1571,7 @@ function renderPartidas() {
     const scouts = DB.scouts.filter(s => s.partidaId === p.id);
     const totalDef = scouts.reduce((acc, s) =>
       acc + (+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0), 0);
-    let res = '—';
-    if (p.gf !== undefined && p.gc !== undefined) {
-      const r = p.gf > p.gc ? 'V' : p.gf < p.gc ? 'D' : 'E';
-      const color = r==='V'?'var(--success)':r==='D'?'var(--error)':'var(--warning)';
-      res = `<span style="color:${color};font-weight:700">${r} ${p.gf}×${p.gc}</span>`;
-    }
+    const res = _resultPill(p.gf, p.gc);
     let gkCell = gk ? _esc(gk.nome) : '—';
     if (gk2) {
       gkCell = `<span style="display:block;line-height:1.6;">
@@ -2874,12 +2869,7 @@ function refreshDashboard() {
     const sorted = [...partidas].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).slice(0,5);
     recM.innerHTML = `<div class="table-wrap"><table><thead><tr><th>Data</th><th>Adversário</th><th>Competição</th><th>Resultado</th></tr></thead><tbody>
       ${sorted.map(p => {
-        let res = '—';
-        if (p.gf!==undefined&&p.gc!==undefined) {
-          const r = p.gf>p.gc?'V':p.gf<p.gc?'D':'E';
-          const c = r==='V'?'var(--success)':r==='D'?'var(--error)':'var(--warning)';
-          res = `<span style="color:${c};font-weight:700">${r} ${p.gf}×${p.gc}</span>`;
-        }
+        const res = _resultPill(p.gf, p.gc);
         return `<tr><td>${p.data?formatDate(p.data):'—'}</td><td>${_esc(p.adversario)}</td><td>${_esc(p.competicao||'—')}</td><td>${res}</td></tr>`;
       }).join('')}
     </tbody></table></div>`;
@@ -2888,6 +2878,10 @@ function refreshDashboard() {
   // Perf chart
   if (chartPerf) chartPerf.destroy();
   const perfData = goleiras.map(g => ({ nome: g.nome.split(' ')[0], score: avgPerformance(g.id) })).filter(d => d.score !== null);
+  const perfEmpty = document.getElementById('chart-perf-empty');
+  const perfCanvas = document.getElementById('chart-perf');
+  if (perfEmpty) perfEmpty.hidden = perfData.length > 0;
+  if (perfCanvas) perfCanvas.style.visibility = perfData.length ? 'visible' : 'hidden';
   if (perfData.length) {
     const avgScore = perfData.length ? perfData.reduce((a,d)=>a+d.score,0)/perfData.length : 0;
     chartPerf = new Chart(document.getElementById('chart-perf'), {
@@ -4060,12 +4054,7 @@ function renderPerfil() {
     const gc  = (+s.gda||0)+(+s.gfa||0)+(+s.gpe||0)+(+s.gfl||0);
     const nota = calcPerformance(s);
     const { label:lb, cls } = classifyPerf(nota);
-    let res = '—';
-    if (p?.gf !== undefined) {
-      const r = p.gf>p.gc?'V':p.gf<p.gc?'D':'E';
-      const col = r==='V'?'var(--success)':r==='D'?'var(--error)':'var(--warning)';
-      res = `<span style="color:${col};font-weight:700;">${r} ${p.gf}×${p.gc}</span>`;
-    }
+    const res = p ? _resultPill(p.gf, p.gc) : '—';
     return `<tr>
       <td>${p?.data ? formatDate(p.data) : '—'}</td>
       <td><strong>${_esc(p?.adversario || '—')}</strong></td>
@@ -7927,6 +7916,14 @@ function _gkInitials(nome) {
   const last = parts.length > 1 ? (parts[parts.length - 1][0] || '') : '';
   return (first + last).toUpperCase();
 }
+// Pílula colorida de resultado (V/D/E) — mais legível que texto colorido.
+// Recebe gf/gc; retorna '—' quando o placar não está definido.
+function _resultPill(gf, gc) {
+  if (gf === undefined || gf === null || gc === undefined || gc === null) return '—';
+  const r = gf > gc ? 'V' : gf < gc ? 'D' : 'E';
+  const c = r === 'V' ? 'var(--success)' : r === 'D' ? 'var(--error)' : 'var(--warning)';
+  return `<span class="result-pill" style="--pill:${c};">${r} ${gf}×${gc}</span>`;
+}
 // Conteúdo do avatar do goleiro(a): foto se houver, senão iniciais coloridas.
 // `color` tinge as iniciais; a foto ocupa 100% do círculo.
 function _gkAvatarInner(gk, color) {
@@ -11538,7 +11535,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v128';
+const APP_VERSION = 'v129';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
