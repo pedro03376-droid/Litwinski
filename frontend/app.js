@@ -1403,16 +1403,16 @@ function renderGoleiras() {
     const avg = avgPerformance(g.id);
     const { label, cls } = classifyPerf(avg);
     return `<tr>
-      <td>${i + 1}</td>
-      <td><strong>${_esc(g.nome)}</strong></td>
-      <td>${g.nasc ? formatDate(g.nasc) : '—'}</td>
-      <td>${g.altura ? g.altura + ' cm' : '—'}</td>
-      <td>${g.peso ? g.peso + ' kg' : '—'}</td>
-      <td>${_esc(g.equipe || '—')}</td>
-      <td>${_esc(g.categoria || '—')}</td>
-      <td>${_esc(g.pe || '—')}</td>
-      <td>${avg !== null ? `<span class="badge ${cls}">${label} (${avg})</span>` : '<span style="color:var(--muted)">—</span>'}</td>
-      <td>
+      <td data-label="#">${i + 1}</td>
+      <td data-label="Nome"><strong>${_esc(g.nome)}</strong></td>
+      <td data-label="Nascimento">${g.nasc ? formatDate(g.nasc) : '—'}</td>
+      <td data-label="Altura">${g.altura ? g.altura + ' cm' : '—'}</td>
+      <td data-label="Peso">${g.peso ? g.peso + ' kg' : '—'}</td>
+      <td data-label="Equipe">${_esc(g.equipe || '—')}</td>
+      <td data-label="Categoria">${_esc(g.categoria || '—')}</td>
+      <td data-label="Pé Dom.">${_esc(g.pe || '—')}</td>
+      <td data-label="Performance">${avg !== null ? `<span class="badge ${cls}">${label} (${avg})</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+      <td data-label="Ações">
         <div class="td-actions">
           <button class="btn btn-primary btn-sm" onclick="verPerfil('${g.id}')">Perfil</button>
           <button class="btn btn-ghost btn-sm" onclick="editarGoleira('${g.id}')">Editar</button>
@@ -1584,14 +1584,14 @@ function renderPartidas() {
       </span>`;
     }
     return `<tr>
-      <td>${p.data ? formatDate(p.data) : '—'}</td>
-      <td><strong>${_esc(p.adversario)}</strong></td>
-      <td>${_esc(p.competicao || '—')}</td>
-      <td>${gkCell}</td>
-      <td>${res}</td>
-      <td>${p.gc ?? '—'}</td>
-      <td>${totalDef || '—'}</td>
-      <td>
+      <td data-label="Data">${p.data ? formatDate(p.data) : '—'}</td>
+      <td data-label="Adversário"><strong>${_esc(p.adversario)}</strong></td>
+      <td data-label="Competição">${_esc(p.competicao || '—')}</td>
+      <td data-label="Goleiro(a)">${gkCell}</td>
+      <td data-label="Resultado">${res}</td>
+      <td data-label="Gols Sofridos">${p.gc ?? '—'}</td>
+      <td data-label="Defesas">${totalDef || '—'}</td>
+      <td data-label="Ações">
         <div class="td-actions">
           <button class="btn btn-ghost btn-sm" onclick="verRelatorioPartida('${p.id}')">📊 Relatório</button>
           <button class="btn btn-ghost btn-sm" onclick="editarPartida('${p.id}')">Editar</button>
@@ -1803,17 +1803,17 @@ function renderScouts() {
       ? `<span class="badge ${cls}" title="${isManual ? 'Nota manual' : 'Calculada automaticamente'}">${nota} <small style="opacity:.7">${label}</small></span>`
       : '<span style="color:var(--muted)">—</span>';
     return `<tr>
-      <td><strong>${gk ? _esc(gk.nome) : '—'}</strong></td>
-      <td>${pt ? `${_esc(pt.adversario)}${pt.data?' ('+formatDate(pt.data)+')':''}` : '—'}</td>
-      <td>${totalDef}</td>
-      <td>${(+s.dbd||0)+(+s.dbe||0)}</td>
-      <td>${s.dc || 0}</td>
-      <td>${totalGols}</td>
-      <td>${s.int || 0}</td>
-      <td>${totalDist}</td>
-      <td>${pos}</td>
-      <td>${notaHtml}</td>
-      <td>
+      <td data-label="Goleiro(a)"><strong>${gk ? _esc(gk.nome) : '—'}</strong></td>
+      <td data-label="Partida">${pt ? `${_esc(pt.adversario)}${pt.data?' ('+formatDate(pt.data)+')':''}` : '—'}</td>
+      <td data-label="Def. Altas">${totalDef}</td>
+      <td data-label="Def. Baixas">${(+s.dbd||0)+(+s.dbe||0)}</td>
+      <td data-label="Def. Central">${s.dc || 0}</td>
+      <td data-label="Gols Sofr.">${totalGols}</td>
+      <td data-label="Interceptações">${s.int || 0}</td>
+      <td data-label="Distribuições">${totalDist}</td>
+      <td data-label="Posicionamento">${pos}</td>
+      <td data-label="Nota">${notaHtml}</td>
+      <td data-label="Ações">
         <div class="td-actions">
           <button class="btn btn-ghost btn-sm" onclick="editarScout('${s.id}')">Editar</button>
           <button class="btn btn-danger btn-sm" onclick="excluirScout('${s.id}')">Excluir</button>
@@ -11535,7 +11535,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v129';
+const APP_VERSION = 'v130';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

@@ -281,6 +281,8 @@
       font-weight: 700;
       color: var(--text);
       letter-spacing: -.3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      min-width: 0;
     }
     .topbar-actions { display: flex; align-items: center; gap: 10px; }
     .content { padding: 32px; flex: 1; }
@@ -400,6 +402,36 @@
     ════════════════════════════════════════════════════════ */
     .table-wrap { overflow-x: auto; border-radius: var(--radius); }
     table { width: 100%; border-collapse: collapse; }
+
+    /* #2 — Tabelas largas viram CARDS empilhados no mobile (só .table-cards).
+       Cada célula vira uma linha "rótulo: valor"; some a rolagem horizontal. */
+    @media (max-width: 640px) {
+      .table-cards { width: 100%; }
+      .table-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+      .table-cards tbody { display: block; }
+      .table-cards tr {
+        display: block; margin-bottom: 12px; padding: 12px 14px;
+        background: var(--card-2); border: 1px solid var(--border);
+        border-radius: var(--radius);
+      }
+      .table-cards td {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        padding: 6px 0; border: none; text-align: right;
+      }
+      .table-cards td::before {
+        content: attr(data-label);
+        font-size: 11px; font-weight: 700; letter-spacing: .3px;
+        text-transform: uppercase; color: var(--muted);
+        text-align: left; flex-shrink: 0;
+      }
+      /* célula sem rótulo (ex.: linha de "empty state") volta a bloco centralizado */
+      .table-cards td:not([data-label]) { display: block; text-align: center; }
+      .table-cards td:not([data-label])::before { content: ""; }
+      /* Ações: botões ocupam a largura toda, empilhados abaixo do rótulo */
+      .table-cards td[data-label="Ações"] { flex-direction: column; align-items: stretch; text-align: left; }
+      .table-cards td[data-label="Ações"] .td-actions { display: flex; gap: 8px; }
+      .table-cards td[data-label="Ações"] .td-actions .btn { flex: 1; }
+    }
     thead th {
       text-align: left;
       font-size: 11px;
@@ -694,6 +726,12 @@
       .stats-grid { grid-template-columns: 1fr 1fr; }
       .content { padding: 20px 16px; }
       #sidebar-toggle-desktop { display: none; }
+      /* #1 — título do topbar não quebra/colide: fica truncado e com prioridade.
+         Clube e temporada saem do topbar no mobile (já acessíveis pela sidebar). */
+      .topbar-left { flex: 1; min-width: 0; gap: 8px; }
+      .topbar-title { flex: 1 1 auto; min-width: 0; }
+      .topbar-season, #topbar-club { display: none; }
+      #menu-btn { flex-shrink: 0; }
       /* Modal responsiveness */
       .modal { max-width: 100%; max-height: 95vh; border-radius: var(--radius) var(--radius) 0 0; margin: auto 0 0; }
       .modal-backdrop { align-items: flex-end; }
@@ -1027,7 +1065,7 @@
        TOPBAR ENHANCEMENTS
     ════════════════════════════════════════════════════════ */
     .topbar { height: 60px; padding: 0 24px; }
-    .topbar-left { display: flex; align-items: center; gap: 12px; }
+    .topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1; }
     .topbar-season {
       font-size: 11px; font-weight: 600; color: var(--muted);
       background: rgba(59,130,246,.1); border: 1px solid rgba(59,130,246,.2);
