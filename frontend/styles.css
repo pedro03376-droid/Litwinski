@@ -143,8 +143,9 @@
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
-    .sidebar-logo p { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: .3px; }
+    .sidebar-logo p { font-size: 11px; color: var(--muted); margin-top: 2px; letter-spacing: .3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .sidebar-toggle {
       background: rgba(255,255,255,.04);
@@ -307,6 +308,8 @@
       position: relative;
       overflow: hidden;
       letter-spacing: .1px;
+      white-space: nowrap;         /* rótulos de botão não quebram em 2 linhas */
+      text-overflow: ellipsis;
     }
     .btn:active { transform: scale(.95) !important; }
     .btn:hover  { transform: translateY(-2px); }

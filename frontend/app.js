@@ -2741,12 +2741,26 @@ function refreshDashboard() {
   });
   const filteredPtIds = new Set(partidas.map(p => p.id));
   const scouts = DB.scouts.filter(s => !s.partidaId || filteredPtIds.has(s.partidaId));
-  const elGk = document.getElementById('stat-total-gk');
-  const elPt = document.getElementById('stat-total-matches');
-  const elSc = document.getElementById('stat-total-scouts');
-  animateCount(elGk, goleiras.length);
-  animateCount(elPt, partidas.length);
-  animateCount(elSc, scouts.length);
+  // Cards agregados (antes duplicavam os números do hero): aproveitamento,
+  // gols sofridos/jogo e clean sheets — calculados sobre partidas com placar.
+  const comPlacar = partidas.filter(p => p.gf != null && p.gc != null);
+  const elWin = document.getElementById('stat-winrate');
+  const elGa  = document.getElementById('stat-ga-per-game');
+  const elCs  = document.getElementById('stat-clean-sheets');
+  if (comPlacar.length) {
+    const vit = comPlacar.filter(p => p.gf > p.gc).length;
+    const emp = comPlacar.filter(p => p.gf === p.gc).length;
+    const aproveit = Math.round(((vit * 3 + emp) / (comPlacar.length * 3)) * 100);
+    const gaMed = comPlacar.reduce((a, p) => a + (+p.gc || 0), 0) / comPlacar.length;
+    const cs = comPlacar.filter(p => (+p.gc || 0) === 0).length;
+    if (elWin) elWin.textContent = aproveit + '%';
+    if (elGa)  elGa.textContent = gaMed.toFixed(1);
+    if (elCs)  animateCount(elCs, cs);
+  } else {
+    if (elWin) elWin.textContent = '—';
+    if (elGa)  elGa.textContent = '—';
+    if (elCs)  elCs.textContent = '0';
+  }
   const allScores = goleiras.map(g => avgPerformance(g.id)).filter(s => s !== null);
   const elAvg = document.getElementById('stat-avg-perf');
   if (allScores.length) {
@@ -2811,22 +2825,34 @@ function refreshDashboard() {
       { emoji:'🎯', titulo:'Melhor Distribuição', gk:melhorDist,
         valor: (()=>{ const c=gkScoutSum(melhorDist?.id,['dpc','dmc']); const t=c+gkScoutSum(melhorDist?.id,['dpe','dme']); return t>0?Math.round(c/t*100)+'%':'—'; })(),
         unidade:'precisão', color:'#FFB300' },
-      { emoji:'📈', titulo:'Melhor Evolução', gk:melhorEvolucao,
-        valor:(()=>{
-          if(!melhorEvolucao) return '—';
+      (()=>{
+        // Evolução: delta entre média das últimas vs primeiras partidas.
+        // Cor e rótulo seguem o SINAL — evitar "+verde" para uma queda.
+        let delta = null;
+        if (melhorEvolucao) {
           const sc=[...scouts.filter(s=>s.goalkeeperId===melhorEvolucao.id)].sort((x,y)=>{
             const px=partidas.find(p=>p.id===x.partidaId), py=partidas.find(p=>p.id===y.partidaId);
             return (px?.data||'').localeCompare(py?.data||'');
           });
-          if(sc.length<2) return '—';
-          const half=Math.ceil(sc.length/2);
-          const primeiros=sc.slice(0,half).map(calcPerformance).filter(n=>n!==null);
-          const ultimos=sc.slice(-half).map(calcPerformance).filter(n=>n!==null);
-          if(!primeiros.length||!ultimos.length) return '—';
-          const delta=(ultimos.reduce((a,b)=>a+b,0)/ultimos.length)-(primeiros.reduce((a,b)=>a+b,0)/primeiros.length);
-          return (delta>=0?'+':'')+delta.toFixed(1);
-        })(),
-        unidade:'melhora', color:'#69F0AE' },
+          if(sc.length>=2){
+            const half=Math.ceil(sc.length/2);
+            const primeiros=sc.slice(0,half).map(calcPerformance).filter(n=>n!==null);
+            const ultimos=sc.slice(-half).map(calcPerformance).filter(n=>n!==null);
+            if(primeiros.length&&ultimos.length){
+              delta=(ultimos.reduce((a,b)=>a+b,0)/ultimos.length)-(primeiros.reduce((a,b)=>a+b,0)/primeiros.length);
+            }
+          }
+        }
+        const subiu = delta !== null && delta >= 0;
+        return {
+          emoji: subiu ? '📈' : '📉',
+          titulo: subiu ? 'Melhor Evolução' : 'Maior Queda',
+          gk: melhorEvolucao,
+          valor: delta === null ? '—' : (delta>=0?'+':'') + delta.toFixed(1),
+          unidade: delta === null ? 'evolução' : (subiu ? 'de evolução' : 'de queda'),
+          color: delta === null ? 'var(--muted)' : (subiu ? 'var(--success)' : 'var(--error)'),
+        };
+      })(),
     ];
 
     destaquesGrid.innerHTML = destaques.map((d,i) => {
@@ -11583,7 +11609,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v131';
+const APP_VERSION = 'v132';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
