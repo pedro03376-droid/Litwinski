@@ -3770,6 +3770,66 @@ function renderPerfilPlano(gkId) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// VÍDEO POR EVENTO — clipes (link + minuto + tipo) por goleiro(a),
+// para revisar defesas/gols/lances. Guardado localmente (gkhub_clips).
+// ═══════════════════════════════════════════════════════════
+function _clipsAll() { try { return JSON.parse(localStorage.getItem('gkhub_clips') || '{}'); } catch (e) { return {}; } }
+function _clipsSave(o) { try { localStorage.setItem('gkhub_clips', JSON.stringify(o)); } catch (e) {} }
+// Acrescenta o timestamp ao link quando é YouTube (abre já no minuto).
+function _clipUrlWithTime(url, min) {
+  const secs = Math.max(0, Math.round((+min || 0) * 60));
+  if (!secs) return url;
+  if (/youtu\.be\/|youtube\.com\//i.test(url)) {
+    return url + (url.includes('?') ? '&' : '?') + 't=' + secs + 's';
+  }
+  return url;
+}
+const _CLIP_TAG_COLOR = { 'Defesa': 'var(--success)', 'Gol sofrido': 'var(--error)', '1×1': 'var(--warning)', 'Reposição': 'var(--primary)', 'Saída': '#8B5CF6', 'Pênalti': '#EC4899', 'Outro': 'var(--muted)' };
+function addPerfilClip(gkId) {
+  gkId = gkId || _perfilGkId;
+  if (!gkId) return;
+  const urlEl = document.getElementById('clip-url');
+  const minEl = document.getElementById('clip-min');
+  const tagEl = document.getElementById('clip-tag');
+  const url = (urlEl?.value || '').trim();
+  if (!url || !/^https?:\/\//i.test(url)) { toast('Cole um link de vídeo válido (https://…).', 'error'); return; }
+  const all = _clipsAll();
+  const arr = all[gkId] || [];
+  arr.unshift({ id: 'c' + Date.now(), url, min: +minEl?.value || 0, tag: tagEl?.value || 'Outro', ts: Date.now() });
+  all[gkId] = arr; _clipsSave(all);
+  if (urlEl) urlEl.value = ''; if (minEl) minEl.value = '';
+  renderPerfilClips(gkId);
+  toast('Clipe adicionado.', 'success');
+}
+function removePerfilClip(gkId, id) {
+  const all = _clipsAll();
+  all[gkId] = (all[gkId] || []).filter(c => c.id !== id);
+  _clipsSave(all);
+  renderPerfilClips(gkId);
+}
+function renderPerfilClips(gkId) {
+  const card = document.getElementById('perfil-clips-card');
+  const list = document.getElementById('perfil-clips-list');
+  if (!card || !list) return;
+  card.style.display = 'block';
+  const clips = (_clipsAll()[gkId] || []);
+  if (!clips.length) {
+    list.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 2px;">Nenhum clipe ainda. Cole um link de vídeo, marque o minuto e o tipo do lance.</div>';
+    return;
+  }
+  list.innerHTML = clips.map(c => {
+    const col = _CLIP_TAG_COLOR[c.tag] || 'var(--muted)';
+    const mm = c.min ? (Math.floor(c.min) + '′') : '';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);">' +
+      '<span style="font-size:11px;font-weight:700;color:' + col + ';background:' + col + '1f;border:1px solid ' + col + '55;border-radius:20px;padding:3px 9px;white-space:nowrap;">' + _esc(c.tag) + '</span>' +
+      '<a href="' + _esc(_clipUrlWithTime(c.url, c.min)) + '" target="_blank" rel="noopener" style="flex:1;min-width:0;color:var(--primary-text);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">▶ ' + _esc(c.url) + '</a>' +
+      (mm ? '<span style="font-size:12px;color:var(--muted);white-space:nowrap;">' + mm + '</span>' : '') +
+      '<button class="btn btn-ghost btn-sm" style="padding:4px 8px;" title="Remover" onclick="removePerfilClip(\'' + _esc(gkId) + '\',\'' + c.id + '\')">✕</button>' +
+    '</div>';
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
 // TREINO DE REAÇÃO — mini-jogo: a bola acende num canto do gol e a
 // goleira toca o mais rápido possível. Mede o tempo de reação (ms).
 // ═══════════════════════════════════════════════════════════
@@ -4215,6 +4275,7 @@ function renderPerfil() {
   renderPerfilGSAA(gkId);
   renderPerfilPercentis(gkId);
   renderPerfilPlano(gkId);
+  renderPerfilClips(gkId);
   renderPerfilTreinos(gkId);
   renderPerfilExtras(gkId);
   renderPerfilGoalMap(gkId);
@@ -11803,7 +11864,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v135';
+const APP_VERSION = 'v136';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

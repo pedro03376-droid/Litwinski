@@ -1232,6 +1232,19 @@
         <div class="card" id="perfil-plano-card" style="margin-bottom:20px;display:none;">
           <div id="perfil-plano"></div>
         </div>
+        <!-- Clipes de vídeo por evento -->
+        <div class="card" id="perfil-clips-card" style="margin-bottom:20px;display:none;">
+          <div class="card-header"><span class="card-title">🎬 Clipes de vídeo</span><span style="font-size:11px;color:var(--muted);">defesas, gols e lances</span></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
+            <div style="flex:2;min-width:160px;"><label class="form-label" style="font-size:11px;">Link do vídeo (YouTube, etc.)</label><input class="form-input" id="clip-url" type="url" placeholder="https://…"></div>
+            <div style="width:90px;"><label class="form-label" style="font-size:11px;">Minuto</label><input class="form-input" id="clip-min" type="number" min="0" placeholder="0"></div>
+            <div style="width:130px;"><label class="form-label" style="font-size:11px;">Tipo</label>
+              <select class="form-select" id="clip-tag"><option>Defesa</option><option>Gol sofrido</option><option>1×1</option><option>Reposição</option><option>Saída</option><option>Pênalti</option><option>Outro</option></select>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="addPerfilClip()">Adicionar</button>
+          </div>
+          <div id="perfil-clips-list"></div>
+        </div>
         <!-- IGD — Índice Global de Desenvolvimento -->
         <div class="card" id="perfil-igd-card" style="margin-bottom:20px;display:none;border:1px solid rgba(59,130,246,.25);">
           <div class="card-header"><span class="card-title">⚡ Índice Global de Desenvolvimento</span><span style="font-size:11px;color:var(--muted);">0–100</span></div>
