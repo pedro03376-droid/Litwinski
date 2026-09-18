@@ -2329,7 +2329,7 @@ function _gkAIContext(gkId) {
   // GK Rating (forma atual 0–100) + tendência + projeção
   try {
     if (typeof computeGKRating === 'function') {
-      const r = computeGKRating(gkId);
+      const r = computeGKRating(gkId, false);
       if (r && r.score != null) {
         ctx.gkRating = r.score;
         ctx.nivelForma = r.tier ? r.tier.label : null;
@@ -2696,7 +2696,7 @@ function renderDashHero(goleiras, partidas, scouts) {
   const comScout = goleiras.filter(g => scouts.some(s => s.goalkeeperId === g.id));
   let top = null, topScore = -1;
   comScout.forEach(g => {
-    const r = (typeof computeGKRating === 'function') ? (computeGKRating(g.id).score) : null;
+    const r = (typeof computeGKRating === 'function') ? (computeGKRating(g.id, false).score) : null;
     const sc = r != null ? r : (avgPerformance(g.id) || 0) * 10;
     if (sc > topScore) { topScore = sc; top = g; }
   });
@@ -2843,13 +2843,16 @@ function refreshDashboard() {
             }
           }
         }
+        // melhorEvolucao é sempre o de MAIOR delta (melhor evolução do elenco).
+        // Se até o melhor caiu, mostramos honestamente em vermelho — mas o
+        // título continua "Melhor Evolução" (não é "a maior queda").
         const subiu = delta !== null && delta >= 0;
         return {
           emoji: subiu ? '📈' : '📉',
-          titulo: subiu ? 'Melhor Evolução' : 'Maior Queda',
+          titulo: 'Melhor Evolução',
           gk: melhorEvolucao,
           valor: delta === null ? '—' : (delta>=0?'+':'') + delta.toFixed(1),
-          unidade: delta === null ? 'evolução' : (subiu ? 'de evolução' : 'de queda'),
+          unidade: 'evolução',
           color: delta === null ? 'var(--muted)' : (subiu ? 'var(--success)' : 'var(--error)'),
         };
       })(),
@@ -3376,7 +3379,7 @@ function _linRegSlope(ys) {
   return (n * sxy - sx * sy) / d;
 }
 
-function computeGKRating(gkId) {
+function computeGKRating(gkId, persist = true) {
   const line = _gkMatchTimeline(gkId, DB.partidas, DB.scouts);
   if (!line.length) return { score: null };
   const notas = line.map(r => r.nota);
@@ -3447,7 +3450,9 @@ function computeGKRating(gkId) {
   ];
 
   // Guarda histórico (deduplicado por dia) para evolução futura.
-  try {
+  // Só persiste para o goleiro efetivamente em foco — chamadas auxiliares
+  // (ex.: atributos de pares no radar) passam persist=false p/ não poluir.
+  if (persist) try {
     const all = JSON.parse(localStorage.getItem('gkhub_rating_history') || '{}');
     const arr = all[gkId] || [];
     const today = new Date().toISOString().slice(0, 10);
@@ -3649,9 +3654,15 @@ function renderPerfilPercentis(gkId) {
   const card = document.getElementById('perfil-percentis-card');
   const canvas = document.getElementById('chart-percentis');
   const sub = document.getElementById('perfil-percentis-sub');
-  if (!card || !canvas || typeof Chart === 'undefined') return;
+  if (!card || !canvas) return;
   const attrs = _gkCardAttrs(gkId);
-  if (attrs._semDados) { card.style.display = 'none'; return; }
+  // Sem dados ou sem Chart: destrói o gráfico antigo e esconde o card
+  // (evita mostrar o radar do goleiro anterior).
+  if (attrs._semDados || typeof Chart === 'undefined') {
+    if (perfilRadarChart) { perfilRadarChart.destroy(); perfilRadarChart = null; }
+    card.style.display = 'none';
+    return;
+  }
   const keys = ['DEF', 'REP', 'REF', '1X1', 'CMD', 'MEN'];
   const labels = keys.map(k => _GK_CARD_LABELS[k] || k);
   const gkVals = keys.map(k => attrs[k]);
@@ -4084,7 +4095,7 @@ function _gkCardAttrs(gkId) {
     REF: scale((sum('dad') + sum('dae') + sum('esq')) / Math.max(1, def)),
     '1X1': scale(sum('d1x1') / Math.max(1, def) * 1.6),
     CMD: scale((sum('int') + sum('sai')) / Math.max(6, def)),
-    MEN: scale(0.55 + ((typeof computeGKRating === 'function' ? (computeGKRating(gkId).score || 60) : 60) / 100) * 0.45),
+    MEN: scale(0.55 + ((typeof computeGKRating === 'function' ? (computeGKRating(gkId, false).score ?? 60) : 60) / 100) * 0.45),
   };
 }
 // Rótulos legíveis dos atributos do card (evita siglas crípticas).
@@ -4093,7 +4104,7 @@ function openGkCard(gkId) {
   gkId = gkId || _perfilGkId;
   const gk = DB.goleiras.find(g => g.id === gkId);
   if (!gk) { toast('Selecione uma goleira.', 'error'); return; }
-  const rating = (typeof computeGKRating === 'function') ? computeGKRating(gkId) : { score: null };
+  const rating = (typeof computeGKRating === 'function') ? computeGKRating(gkId, false) : { score: null };
   const attrs = _gkCardAttrs(gkId);
   const semDados = attrs._semDados;
   let overall = rating.score != null ? rating.score : Math.round(Object.values(attrs).filter(v => typeof v === 'number').reduce((a, b) => a + b, 0) / 6);
@@ -11864,7 +11875,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v136';
+const APP_VERSION = 'v137';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
