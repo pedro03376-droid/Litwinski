@@ -731,6 +731,14 @@
       #sidebar-toggle-desktop { display: none; }
       /* Perfil: grid topo (info 340px | ranking+stats) colapsa em 1 coluna */
       .perfil-top-grid { grid-template-columns: 1fr !important; }
+      /* Grids de 2 colunas de largura fixa (Match Center, Performance) → 1 coluna */
+      .resp-2col { grid-template-columns: 1fr !important; }
+      /* Contadores do Match Center: 5 colunas → 2 no mobile */
+      .mc-counters-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      /* Barra de abas larga (ex.: Heatmap): limita ao pai e rola na horizontal
+         (base tem width:fit-content, que estouraria a viewport) */
+      .tabs { width: auto; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
+      .tabs .tab-btn { flex: 0 0 auto; white-space: nowrap; }
       /* #1 — título do topbar não quebra/colide: fica truncado e com prioridade.
          Clube e temporada saem do topbar no mobile (já acessíveis pela sidebar). */
       .topbar-left { flex: 1; min-width: 0; gap: 8px; }

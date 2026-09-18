@@ -735,7 +735,7 @@
 
       <!-- ── Setup Bar ── -->
       <div class="card" style="margin-bottom:12px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
+        <div class="resp-2col" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
           <div class="form-group" style="margin:0;">
             <label class="form-label">Partida</label>
             <select class="form-select" id="mc-partida" onchange="mcOnPartidaChange()"><option value="">Selecionar…</option></select>
@@ -830,7 +830,7 @@
       <div id="mc-alerts-bar" style="display:none;margin-bottom:12px;display:flex;flex-direction:column;gap:6px;"></div>
 
       <!-- ── Quick Counters + Nota ── -->
-      <div style="display:grid;grid-template-columns:repeat(4,1fr) 1.4fr;gap:10px;margin-bottom:12px;">
+      <div class="mc-counters-grid" style="display:grid;grid-template-columns:repeat(4,1fr) 1.4fr;gap:10px;margin-bottom:12px;">
         <div class="mc-counter"><div class="val" id="mc-c-def" style="color:var(--primary);">0</div><div class="lbl">Defesas</div></div>
         <div class="mc-counter"><div class="val" id="mc-c-gol" style="color:var(--error);">0</div><div class="lbl">Gols Sofr.</div></div>
         <div class="mc-counter"><div class="val" id="mc-c-dist" style="color:var(--warning);">0</div><div class="lbl">Distribuições</div></div>
@@ -842,7 +842,7 @@
       </div>
 
       <!-- ── Main Grid ── -->
-      <div style="display:grid;grid-template-columns:1fr 320px;gap:12px;">
+      <div class="resp-2col" style="display:grid;grid-template-columns:1fr 320px;gap:12px;">
 
         <!-- LEFT: Event buttons + Event Map -->
         <div>
@@ -1035,7 +1035,7 @@
 
     <!-- ══ PERFORMANCE ══ -->
     <div id="page-performance" class="page">
-      <div style="display:grid;grid-template-columns:300px 1fr;gap:20px;">
+      <div class="resp-2col" style="display:grid;grid-template-columns:300px 1fr;gap:20px;">
         <div class="card">
           <div class="card-title" style="margin-bottom:16px;">Selecionar Goleiro(a)</div>
           <div id="perf-gk-list" style="display:flex;flex-direction:column;gap:8px;"></div>
