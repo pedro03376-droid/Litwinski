@@ -1221,12 +1221,12 @@ const GKHUB_BENCH_DEFAULT = {
   futsal: {
     feminino:  { saveRate: 0.66, dist: 0.72 },
     masculino: { saveRate: 0.62, dist: 0.75 },
-    weights: { defesa: 0.65, dist: 0.25, tatico: 0.10 },
+    weights: { defesa: 0.60, dist: 0.28, tatico: 0.12 }, // revisão científica 2026: distribuição/participação relevantes
   },
   beach: {
     feminino:  { saveRate: 0.55, dist: 0.72 },
     masculino: { saveRate: 0.52, dist: 0.74 },
-    weights: { defesa: 0.50, dist: 0.40, tatico: 0.10 }, // distribuição (arremesso) é a arma central
+    weights: { defesa: 0.45, dist: 0.42, tatico: 0.13 }, // beach: goleiro ofensivo central (arremesso é a arma)
   },
 };
 function _modalidadeOf(gkId) { const g = DB.goleiras.find(x => x.id === gkId); return (g && g.modalidade === 'beach') ? 'beach' : 'futsal'; }
@@ -11609,7 +11609,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v132';
+const APP_VERSION = 'v133';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
