@@ -4396,12 +4396,12 @@ function renderPerfil() {
     const { label:lb, cls } = classifyPerf(nota);
     const res = p ? _resultPill(p.gf, p.gc) : '—';
     return `<tr>
-      <td>${p?.data ? formatDate(p.data) : '—'}</td>
-      <td><strong>${_esc(p?.adversario || '—')}</strong></td>
-      <td>${_esc(p?.competicao || '—')}</td>
-      <td>${res}</td>
-      <td>${def}</td><td>${gc}</td>
-      <td>${nota !== null ? `<span class="badge ${cls}">${nota}</span>` : '—'}</td>
+      <td data-label="Data">${p?.data ? formatDate(p.data) : '—'}</td>
+      <td data-label="Adversário"><strong>${_esc(p?.adversario || '—')}</strong></td>
+      <td data-label="Competição">${_esc(p?.competicao || '—')}</td>
+      <td data-label="Resultado">${res}</td>
+      <td data-label="Defesas">${def}</td><td data-label="G. Sofr.">${gc}</td>
+      <td data-label="Nota">${nota !== null ? `<span class="badge ${cls}">${nota}</span>` : '—'}</td>
     </tr>`;
   }).join('');
 }
@@ -11875,7 +11875,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v137';
+const APP_VERSION = 'v138';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

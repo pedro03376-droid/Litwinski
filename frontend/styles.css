@@ -729,6 +729,8 @@
       .stats-grid { grid-template-columns: 1fr 1fr; }
       .content { padding: 20px 16px; }
       #sidebar-toggle-desktop { display: none; }
+      /* Perfil: grid topo (info 340px | ranking+stats) colapsa em 1 coluna */
+      .perfil-top-grid { grid-template-columns: 1fr !important; }
       /* #1 — título do topbar não quebra/colide: fica truncado e com prioridade.
          Clube e temporada saem do topbar no mobile (já acessíveis pela sidebar). */
       .topbar-left { flex: 1; min-width: 0; gap: 8px; }
