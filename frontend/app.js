@@ -3551,11 +3551,37 @@ function computeGSAA(gkId) {
   return { shots: shots.length, xg: +xg.toFixed(1), goals, gsaa: +gsaa.toFixed(1),
            saved: shots.length - goals, per: +(gsaa / shots.length * 10).toFixed(1) };
 }
+// Fallback do Gols Evitados quando NÃO há lances mapeados por coordenada:
+// usa os contadores do scout (defesas por colocação + gols por origem),
+// atribuindo a cada categoria uma probabilidade-base de gol (xG "lite").
+// Assim a métrica-carro-chefe funciona para todo mundo, não só quem mapeia.
+const _GSAA_SCOUT_DANGER = {
+  // Defesas (colocação): quão provável aquele chute é de virar gol num goleiro médio
+  saves: { dad: 0.42, dae: 0.42, dbd: 0.32, dbe: 0.32, dc: 0.10, d1x1: 0.50, esq: 0.55 },
+  // Gols (origem): probabilidade-base daquele tipo de finalização
+  goals: { gda: 0.40, gfa: 0.10, gpe: 0.75, gfl: 0.15 },
+};
+function computeGSAAFromScouts(gkId) {
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
+  if (!scouts.length) return { shots: 0 };
+  let xg = 0, goals = 0, shots = 0;
+  scouts.forEach(s => {
+    for (const k in _GSAA_SCOUT_DANGER.saves) { const n = +s[k] || 0; xg += n * _GSAA_SCOUT_DANGER.saves[k]; shots += n; }
+    for (const k in _GSAA_SCOUT_DANGER.goals) { const n = +s[k] || 0; xg += n * _GSAA_SCOUT_DANGER.goals[k]; goals += n; shots += n; }
+  });
+  if (!shots) return { shots: 0 };
+  const gsaa = xg - goals;
+  return { shots, xg: +xg.toFixed(1), goals, gsaa: +gsaa.toFixed(1), saved: shots - goals,
+           per: +(gsaa / shots * 10).toFixed(1), source: 'scout' };
+}
 function renderPerfilGSAA(gkId) {
   const card = document.getElementById('perfil-gsaa-card');
   const el = document.getElementById('perfil-gsaa');
   if (!card || !el) return;
-  const g = computeGSAA(gkId);
+  // Prefere o modelo por coordenadas (mais preciso); senão, estima pelo scout.
+  let g = computeGSAA(gkId);
+  let source = 'mapa';
+  if (!g.shots) { g = computeGSAAFromScouts(gkId); source = 'scout'; }
   if (!g.shots) { card.style.display = 'none'; return; }
   card.style.display = 'block';
   const pos = g.gsaa >= 0;
@@ -3564,17 +3590,21 @@ function renderPerfilGSAA(gkId) {
     ? `Evitou <b>${g.gsaa}</b> gol(s) além do esperado — desempenho acima da média.`
     : `Sofreu <b>${Math.abs(g.gsaa)}</b> gol(s) a mais que o esperado — abaixo da média nesses lances.`;
   el.innerHTML =
-    '<div class="card-header"><span class="card-title">🧤 Gols Evitados (GSAA)</span><span style="font-size:11px;color:var(--muted);">estimado</span></div>' +
+    '<div class="card-header"><span class="card-title">🧤 Gols Evitados (GSAA)</span><span style="font-size:11px;color:var(--muted);">' + (source === 'mapa' ? 'via mapa de defesas' : 'estimado via scout') + '</span></div>' +
     '<div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">' +
       '<div style="text-align:center;min-width:96px;">' +
         '<div style="font-size:40px;font-weight:800;line-height:1;color:' + col + ';">' + (pos ? '+' : '') + g.gsaa + '</div>' +
         '<div style="font-size:10px;color:var(--muted);letter-spacing:.5px;">GOLS EVITADOS</div>' +
       '</div>' +
       '<div style="flex:1;min-width:180px;font-size:13px;line-height:1.6;">' + txt +
-        '<div style="font-size:11px;color:var(--muted);margin-top:6px;">Baseado em ' + g.shots + ' finalização(ões) mapeada(s) · gols esperados ' + g.xg + ' · sofridos ' + g.goals + '</div>' +
+        '<div style="font-size:11px;color:var(--muted);margin-top:6px;">Baseado em ' + g.shots + ' finalização(ões) ' + (source === 'mapa' ? 'mapeada(s)' : 'do scout') + ' · gols esperados ' + g.xg + ' · sofridos ' + g.goals + '</div>' +
       '</div>' +
     '</div>' +
-    '<div style="font-size:11px;color:var(--muted);margin-top:10px;">A dificuldade de cada chute é estimada pela colocação e distância. Quanto mais lances você mapear (aba Mapa de Defesas), mais preciso fica.</div>';
+    '<div style="font-size:11px;color:var(--muted);margin-top:10px;">' +
+      (source === 'mapa'
+        ? 'A dificuldade de cada chute é estimada pela colocação e distância. Quanto mais lances você mapear (aba Mapa de Defesas), mais preciso fica.'
+        : 'Estimado a partir dos contadores do scout (defesas por colocação e gols por origem). Para maior precisão, mapeie os lances na aba Mapa de Defesas.') +
+    '</div>';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -11609,7 +11639,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v133';
+const APP_VERSION = 'v134';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
