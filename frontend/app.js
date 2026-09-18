@@ -3387,26 +3387,39 @@ function computeGKRating(gkId) {
   let wsum = 0, num = 0;
   window.forEach((v, i) => { const w = i + 1; num += v * w; wsum += w; });
   const wavg = num / wsum;              // 0–10
-  let score = wavg * 10;               // 0–100
+  const baseScore = wavg * 10;         // 0–100
+  let score = baseScore;
 
-  // Modificador de taxa de defesa (± até 5 pts).
+  // Modificador de taxa de defesa (± até ~5 pts).
   const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
   const sum = k => scouts.reduce((a, s) => a + (+s[k] || 0), 0);
   const def = sum('dad') + sum('dae') + sum('dbd') + sum('dbe') + sum('dc') + sum('d1x1') + sum('esq');
   const gols = sum('gda') + sum('gfa') + sum('gpe') + sum('gfl');
+  let defMod = 0;
   if (def + gols >= 8) {
     const taxa = def / (def + gols);   // 0–1
-    score += (taxa - 0.7) * 16;        // 70% de defesa = neutro
+    defMod = (taxa - 0.7) * 16;        // 70% de defesa = neutro
+    score += defMod;
   }
 
   // Modificador de consistência (± até 4 pts): menor variação = mais confiável.
+  let consistMod = 0;
   if (n >= 3) {
     const m = notas.reduce((a, b) => a + b, 0) / n;
     const sd = Math.sqrt(notas.reduce((a, v) => a + (v - m) ** 2, 0) / n);
-    score += Math.max(-4, Math.min(4, (1.2 - sd) * 3));
+    consistMod = Math.max(-4, Math.min(4, (1.2 - sd) * 3));
+    score += consistMod;
   }
 
   score = Math.max(0, Math.min(100, Math.round(score)));
+  // Composição da nota (para explicabilidade). As parcelas somam a nota
+  // exatamente: a base absorve o arredondamento dos ajustes.
+  const defR = Math.round(defMod), consR = Math.round(consistMod);
+  const breakdown = [
+    { label: 'Base — média recente', value: score - defR - consR, kind: 'base' },
+    { label: 'Ajuste de taxa de defesa', value: defR, kind: 'mod', hint: def + gols >= 8 ? null : 'precisa de 8+ finalizações' },
+    { label: 'Ajuste de consistência', value: consR, kind: 'mod', hint: n >= 3 ? null : 'precisa de 3+ jogos' },
+  ];
 
   // Tendência (reaproveita _gkTrend em pontos de nota → pontos de rating).
   const t = _gkTrend(gkId);
@@ -3444,7 +3457,7 @@ function computeGKRating(gkId) {
     localStorage.setItem('gkhub_rating_history', JSON.stringify(all));
   } catch (e) {}
 
-  return { score, tier: _ratingTier(score), trend, projection, confidence, factors, games: n, notas };
+  return { score, tier: _ratingTier(score), trend, projection, confidence, factors, breakdown, games: n, notas };
 }
 
 // Sparkline SVG leve das últimas notas.
@@ -3493,6 +3506,25 @@ function renderGKRating(gkId) {
       '<div style="height:6px;border-radius:4px;background:var(--bg);overflow:hidden;"><div style="height:100%;width:' + Math.min(100, f.pct) + '%;background:' + c + ';border-radius:4px;"></div></div>' +
     '</div>').join('');
 
+  // #3 Explicabilidade: como a nota é formada (base + ajustes = nota).
+  const bdRow = (b) => {
+    const isBase = b.kind === 'base';
+    const val = isBase ? b.value : (b.value > 0 ? '+' + b.value : (b.value < 0 ? b.value : '0'));
+    const col = isBase ? 'var(--text)' : (b.value > 0 ? 'var(--success)' : b.value < 0 ? 'var(--error)' : 'var(--muted)');
+    return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;">' +
+      '<span style="color:var(--muted);">' + b.label + (b.hint ? ' <span style="opacity:.7;">(' + b.hint + ')</span>' : '') + '</span>' +
+      '<b style="color:' + col + ';font-variant-numeric:tabular-nums;">' + val + '</b></div>';
+  };
+  const breakdownHtml = r.breakdown
+    ? '<details style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);">' +
+        '<summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--muted);list-style:none;">🧮 Como a nota é formada</summary>' +
+        '<div style="margin-top:8px;">' + r.breakdown.map(bdRow).join('') +
+          '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;padding:8px 0 2px;margin-top:4px;border-top:1px dashed var(--border);">' +
+            '<span style="font-weight:700;">GK Rating</span><b style="color:' + c + ';font-size:16px;">' + r.score + '</b></div>' +
+        '</div>' +
+      '</details>'
+    : '';
+
   el.innerHTML =
     '<div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">' +
       // anel com a nota
@@ -3521,6 +3553,7 @@ function renderGKRating(gkId) {
       '</div>' +
     '</div>' +
     '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">' + factorsHtml + '</div>' +
+    breakdownHtml +
     (r.confidence === 'baixa' ? '<div style="font-size:11px;color:var(--muted);margin-top:10px;">ℹ️ Poucos jogos — a nota fica mais precisa a cada partida registrada.</div>' : '');
 }
 
@@ -3605,6 +3638,135 @@ function renderPerfilGSAA(gkId) {
         ? 'A dificuldade de cada chute é estimada pela colocação e distância. Quanto mais lances você mapear (aba Mapa de Defesas), mais preciso fica.'
         : 'Estimado a partir dos contadores do scout (defesas por colocação e gols por origem). Para maior precisão, mapeie os lances na aba Mapa de Defesas.') +
     '</div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// #2 RADAR DE PERCENTIS — perfil do goleiro (6 atributos) comparado
+// com a MÉDIA do grupo de pares (mesmo naipe e modalidade do clube).
+// ═══════════════════════════════════════════════════════════
+let perfilRadarChart = null;
+function renderPerfilPercentis(gkId) {
+  const card = document.getElementById('perfil-percentis-card');
+  const canvas = document.getElementById('chart-percentis');
+  const sub = document.getElementById('perfil-percentis-sub');
+  if (!card || !canvas || typeof Chart === 'undefined') return;
+  const attrs = _gkCardAttrs(gkId);
+  if (attrs._semDados) { card.style.display = 'none'; return; }
+  const keys = ['DEF', 'REP', 'REF', '1X1', 'CMD', 'MEN'];
+  const labels = keys.map(k => _GK_CARD_LABELS[k] || k);
+  const gkVals = keys.map(k => attrs[k]);
+  // Grupo de pares: mesmo naipe + modalidade, com dados suficientes.
+  const mod = _modalidadeOf(gkId), naipe = _naipeOf(gkId);
+  const pares = DB.goleiras.filter(g => g.id !== gkId && _modalidadeOf(g.id) === mod && _naipeOf(g.id) === naipe)
+    .map(g => _gkCardAttrs(g.id)).filter(a => a && !a._semDados);
+  let mediaVals = null;
+  if (pares.length) mediaVals = keys.map(k => Math.round(pares.reduce((a, p) => a + p[k], 0) / pares.length));
+  if (sub) sub.textContent = pares.length ? ('vs média de ' + pares.length + ' par(es) · ' + (mod === 'beach' ? 'Beach' : 'Futsal') + ' ' + naipe) : 'sem pares com dados p/ comparar';
+
+  const datasets = [{
+    label: 'Goleiro(a)', data: gkVals,
+    backgroundColor: 'rgba(79,141,247,.22)', borderColor: '#4F8DF7', borderWidth: 2,
+    pointBackgroundColor: '#4F8DF7', pointRadius: 3,
+  }];
+  if (mediaVals) datasets.push({
+    label: 'Média do grupo', data: mediaVals,
+    backgroundColor: 'rgba(148,163,184,.10)', borderColor: '#94A3B8', borderWidth: 1.5,
+    borderDash: [5, 4], pointRadius: 2, pointBackgroundColor: '#94A3B8',
+  });
+  card.style.display = 'block';
+  if (perfilRadarChart) perfilRadarChart.destroy();
+  const grid = 'rgba(148,163,184,.18)';
+  perfilRadarChart = new Chart(canvas, {
+    type: 'radar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: { r: {
+        min: 40, max: 100, ticks: { stepSize: 15, color: '#94A3B8', backdropColor: 'transparent', font: { size: 9 } },
+        grid: { color: grid }, angleLines: { color: grid },
+        pointLabels: { color: '#CBD5E1', font: { size: 12, weight: '600' } },
+      } },
+      plugins: { legend: { labels: { color: '#CBD5E1', boxWidth: 12, font: { size: 11 } }, position: 'bottom' } },
+    },
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// #4 PLANO DE EVOLUÇÃO — detecta a(s) dimensão(ões) mais fraca(s),
+// sugere treinos e mostra o "reteste" (evolução da dimensão no tempo).
+// ═══════════════════════════════════════════════════════════
+const _GK_DRILLS = {
+  DEF: ['Blocagem em série (chutes alternados de média distância)', 'Defesa com deslocamento lateral + recuperação'],
+  REP: ['Reposição sob pressão com alvos pontuados', 'Saída de bola curta e longa cronometrada'],
+  REF: ['Reação a rebote em parede/prancha', 'Estímulo visual (luz/cor) → defesa rápida'],
+  '1X1': ['Redução de ângulo no 1×1', 'Timing de saída aos pés do atacante'],
+  CMD: ['Comando de área em bolas altas/cruzamentos', 'Organização de barreira e comunicação'],
+  MEN: ['Rotina pré-jogo e gatilhos de foco', 'Simulação de pressão (placar adverso / público)'],
+};
+// Métrica bruta por scout para uma dimensão (0–1), para medir o "reteste".
+function _gkDimSeries(gkId, dim) {
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
+  const ordered = [...scouts].sort((a, b) => {
+    const pa = DB.partidas.find(p => p.id === a.partidaId), pb = DB.partidas.find(p => p.id === b.partidaId);
+    return (pa?.data || '').localeCompare(pb?.data || '');
+  });
+  const val = (s) => {
+    const def = (+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0)+(+s.d1x1||0)+(+s.esq||0);
+    const gols = (+s.gda||0)+(+s.gfa||0)+(+s.gpe||0)+(+s.gfl||0);
+    const distC = (+s.dpc||0)+(+s.dmc||0), distT = distC+(+s.dpe||0)+(+s.dme||0);
+    switch (dim) {
+      case 'DEF': return (def+gols) ? def/(def+gols) : null;
+      case 'REP': return distT ? distC/distT : null;
+      case 'REF': return def ? ((+s.dad||0)+(+s.dae||0)+(+s.esq||0))/def : null;
+      case '1X1': return def ? (+s.d1x1||0)/def : null;
+      case 'CMD': return def ? ((+s.int||0)+(+s.sai||0))/def : null;
+      case 'MEN': { const nt = calcPerformance(s); return nt != null ? nt/10 : null; }
+    }
+    return null;
+  };
+  return ordered.map(val).filter(v => v != null);
+}
+function _dimReteste(gkId, dim) {
+  const s = _gkDimSeries(gkId, dim);
+  if (s.length < 2) return null;
+  const half = Math.ceil(s.length / 2);
+  const ini = s.slice(0, half), fim = s.slice(-half);
+  const avg = a => a.reduce((x, y) => x + y, 0) / a.length;
+  return (avg(fim) - avg(ini)) * 100; // pontos percentuais
+}
+function renderPerfilPlano(gkId) {
+  const card = document.getElementById('perfil-plano-card');
+  const el = document.getElementById('perfil-plano');
+  if (!card || !el) return;
+  const attrs = _gkCardAttrs(gkId);
+  if (attrs._semDados) { card.style.display = 'none'; return; }
+  const keys = ['DEF', 'REP', 'REF', '1X1', 'CMD', 'MEN'];
+  const fracos = keys.map(k => ({ k, v: attrs[k] })).sort((a, b) => a.v - b.v).slice(0, 2);
+  card.style.display = 'block';
+  const blocos = fracos.map(f => {
+    const nome = _GK_CARD_LABELS[f.k] || f.k;
+    const drills = (_GK_DRILLS[f.k] || []).map(d => '<li style="margin:2px 0;">' + _esc(d) + '</li>').join('');
+    const rt = _dimReteste(gkId, f.k);
+    let reteste;
+    if (rt == null) reteste = '<span style="color:var(--muted);">reteste: registre 2+ scouts</span>';
+    else {
+      const up = rt >= 0.5, down = rt <= -0.5;
+      const col = up ? 'var(--success)' : down ? 'var(--error)' : 'var(--muted)';
+      const ic = up ? '▲' : down ? '▼' : '▬';
+      reteste = '<span style="color:' + col + ';font-weight:700;">' + ic + ' reteste ' + (rt >= 0 ? '+' : '') + rt.toFixed(0) + ' p.p.</span>';
+    }
+    return '<div style="padding:12px 0;border-top:1px solid var(--border);">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">' +
+        '<span style="font-weight:700;">' + nome + ' <span style="color:var(--muted);font-weight:400;">(' + f.v + ')</span></span>' + reteste +
+      '</div>' +
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Treinos sugeridos:</div>' +
+      '<ul style="font-size:13px;margin:0 0 0 18px;padding:0;">' + drills + '</ul>' +
+    '</div>';
+  }).join('');
+  el.innerHTML =
+    '<div class="card-header"><span class="card-title">🎯 Plano de evolução</span><span style="font-size:11px;color:var(--muted);">pontos a desenvolver</span></div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:2px;">As 2 dimensões mais baixas do perfil, com treinos e o reteste (evolução ao longo dos scouts).</div>' +
+    blocos;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4051,6 +4213,8 @@ function renderPerfil() {
   _perfilGkId = gkId;
   renderGKRating(gkId);
   renderPerfilGSAA(gkId);
+  renderPerfilPercentis(gkId);
+  renderPerfilPlano(gkId);
   renderPerfilTreinos(gkId);
   renderPerfilExtras(gkId);
   renderPerfilGoalMap(gkId);
@@ -11639,7 +11803,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v134';
+const APP_VERSION = 'v135';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
