@@ -735,6 +735,17 @@
       .resp-2col { grid-template-columns: 1fr !important; }
       /* Contadores do Match Center: 5 colunas → 2 no mobile */
       .mc-counters-grid { grid-template-columns: repeat(2, 1fr) !important; }
+      /* #1 Match Center: prioriza os botões de evento no mobile.
+         Ordem: setup → grid principal (botões) → contadores → resto. */
+      #page-matchcenter { display: flex; flex-direction: column; }
+      #page-matchcenter > * { order: 5; }
+      #mc-sticky-bar { order: 0; }
+      #mc-setup-card { order: 1; }
+      #mc-alerts-bar { order: 2; }
+      #mc-main-grid  { order: 3; }
+      .mc-counters-grid { order: 4; }
+      /* #2 barra fixa (só mobile, quando o jogo está ativo) */
+      #mc-sticky-bar.live { display: flex; }
       /* Barra de abas larga (ex.: Heatmap): limita ao pai e rola na horizontal
          (base tem width:fit-content, que estouraria a viewport) */
       .tabs { width: auto; max-width: 100%; overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; }
@@ -1212,6 +1223,25 @@
       font-weight: 800; letter-spacing: .5px; line-height: 1;
       font-size: 18px; user-select: none;
     }
+    /* Match Center — barra fixa (mobile): tempo · placar · nota sempre visível.
+       Oculta no desktop (a barra completa já fica no topo do card). */
+    .mc-sticky-bar {
+      display: none;
+      position: sticky; top: 66px; z-index: 40;
+      align-items: center; justify-content: space-between; gap: 10px;
+      margin-bottom: 10px; padding: 8px 14px;
+      background: color-mix(in srgb, var(--card) 92%, transparent);
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--border-h); border-radius: 12px;
+      box-shadow: 0 6px 18px -8px rgba(0,0,0,.5);
+    }
+    .mc-sticky-bar .mcsb-item { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .mc-sticky-bar .mcsb-ic { font-size: 13px; }
+    .mc-sticky-bar #mcsb-timer { color: var(--primary); letter-spacing: 1px; }
+    .mc-sticky-bar #mcsb-score { color: var(--text); }
+    .mc-sticky-bar .mcsb-nota { gap: 4px; }
+    .mc-sticky-bar .mcsb-nota b { color: var(--warning); }
+    .mc-sticky-bar .mcsb-cap { font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); }
     /* Estado vazio do gráfico: barras-esqueleto + mensagem (evita box em branco) */
     .chart-empty {
       position: absolute; inset: 0;

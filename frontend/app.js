@@ -5467,6 +5467,7 @@ function mcReset() {
   if (mcTTInterval) { clearInterval(mcTTInterval); mcTTInterval = null; }
   if (mcMomentumChart) { mcMomentumChart.destroy(); mcMomentumChart = null; }
   if (mcTimelineChart) { mcTimelineChart.destroy(); mcTimelineChart = null; }
+  const _sb = document.getElementById('mc-sticky-bar'); if (_sb) _sb.classList.remove('live');
 }
 mcReset();
 
@@ -5530,6 +5531,7 @@ function mcToggleTimer() {
       mcSeconds++;
       const el=document.getElementById('mc-timer');
       if(el) el.textContent=mcFormatTime(mcSeconds);
+      mcSyncSticky();
       // Track sem gol time
       if (mcLastGolSec !== null) {
         const delta = mcSeconds - mcLastGolSec;
@@ -5614,6 +5616,25 @@ function mcUpdateCounters() {
   if(el('mc-c-dist'))   el('mc-c-dist').textContent=dist;
   if(el('mc-c-int'))    el('mc-c-int').textContent=int_;
   if(el('mc-c-streak')) el('mc-c-streak').textContent=mcStreak;
+  mcSyncSticky();
+}
+
+// #2 Espelha tempo · placar · nota na barra fixa (mobile) e mostra/oculta
+// conforme o jogo esteja em andamento. Lê os elementos já existentes.
+function mcSyncSticky() {
+  const bar = document.getElementById('mc-sticky-bar');
+  if (!bar) return;
+  const g = id => document.getElementById(id);
+  const t = g('mc-timer')?.textContent || '00:00';
+  const ns = g('mc-score-nos')?.textContent || '0';
+  const av = g('mc-score-adv')?.textContent || '0';
+  const nt = g('mc-nota-val')?.textContent || '7.0';
+  if (g('mcsb-timer')) g('mcsb-timer').textContent = t;
+  if (g('mcsb-score')) g('mcsb-score').textContent = ns + ' × ' + av;
+  if (g('mcsb-nota'))  g('mcsb-nota').textContent = nt;
+  const evTotal = (typeof MC_FIELDS !== 'undefined') ? MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0) : 0;
+  const ativo = (typeof mcTimerEverRan !== 'undefined' && mcTimerEverRan) || evTotal > 0;
+  bar.classList.toggle('live', !!ativo);
 }
 
 function mcUpdateLog() {
@@ -5694,6 +5715,7 @@ function mcUpdateNotaUI() {
   const trendText=recentPesos>=0.15?'↗ Crescendo':recentPesos<=-0.15?'↘ Em queda':'→ Estável';
   const trendColor=recentPesos>=0.15?'#34D399':recentPesos<=-0.15?'var(--error)':'var(--muted)';
   if(trendEl) { trendEl.textContent=trendText; trendEl.style.color=trendColor; }
+  mcSyncSticky();
 }
 
 // ── Streak tracking ─────────────────────────────────────────
@@ -6063,6 +6085,7 @@ function mcAjustarPlacar(team, delta) {
   const lbl=team==='nos'?(delta>0?'⚽ Gol Nosso':'↩ Gol Nosso Anulado'):(delta>0?'⚽ Gol Adversário':'↩ Gol Adversário Anulado');
   mcLog.unshift({key:'_placar',label:lbl,tipo:team==='nos'?'placar-nos':'placar-adv',time:timeStr,periodo:mcPeriodo,sec:mcSeconds});
   mcUpdateLog();
+  mcSyncSticky();
 }
 
 // ── Segundo Tempo ────────────────────────────────────────────
@@ -6189,6 +6212,9 @@ function mcEncerrar() {
   const gkId=document.getElementById('mc-goleira')?.value;
   const pId=document.getElementById('mc-partida')?.value;
   if (!gkId){toast('Selecione o(a) goleiro(a) antes de encerrar','error');return;}
+  // Confirma se há jogo em andamento (evita encerrar por toque acidental).
+  const _evTotal = MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
+  if ((mcTimerEverRan || _evTotal > 0) && !confirm('Encerrar o jogo e salvar o scout? O registro ao vivo será finalizado.')) return;
   if (!pId && !confirm('Nenhuma partida selecionada. Os scouts serão salvos sem vínculo com uma partida. Continuar?')) return;
   const finalSegmentos=[...mcGkSegmentos];
   const totalCurrentEvents=MC_FIELDS.reduce((a,f)=>a+(mcData[f]||0),0);
@@ -11876,7 +11902,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v141';
+const APP_VERSION = 'v142';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

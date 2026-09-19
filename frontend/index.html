@@ -733,8 +733,15 @@
     <!-- ══ MATCH CENTER ══ -->
     <div id="page-matchcenter" class="page">
 
+      <!-- ── Barra fixa (mobile): tempo · placar · nota sempre à vista ── -->
+      <div id="mc-sticky-bar" class="mc-sticky-bar">
+        <span class="mcsb-item"><span class="mcsb-ic">⏱</span><b id="mcsb-timer">00:00</b></span>
+        <span class="mcsb-item" id="mcsb-score">0 × 0</span>
+        <span class="mcsb-item mcsb-nota"><b id="mcsb-nota">7.0</b><span class="mcsb-cap">nota</span></span>
+      </div>
+
       <!-- ── Setup Bar ── -->
-      <div class="card" style="margin-bottom:12px;">
+      <div class="card" id="mc-setup-card" style="margin-bottom:12px;">
         <div class="resp-2col" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
           <div class="form-group" style="margin:0;">
             <label class="form-label">Partida</label>
@@ -842,7 +849,7 @@
       </div>
 
       <!-- ── Main Grid ── -->
-      <div class="resp-2col" style="display:grid;grid-template-columns:1fr 320px;gap:12px;">
+      <div class="resp-2col" id="mc-main-grid" style="display:grid;grid-template-columns:1fr 320px;gap:12px;">
 
         <!-- LEFT: Event buttons + Event Map -->
         <div>
