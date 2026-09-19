@@ -1274,8 +1274,9 @@ function calcPerformanceAuto(scout, naipe) {
 
 function calcPerformance(scout) {
   const nota = scout.nota ? parseFloat(scout.nota) : null;
-  if (nota !== null && !isNaN(nota)) return nota;
-  return calcPerformanceAuto(scout);
+  const v = (nota !== null && !isNaN(nota)) ? nota : calcPerformanceAuto(scout);
+  // Arredonda p/ 1 casa — evita dízimas de ponto flutuante (ex.: 7.23750001)
+  return v === null ? null : Math.round(v * 10) / 10;
 }
 
 function classifyPerf(score) {
@@ -11875,7 +11876,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v139';
+const APP_VERSION = 'v140';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
