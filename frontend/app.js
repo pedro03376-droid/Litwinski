@@ -1596,6 +1596,7 @@ function renderPartidas() {
       <td data-label="Ações">
         <div class="td-actions">
           <button class="btn btn-ghost btn-sm" onclick="verRelatorioPartida('${p.id}')">📊 Relatório</button>
+          ${p.goalkeeperId ? `<button class="btn btn-ghost btn-sm" onclick="openPostGameCard('${p.goalkeeperId}','${p.id}')">📲 Card</button>` : ''}
           <button class="btn btn-ghost btn-sm" onclick="editarPartida('${p.id}')">Editar</button>
           <button class="btn btn-danger btn-sm" onclick="excluirPartida('${p.id}')">Excluir</button>
         </div>
@@ -4221,8 +4222,137 @@ function compartilharGkCard(nome) {
   });
 }
 
-// Mapa do gol: distribuição das defesas por zona (força/onde é mais exigida)
-// + gols sofridos por origem. Usa os dados de scout que já existem.
+// ═══════════════════════════════════════════════════════════
+// CARD DE PÓS-JOGO (estilo Sofascore) — imagem pra redes com os
+// números do goleiro naquela partida. Exportável / compartilhável.
+// ═══════════════════════════════════════════════════════════
+function _pgNotaColor(n) {
+  if (n == null) return '#94A3B8';
+  if (n >= 9) return '#F5C542';
+  if (n >= 8) return '#10B981';
+  if (n >= 7) return '#22D3EE';
+  if (n >= 5) return '#F59E0B';
+  return '#EF4444';
+}
+function _pgStats(gkId, partidaId) {
+  const scouts = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId && (partidaId ? s.partidaId === partidaId : true)));
+  const sum = k => scouts.reduce((a, s) => a + (+s[k] || 0), 0);
+  const def = sum('dad') + sum('dae') + sum('dbd') + sum('dbe') + sum('dc') + sum('d1x1') + sum('esq');
+  const gols = sum('gda') + sum('gfa') + sum('gpe') + sum('gfl');
+  const distC = sum('dpc') + sum('dmc'), distT = distC + sum('dpe') + sum('dme');
+  let xg = 0; scouts.forEach(s => { for (const k in _GSAA_SCOUT_DANGER.saves) xg += (+s[k] || 0) * _GSAA_SCOUT_DANGER.saves[k]; for (const k in _GSAA_SCOUT_DANGER.goals) xg += (+s[k] || 0) * _GSAA_SCOUT_DANGER.goals[k]; });
+  const notas = scouts.map(calcPerformance).filter(n => n != null);
+  const nota = notas.length ? Math.round((notas.reduce((a, b) => a + b, 0) / notas.length) * 10) / 10 : null;
+  return {
+    def, gols,
+    taxaDef: (def + gols) ? Math.round(def / (def + gols) * 100) : null,
+    distPct: distT ? Math.round(distC / distT * 100) : null,
+    umXum: sum('d1x1'), cmd: sum('int') + sum('sai'),
+    gsaa: (def + gols) ? Math.round((xg - gols) * 10) / 10 : null,
+    nota,
+    zonas: { dae: sum('dae'), dc: sum('dc'), dad: sum('dad'), dbe: sum('dbe'), d1x1: sum('d1x1'), dbd: sum('dbd') },
+  };
+}
+function _pgZoneGrid(z) {
+  const cells = [['dae', 'Alta E'], ['dc', 'Central'], ['dad', 'Alta D'], ['dbe', 'Baixa E'], ['d1x1', '1×1'], ['dbd', 'Baixa D']];
+  const max = Math.max(1, ...Object.values(z));
+  const inner = cells.map(([k, lbl]) => {
+    const v = z[k] || 0; const a = 0.12 + (v / max) * 0.78;
+    return '<div style="background:rgba(34,211,238,' + a.toFixed(2) + ');border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:8px 4px;text-align:center;">' +
+      '<div style="font-size:18px;font-weight:800;line-height:1;">' + v + '</div>' +
+      '<div style="font-size:8px;opacity:.7;letter-spacing:.3px;margin-top:2px;">' + lbl + '</div></div>';
+  }).join('');
+  return '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">' + inner + '</div>';
+}
+function openPostGameCard(gkId, partidaId) {
+  const gk = DB.goleiras.find(g => g.id === gkId);
+  if (!gk) { toast('Selecione o(a) goleiro(a).', 'error'); return; }
+  const p = partidaId ? DB.partidas.find(x => x.id === partidaId) : null;
+  const st = _pgStats(gkId, partidaId);
+  if (st.def + st.gols === 0 && st.nota == null) { toast('Sem scout desta partida para gerar o card.', 'info'); return; }
+  const nCol = _pgNotaColor(st.nota);
+  const comp = (p && p.competicao) || _clubName() || 'GK Hub';
+  const dataStr = (p && p.data) ? formatDate(p.data) : '';
+  const adv = p ? p.adversario : '';
+  let placar = '';
+  if (p && p.gf != null && p.gc != null) {
+    const r = p.gf > p.gc ? 'V' : p.gf < p.gc ? 'D' : 'E';
+    const rc = r === 'V' ? '#10B981' : r === 'D' ? '#EF4444' : '#F59E0B';
+    placar = '<span style="color:' + rc + ';font-weight:800;">' + r + ' ' + p.gf + '×' + p.gc + '</span>';
+  } else placar = '—';
+  const rows = [
+    ['RESULTADO' + (adv ? ' · ' + _esc(adv) : ''), placar],
+    ['DEFESAS', st.def],
+    ['GOLS SOFRIDOS', st.gols],
+    ['% DE DEFESA', st.taxaDef != null ? st.taxaDef + '%' : '—'],
+    ['DISTRIBUIÇÃO', st.distPct != null ? st.distPct + '%' : '—'],
+    ['DEFESAS 1×1', st.umXum],
+    ['SAÍDAS / INTERCEPT.', st.cmd],
+    ['GOLS EVITADOS', st.gsaa != null ? (st.gsaa >= 0 ? '+' : '') + st.gsaa : '—'],
+  ];
+  const rowsHtml = rows.map(([l, v], i) =>
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;' + (i ? 'border-top:1px solid rgba(255,255,255,.10);' : '') + '">' +
+      '<span style="font-size:12px;letter-spacing:.6px;opacity:.85;">' + l + '</span>' +
+      '<b style="font-size:15px;font-variant-numeric:tabular-nums;">' + v + '</b></div>').join('');
+  const logo = _clubLogo();
+  let modal = document.getElementById('pgcard-modal');
+  if (!modal) { modal = document.createElement('div'); modal.id = 'pgcard-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
+  modal.innerHTML =
+    '<div class="modal" style="max-width:400px;background:transparent;box-shadow:none;padding:0;">' +
+      '<div style="display:flex;justify-content:flex-end;margin-bottom:8px;"><button class="modal-close" style="color:#fff;" onclick="closeModal(\'pgcard-modal\')">&times;</button></div>' +
+      '<div id="pgcard-el" style="width:360px;margin:0 auto;border-radius:16px;overflow:hidden;background:#0B1120;color:#fff;font-family:var(--font);padding:20px;position:relative;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:1px;opacity:.75;text-transform:uppercase;">' +
+          '<span>' + _esc(comp) + (dataStr ? ' · ' + dataStr : '') + '</span><span style="color:' + nCol + ';">▸▸▸ pós-jogo</span>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin:10px 0 14px;gap:10px;">' +
+          '<div style="font-size:30px;font-weight:800;line-height:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(gk.nome) + '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
+            '<span style="width:22px;height:22px;border-radius:5px;background:' + nCol + ';display:inline-block;"></span>' +
+            '<span style="font-size:34px;font-weight:900;line-height:1;color:' + nCol + ';">' + (st.nota != null ? st.nota.toFixed(1) : '—') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="font-size:9px;letter-spacing:.5px;opacity:.6;text-transform:uppercase;margin-bottom:6px;">Defesas por zona</div>' +
+        _pgZoneGrid(st.zonas) +
+        '<div style="margin-top:14px;">' + rowsHtml + '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12);">' +
+          (logo ? '<img src="' + logo + '" style="width:20px;height:20px;border-radius:4px;object-fit:cover;">' : '') +
+          '<span style="font-size:11px;font-weight:800;letter-spacing:.5px;">GK HUB</span>' +
+          '<span style="font-size:10px;opacity:.6;margin-left:auto;">' + _esc(_clubName() || '') + '</span>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:8px;max-width:360px;margin:12px auto 0;">' +
+        '<button class="btn btn-ghost" id="pgcard-share-btn" style="flex:1;" onclick="compartilharPostGameCard(\'' + _esc(gk.nome) + '\')">📤 Compartilhar</button>' +
+        '<button class="btn btn-primary" style="flex:1;" onclick="baixarPostGameCard(\'' + _esc(gk.nome) + '\')">⬇️ Baixar</button>' +
+      '</div>' +
+    '</div>';
+  openModal('pgcard-modal');
+  try {
+    const canShareFiles = !!(navigator.canShare && navigator.canShare({ files: [new File([new Blob()], 'x.png', { type: 'image/png' })] }));
+    const sb = document.getElementById('pgcard-share-btn'); if (sb && !canShareFiles) sb.style.display = 'none';
+  } catch (e) { const sb = document.getElementById('pgcard-share-btn'); if (sb) sb.style.display = 'none'; }
+}
+function _pgCardCanvas(cb) {
+  const el = document.getElementById('pgcard-el');
+  if (!el || typeof html2canvas === 'undefined') { toast('Recurso de imagem indisponível offline. Tente online.', 'error'); return; }
+  html2canvas(el, { backgroundColor: '#0B1120', scale: 2, useCORS: true, allowTaint: true }).then(cb).catch(() => toast('Não foi possível gerar a imagem.', 'error'));
+}
+function baixarPostGameCard(nome) {
+  toast('Gerando imagem…', 'info');
+  _pgCardCanvas(canvas => { const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = 'posjogo_' + String(nome || 'goleira').replace(/\s+/g, '_') + '.png'; document.body.appendChild(a); a.click(); a.remove(); });
+}
+function compartilharPostGameCard(nome) {
+  const fname = 'posjogo_' + String(nome || 'goleira').replace(/\s+/g, '_') + '.png';
+  toast('Gerando imagem…', 'info');
+  _pgCardCanvas(canvas => {
+    canvas.toBlob(async (blob) => {
+      if (!blob) return baixarPostGameCard(nome);
+      const file = new File([blob], fname, { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try { await navigator.share({ files: [file], title: 'Pós-jogo — ' + (nome || ''), text: 'Desempenho na partida · GK Hub' }); } catch (e) {}
+      } else { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fname; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); }
+    }, 'image/png');
+  });
+}
 function renderPerfilGoalMap(gkId) {
   const card = document.getElementById('perfil-goalmap-card');
   const el = document.getElementById('perfil-goalmap');
@@ -11973,7 +12103,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v144';
+const APP_VERSION = 'v145';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
