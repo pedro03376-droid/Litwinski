@@ -1,14 +1,11 @@
 {
   "rules": {
-    "//": "GK Hub — regras de seguranca do Realtime Database. Isolamento por clube (LGPD).",
-
     "clubs": {
       "$club": {
         ".read":  "auth != null && root.child('clubMembers').child($club).child(auth.uid).val() === true",
         ".write": "auth != null && root.child('clubMembers').child($club).child(auth.uid).val() === true"
       }
     },
-
     "clubMembers": {
       "$club": {
         ".read": "auth != null && data.child(auth.uid).val() === true",
@@ -19,15 +16,13 @@
         }
       }
     },
-
     "registry": {
       ".read": "auth != null && auth.token.email === 'pedro03376@gmail.com'",
       "$uid": {
-        ".read":  "auth != null && auth.uid === $uid",
+        ".read":  "auth != null && (auth.uid === $uid || auth.token.email === 'pedro03376@gmail.com')",
         ".write": "auth != null && auth.uid === $uid"
       }
     },
-
     ".read": false,
     ".write": false
   }
