@@ -1069,6 +1069,7 @@ function _pidObjHtml(o) {
 let editingId = { goleira: null, partida: null, scout: null };
 let dashFilterFrom = '';
 let dashFilterTo   = '';
+let dashFilterComp = '';   // filtro de competição do dashboard ('' = todas)
 let chartPerf = null, chartEvolucao = null;
 
 // ═══════════════════════════════════════════════════════════
@@ -2734,7 +2735,9 @@ function renderDashHero(goleiras, partidas, scouts) {
 
 function refreshDashboard() {
   const goleiras = DB.goleiras;
+  _populateDashComp();
   const partidas = DB.partidas.filter(p => {
+    if (dashFilterComp && (p.competicao || '') !== dashFilterComp) return false;
     if (!p.data) return true;
     if (dashFilterFrom && p.data < dashFilterFrom) return false;
     if (dashFilterTo   && p.data > dashFilterTo)   return false;
@@ -11849,9 +11852,22 @@ function _render2FAStatus() {
   if (label) label.textContent = on ? 'Gerenciar 2FA' : 'Ativar 2FA';
 }
 
+// Filtro de competição do dashboard: popular o dropdown e aplicar.
+function _populateDashComp() {
+  const sel = document.getElementById('dash-comp');
+  if (!sel) return;
+  const comps = [...new Set(DB.partidas.map(p => (p.competicao || '').trim()).filter(Boolean))].sort();
+  const cur = dashFilterComp;
+  sel.innerHTML = '<option value="">Todas</option>' + comps.map(c => `<option value="${_esc(c)}">${_esc(c)}</option>`).join('');
+  sel.value = comps.includes(cur) ? cur : '';
+  if (!comps.includes(cur)) dashFilterComp = '';
+}
+function setDashComp() {
+  dashFilterComp = document.getElementById('dash-comp')?.value || '';
+  refreshDashboard();
+}
 function setDashPeriod(key) {
-  document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.remove('active'));
-  const today = new Date();
+  document.querySelectorAll('.dash-period-btn').forEach(b => b.classList.remove('active'));  const today = new Date();
   if (key === 'all') {
     dashFilterFrom = ''; dashFilterTo = '';
     document.getElementById('dash-from').value = '';
@@ -11957,7 +11973,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v143';
+const APP_VERSION = 'v144';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

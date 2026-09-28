@@ -403,6 +403,10 @@
             <button class="dash-period-btn" id="dpb-180" onclick="setDashPeriod('180')">6 meses</button>
             <button class="dash-period-btn" id="dpb-365" onclick="setDashPeriod('365')">1 ano</button>
           </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span style="font-size:12px;font-weight:600;color:var(--muted);">Competição:</span>
+            <select class="form-select" id="dash-comp" style="padding:5px 10px;font-size:12px;width:auto;min-width:150px;" onchange="setDashComp()"><option value="">Todas</option></select>
+          </div>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
             <input type="date" id="dash-from" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
             <span style="font-size:12px;color:var(--muted);">até</span>
