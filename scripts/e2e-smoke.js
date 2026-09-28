@@ -35,6 +35,10 @@ async function run() {
       window.Chart = Stub;
     }
     localStorage.setItem('gkhub_session', JSON.stringify({ token: 't', user: 'CI', expiresAt: Date.now() + 9e11 }));
+    // Usuário recorrente já consentido: o gate de aceite (Termos/LGPD) é um
+    // fluxo próprio, testado à parte; aqui simulamos quem já aceitou.
+    // (manter em sincronia com LEGAL_VERSION em app.js)
+    localStorage.setItem('gkhub_legal', JSON.stringify({ v: '2026-10', at: '2026-01-01T00:00:00.000Z' }));
     localStorage.setItem('gkhub_goleiras', JSON.stringify([
       { id: 'g1', nome: 'Ana CI', equipe: 'Time CI', categoria: 'Sub-17', naipe: 'feminino' },
       { id: 'g2', nome: 'Bia CI', equipe: 'Time CI', categoria: 'Adulto', naipe: 'feminino' },
