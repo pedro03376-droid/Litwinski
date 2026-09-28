@@ -123,6 +123,26 @@
     <div class="auth-register-link">
       Novo clube? <a onclick="openRegister()">Cadastrar agora — 30 dias grátis</a>
     </div>
+    <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--muted);">
+      Ao usar, você aceita os <a onclick="openLegal()" style="cursor:pointer;text-decoration:underline;">Termos e a Política de Privacidade</a>.
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Política de Privacidade & Termos (+ aceite) -->
+<div class="modal-backdrop" id="modal-legal">
+  <div class="modal" style="max-width:640px;">
+    <div class="modal-header">
+      <span class="card-title">📄 Política de Privacidade & Termos</span>
+      <button class="modal-close" id="legal-close" onclick="closeModal('modal-legal')">&times;</button>
+    </div>
+    <div class="modal-body" id="modal-legal-body" style="max-height:60vh;overflow-y:auto;font-size:13px;line-height:1.6;"></div>
+    <div class="modal-footer" id="legal-accept-bar" style="display:none;gap:10px;align-items:center;">
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;flex:1;cursor:pointer;">
+        <input type="checkbox" id="legal-accept-chk"> Li e aceito os Termos e a Política de Privacidade
+      </label>
+      <button class="btn btn-primary" onclick="aceitarLegal()">Aceitar e continuar</button>
+    </div>
   </div>
 </div>
 
@@ -653,6 +673,7 @@
           <select class="form-select" id="lgpd-gk" style="width:auto;min-width:200px;"></select>
           <button class="btn btn-secondary btn-sm" onclick="exportAthleteData()">⬇️ Exportar dados da atleta</button>
           <button class="btn btn-secondary btn-sm" style="color:#ef4444;" onclick="forgetAthlete()">🗑️ Apagar dados (direito ao esquecimento)</button>
+          <button class="btn btn-secondary btn-sm" onclick="openLegal()">📄 Política & Termos</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.6;">
           • <b>Consentimento</b>: registrado por atleta no cadastro (data e responsável).<br>
