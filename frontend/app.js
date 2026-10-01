@@ -5434,6 +5434,58 @@ function pdfCompeticao() {
     columnStyles: { 0: { fontStyle: 'bold' } }
   });
 
+  // ── Gráficos por goleira (mesmo estilo do pós-jogo / relatório de partida) ──
+  const PAGE_H = doc.internal.pageSize.getHeight();
+  let yc = doc.lastAutoTable.finalY + 12;
+  const _ensure = need => { if (yc + need > PAGE_H - 14) { doc.addPage(); yc = 16; } };
+  let firstChart = true;
+  gkIds.forEach(gkId => {
+    const gk = goleiras.find(g => g.id === gkId);
+    if (!gk) return;
+    const ptIds = partidas.filter(p => p.goalkeeperId === gkId || p.gk2Id === gkId).map(p => p.id);
+    const sc = _mergeScouts(scouts.filter(s => s.goalkeeperId === gkId && ptIds.includes(s.partidaId)));
+    if (!sc.length) return;
+    const sum = k => sc.reduce((a, s) => a + (+s[k] || 0), 0);
+    const def = sum('dad') + sum('dae') + sum('dbd') + sum('dbe') + sum('dc') + sum('d1x1') + sum('esq');
+    const gol = sum('gda') + sum('gfa') + sum('gpe') + sum('gfl');
+    const distC = sum('dpc') + sum('dmc'), distE = sum('dpe') + sum('dme');
+    const distT = distC + distE, taxaDist = distT > 0 ? distC / distT : null;
+    if (def + gol + distT === 0) return;
+
+    // Título da seção (uma vez) + bloco da goleira
+    _ensure(firstChart ? 8 + 8 + 52 + 10 : 8 + 52 + 10);
+    if (firstChart) {
+      doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40);
+      doc.text('Gráficos da Competição', 14, yc); yc += 8; firstChart = false;
+    }
+    doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.setTextColor(30, 30, 53);
+    doc.text(gk.nome, 14, yc); yc += 2;
+
+    // Linha 1: Defesas por tipo (barra) + Distribuição (donut)
+    const barCV = _pdfBarChart(
+      ['Alta D', 'Alta E', '1×1', 'Baixa', 'Centr.', 'Esq.'],
+      [sum('dad'), sum('dae'), sum('d1x1'), sum('dbd') + sum('dbe'), sum('dc'), sum('esq')],
+      ['#3B82F6', '#6366F1', '#EC4899', '#10B981', '#F59E0B', '#EF4444']
+    );
+    const dnCV = _pdfDonut(distC, distE, taxaDist);
+    const colW = 90, chH = Math.round(colW * 130 / 260);
+    doc.setFontSize(8); doc.setFont(undefined, 'bold');
+    doc.setTextColor(0, 150, 180); doc.text('DEFESAS POR TIPO', 14, yc + 5);
+    doc.setTextColor(180, 120, 0); doc.text('DISTRIBUIÇÃO (PASSES)', 108, yc + 5);
+    if (barCV) doc.addImage(barCV.toDataURL('image/png'), 'PNG', 14, yc + 7, colW, chH);
+    if (dnCV) doc.addImage(dnCV.toDataURL('image/png'), 'PNG', 108, yc + 7, colW, chH);
+    yc += 7 + chH + 6;
+
+    // Linha 2: Mapa de defesas (heatmap)
+    const hmCV = _pdfHeatmap([[sum('dae'), sum('dc'), sum('dad')], [0, sum('d1x1'), 0], [sum('dbe'), sum('esq'), sum('dbd')]], def, gol);
+    const hmW = 92, hmH = Math.round(hmW * 148 / 230);
+    _ensure(hmH + 8);
+    doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.setTextColor(0, 150, 180);
+    doc.text('MAPA DE DEFESAS (ZONAS DO GOL)', 14, yc + 5);
+    if (hmCV) doc.addImage(hmCV.toDataURL('image/png'), 'PNG', 14, yc + 7, hmW, hmH);
+    yc += 7 + hmH + 12;
+  });
+
   doc.save('gkhub_' + comp.replace(/\s+/g,'_') + '.pdf');
   logReport({ type: 'competicao', title: 'Relatório — ' + comp, competition: comp });
   toast('PDF gerado!','success');
@@ -12104,7 +12156,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v146';
+const APP_VERSION = 'v147';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
