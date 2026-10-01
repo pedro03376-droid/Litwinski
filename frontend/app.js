@@ -5255,25 +5255,110 @@ function pdfHeader(doc, title) {
   doc.setFontSize(9); doc.setFont(undefined,'normal'); doc.setTextColor(120,120,120);
   doc.text('Gerado em ' + new Date().toLocaleString('pt-BR'), 14, 46);
 }
+// ═══════════════════════════════════════════════════════════
+// RELATÓRIOS PDF — framework visual unificado (tema escuro premium)
+// Mesma linguagem do relatório do Match Center: fundo escuro, barra de
+// acento nas seções, tabelas em cards, rodapé com nº de página em todas.
+// ═══════════════════════════════════════════════════════════
+const _RPT = {
+  bg:[8,12,22], panel:[14,20,42], panel2:[12,17,36], line:[30,45,80],
+  blue:[59,130,246], blueLt:[147,197,253], txt:[210,218,232], mut:[120,134,156],
+  head:[20,35,72], green:[52,211,153], red:[239,68,68], amber:[245,158,11], cyan:[56,189,248],
+};
+function _pdfReport(title, subtitle) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const W=210, H=297, M=14, HDR=24, FTR=12;
+  const sF=c=>doc.setFillColor(c[0],c[1],c[2]);
+  const sT=c=>doc.setTextColor(c[0],c[1],c[2]);
+  const sD=c=>doc.setDrawColor(c[0],c[1],c[2]);
+  const clb=(()=>{ try { return JSON.parse(localStorage.getItem('gkhub_club_settings')||'{}'); } catch(e){ return {}; } })();
+  const logo=(typeof _clubLogo==='function')?_clubLogo():'';
+  const paintBg=()=>{ sF(_RPT.bg); doc.rect(0,0,W,H,'F'); };
+  const paintHeader=()=>{
+    sF([14,22,46]); doc.rect(0,0,W,HDR,'F');
+    sF(_RPT.blue); doc.rect(0,0,W,1.5,'F');
+    if (logo){ try{ doc.addImage(logo,'JPEG',M,6,11,11);}catch(e){} }
+    const tx=logo?M+15:M;
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); sT([248,250,252]);
+    doc.text(String(clb.display||clb.nome||'GK Hub').slice(0,28), tx, 11);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); sT(_RPT.mut);
+    doc.text(String(subtitle || [clb.cidade,clb.estado].filter(Boolean).join(' / ') || 'Plataforma de Análise de Goleiros(as)').slice(0,40), tx, 16);
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); sT(_RPT.blueLt);
+    doc.text(String(title).slice(0,46), W-M, 11, {align:'right'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(6.5); sT(_RPT.mut);
+    doc.text('Gerado em '+new Date().toLocaleString('pt-BR'), W-M, 16, {align:'right'});
+    sF([30,50,100]); doc.rect(0,HDR,W,0.4,'F');
+  };
+  paintBg(); paintHeader();
+  let _y = HDR+8;
+  return {
+    doc, W, H, M, sF, sT, sD, c:_RPT,
+    get y(){ return _y; }, set y(v){ _y=v; },
+    ensure(need){ if (_y+need > H-FTR-4){ doc.addPage(); paintBg(); paintHeader(); _y=HDR+8; } return _y; },
+    section(lbl, color){ const col=color||_RPT.blue; this.ensure(12); sF(col); doc.rect(M,_y-3.5,3,5,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(10.5); sT(col); doc.text(lbl, M+6, _y); _y+=7; return _y; },
+    table(opts){
+      opts = opts || {};
+      const base = {
+        startY:_y, margin:{left:M,right:M,top:HDR+4,bottom:FTR+2}, theme:'grid',
+        styles:{ fontSize:8.5, cellPadding:2.4, lineColor:_RPT.line, lineWidth:0.1, textColor:_RPT.txt, fillColor:_RPT.panel },
+        headStyles:{ fillColor:_RPT.head, textColor:_RPT.blueLt, fontStyle:'bold', lineColor:_RPT.line },
+        alternateRowStyles:{ fillColor:_RPT.panel2 },
+        willDrawPage:d=>{ if (d.pageNumber>1){ paintBg(); paintHeader(); } },
+      };
+      const merged = Object.assign({}, base, opts);
+      // merge profundo dos blocos de estilo (opts não pode apagar o tema escuro)
+      merged.styles = Object.assign({}, base.styles, opts.styles);
+      merged.headStyles = Object.assign({}, base.headStyles, opts.headStyles);
+      merged.alternateRowStyles = Object.assign({}, base.alternateRowStyles, opts.alternateRowStyles);
+      doc.autoTable(merged);
+      _y = doc.lastAutoTable.finalY + 9;
+      return _y;
+    },
+    // Painel escuro com título claro — moldura intencional p/ gráficos (canvas)
+    chartPanel(label, labelColor, w, hMm, drawFn){
+      this.ensure(hMm+10);
+      const x=M, py=_y;
+      sF(_RPT.panel2); doc.rect(x, py, w, hMm+8, 'F');
+      sD(_RPT.line); doc.setLineWidth(0.2); doc.rect(x, py, w, hMm+8, 'S');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); sT(labelColor||_RPT.cyan);
+      doc.text(label, x+3, py+5);
+      drawFn(x+2, py+7, w-4, hMm);
+      return { bottom: py+hMm+8 };
+    },
+    finish(filename){
+      const pages=doc.internal.getNumberOfPages();
+      for(let pi=1;pi<=pages;pi++){
+        doc.setPage(pi);
+        sF([10,15,32]); doc.rect(0,H-FTR,W,FTR,'F');
+        sD([30,50,100]); doc.setLineWidth(0.3); doc.line(0,H-FTR,W,H-FTR);
+        doc.setFont('helvetica','normal'); doc.setFontSize(6); sT(_RPT.mut);
+        doc.text('GK Hub — Plataforma de Análise de Goleiros(as)', M, H-4);
+        doc.text(new Date().toLocaleDateString('pt-BR'), W/2, H-4, {align:'center'});
+        doc.text(pi+' / '+pages, W-M, H-4, {align:'right'});
+      }
+      doc.save(filename);
+    }
+  };
+}
+function _rptDate(){ return new Date().toISOString().slice(0,10); }
+
 function pdfGeral() {
   if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  pdfHeader(doc, 'Relatório Geral');
   const goleiras = DB.goleiras;
   if (!goleiras.length) { toast('Nenhuma goleira cadastrada','error'); return; }
+  const R = _pdfReport('Relatório Geral');
   const rows = goleiras.map(g => {
     const avg = avgPerformance(g.id); const { label } = classifyPerf(avg);
-    return [g.nome, g.equipe||'-', g.categoria||'-', avg!==null?avg:'-', avg!==null?label:'-'];
+    return [g.nome, g.equipe||'—', g.categoria||'—', avg!==null?avg:'—', avg!==null?label:'—'];
   });
-  doc.autoTable({ startY: 52, head: [['Goleiro(a)','Equipe','Categoria','Nota','Classificação']], body: rows,
-    headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
-  doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
-  doc.text('Resumo', 14, doc.lastAutoTable.finalY + 12);
-  doc.autoTable({ startY: doc.lastAutoTable.finalY + 16,
-    body: [['Total de goleiras', goleiras.length],['Partidas', DB.partidas.length],['Scouts', DB.scouts.length]],
-    styles: { fontSize: 9 } });
-  doc.save('gkhub_relatorio_geral.pdf');
+  R.section('Elenco — Performance');
+  R.table({ head: [['Goleiro(a)','Equipe','Categoria','Nota','Classificação']], body: rows });
+  R.section('Resumo', _RPT.green);
+  R.table({ body: [['Total de goleiras', goleiras.length],['Partidas', DB.partidas.length],['Scouts', DB.scouts.length]],
+    columnStyles: { 0: { fontStyle:'bold', textColor:_RPT.blueLt } } });
+  R.finish('gkhub_relatorio_geral_'+_rptDate()+'.pdf');
   logReport({ type: 'geral', title: 'Relatório Geral do Elenco' });
   toast('PDF gerado!','success');
   if (loadPreferences().notifPdf) _sendNotif('PDF gerado', 'Relatório Geral exportado', 'pdf');
@@ -5283,30 +5368,31 @@ function pdfIndividual() {
   if (!gkId) { toast('Selecione um(a) goleiro(a)','error'); return; }
   const gk = DB.goleiras.find(g=>g.id===gkId);
   if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  pdfHeader(doc, 'Relatório Individual — ' + gk.nome);
+  const R = _pdfReport('Relatório Individual', gk.nome);
   const scouts = _mergeScouts(DB.scouts.filter(s=>s.goalkeeperId===gkId));
   const avg = avgPerformance(gkId); const { label } = classifyPerf(avg);
-  doc.autoTable({ startY: 52, head: [['Dado','Valor']], body: [
-    ['Nome', gk.nome],['Equipe', gk.equipe||'-'],['Categoria', gk.categoria||'-'],
+  R.section('Ficha da Atleta');
+  R.table({ head: [['Dado','Valor']], body: [
+    ['Nome', gk.nome],['Equipe', gk.equipe||'—'],['Categoria', gk.categoria||'—'],
     ['Modalidade', gk.modalidade==='beach'?'Beach Soccer':'Futsal'],
-    ['Naipe', gk.naipe ? (gk.naipe==='masculino'?'Masculino':'Feminino') : '-'],
-    ['Altura', gk.altura?gk.altura+' cm':'-'],['Peso', gk.peso?gk.peso+' kg':'-'],
-    ['Pé dominante', gk.pe||'-'],['Performance média', avg!==null?avg+' ('+label+')':'sem dados'],
+    ['Naipe', gk.naipe ? (gk.naipe==='masculino'?'Masculino':'Feminino') : '—'],
+    ['Altura', gk.altura?gk.altura+' cm':'—'],['Peso', gk.peso?gk.peso+' kg':'—'],
+    ['Pé dominante', gk.pe||'—'],['Performance média', avg!==null?avg+' ('+label+')':'sem dados'],
     ['IGD — Índice Global', (()=>{ const i=computeIGD(gk.id); return i.score!=null? i.score+' / 100' : 'sem dados'; })()],
     ['Partidas com scout', scouts.length],
-  ], headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
+  ], columnStyles: { 0: { fontStyle:'bold', textColor:_RPT.blueLt, cellWidth:60 } } });
   if (scouts.length) {
     const sum = (k)=>scouts.reduce((a,s)=>a+(+s[k]||0),0);
-    doc.text('Estatísticas acumuladas', 14, doc.lastAutoTable.finalY + 12);
-    doc.autoTable({ startY: doc.lastAutoTable.finalY + 16, head: [['Métrica','Total']], body: [
-      ['Defesas Altas', sum('dad')+sum('dae')],['Defesas Baixas', sum('dbd')+sum('dbe')],
-      ['Defesa Central', sum('dc')],['Interceptações', sum('int')],['Esquadros', sum('esq')],
+    R.section('Estatísticas Acumuladas', _RPT.green);
+    R.table({ head: [['Métrica','Total']], body: [
+      ['Defesas Alta E', sum('dae')],['Defesas Alta D', sum('dad')],
+      ['Defesas Baixa E', sum('dbe')],['Defesas Baixa D', sum('dbd')],
+      ['Defesa Central', sum('dc')],['Defesa 1×1', sum('d1x1')],['Esquadros', sum('esq')],
+      ['Saídas do gol', sum('sai')],['Interceptações', sum('int')],
       ['Gols sofridos', sum('gda')+sum('gfa')+sum('gpe')+sum('gfl')],
-    ], headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
+    ], columnStyles: { 0: { fontStyle:'bold', textColor:_RPT.blueLt } } });
   }
-  doc.save('gkhub_'+gk.nome.replace(/\s/g,'_')+'.pdf');
+  R.finish('gkhub_'+gk.nome.replace(/\s/g,'_')+'_'+_rptDate()+'.pdf');
   logReport({ type: 'individual', title: 'Relatório Individual — ' + gk.nome, athlete: gk.nome, athleteId: gk.id });
   toast('PDF gerado!','success');
   if (loadPreferences().notifPdf) _sendNotif('PDF gerado', `Relatório de ${gk.nome} exportado`, 'pdf');
@@ -5315,19 +5401,18 @@ function pdfPartidas() {
   const partidas = DB.partidas;
   if (!partidas.length) { toast('Nenhuma partida registrada','error'); return; }
   if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  pdfHeader(doc, 'Relatório de Partidas');
+  const R = _pdfReport('Relatório de Partidas');
   const gkMap = Object.fromEntries(DB.goleiras.map(g=>[g.id,g.nome]));
   const rows = [...partidas].sort((a,b)=>(b.data||'').localeCompare(a.data||'')).map(p => {
-    const hasScore = p.gf !== undefined && p.gc !== undefined;
+    const hasScore = p.gf != null && p.gc != null;
     const r = hasScore ? (p.gf>p.gc?'V':p.gf<p.gc?'D':'E') : '—';
     const score = hasScore ? `${r} ${p.gf}×${p.gc}` : '—';
-    return [p.data?formatDate(p.data):'-', p.adversario, p.competicao||'-', gkMap[p.goalkeeperId]||'-', score];
+    return [p.data?formatDate(p.data):'—', p.adversario, p.competicao||'—', gkMap[p.goalkeeperId]||'—', score];
   });
-  doc.autoTable({ startY: 52, head: [['Data','Adversário','Competição','Goleiro(a)','Resultado']], body: rows,
-    headStyles: { fillColor: [30,30,53], textColor: [0,212,255] }, styles: { fontSize: 9 } });
-  doc.save('gkhub_partidas.pdf');
+  R.section('Partidas Registradas');
+  R.table({ head: [['Data','Adversário','Competição','Goleiro(a)','Resultado']], body: rows,
+    columnStyles: { 4: { fontStyle:'bold', halign:'center' } } });
+  R.finish('gkhub_partidas_'+_rptDate()+'.pdf');
   logReport({ type: 'partidas', title: 'Relatório de Partidas' });
   toast('PDF gerado!','success');
   if (loadPreferences().notifPdf) _sendNotif('PDF gerado', 'Relatório de Partidas exportado', 'pdf');
@@ -5354,16 +5439,14 @@ function pdfCompeticao() {
   const partidas = DB.partidas.filter(p => (p.competicao || '') === comp);
   if (!partidas.length) { toast('Nenhuma partida nesta competição', 'error'); return; }
   if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
-  pdfHeader(doc, 'Relatório — ' + comp);
+  const R = _pdfReport('Relatório de Competição', comp);
+  const doc = R.doc, M = R.M;
   const goleiras = DB.goleiras;
   const gkMap = Object.fromEntries(goleiras.map(g => [g.id, g.nome]));
   const scouts = DB.scouts;
 
   // ── Tabela de partidas ──
-  doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
-  doc.text('Partidas', 14, 52);
+  R.section('Partidas');
   const rowsP = [...partidas].sort((a,b) => (a.data||'').localeCompare(b.data||'')).map(p => {
     const gkNome = gkMap[p.goalkeeperId] || '—';
     const gk2Nome = p.gk2Id ? (gkMap[p.gk2Id] || '—') : '';
@@ -5374,13 +5457,10 @@ function pdfCompeticao() {
     const def = ptScouts.reduce((a,s) => a+(+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0), 0);
     return [p.data ? formatDate(p.data) : '—', p.adversario, gkCell, hasScore ? `${r} ${p.gf}×${p.gc}` : '—', def || '—', p.gc ?? '—'];
   });
-  doc.autoTable({
-    startY: 56,
+  R.table({
     head: [['Data','Adversário','Goleiro(a)(s)','Resultado','Defesas','G. Sofr.']],
-    body: rowsP,
-    headStyles: { fillColor: [30,30,53], textColor: [0,212,255] },
-    styles: { fontSize: 8 },
-    columnStyles: { 2: { cellWidth: 60 } }
+    body: rowsP, styles: { fontSize: 8, cellPadding: 2.2 },
+    columnStyles: { 2: { cellWidth: 58 }, 3: { halign:'center', fontStyle:'bold' }, 4: { halign:'center' }, 5: { halign:'center' } }
   });
 
   // ── Performance das goleiras nesta competição ──
@@ -5402,15 +5482,11 @@ function pdfCompeticao() {
   }).filter(Boolean);
 
   if (rowsGK.length) {
-    const y = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
-    doc.text('Performance dos(as) Goleiros(as) nesta Competição', 14, y);
-    doc.autoTable({
-      startY: y + 4,
+    R.section('Performance dos(as) Goleiros(as)', _RPT.green);
+    R.table({
       head: [['Goleiro(a)','Partidas','Scouts','Defesas','G. Sofr.','Nota Média','Classificação']],
-      body: rowsGK,
-      headStyles: { fillColor: [30,30,53], textColor: [0,212,255] },
-      styles: { fontSize: 8 }
+      body: rowsGK, styles: { fontSize: 8 },
+      columnStyles: { 1:{halign:'center'}, 2:{halign:'center'}, 3:{halign:'center'}, 4:{halign:'center'}, 5:{halign:'center',fontStyle:'bold'} }
     });
   }
 
@@ -5420,24 +5496,25 @@ function pdfCompeticao() {
   const vitorias = comPlacar.filter(p => p.gf > p.gc).length;
   const derrotas = comPlacar.filter(p => p.gf < p.gc).length;
   const empates  = comPlacar.filter(p => p.gf === p.gc).length;
-  const y2 = doc.lastAutoTable.finalY + 10;
-  doc.setFontSize(11); doc.setFont(undefined,'bold'); doc.setTextColor(40,40,40);
-  doc.text('Resumo da Competição', 14, y2);
-  doc.autoTable({
-    startY: y2 + 4,
+  R.section('Resumo da Competição', _RPT.amber);
+  R.table({
     body: [
       ['Partidas disputadas', totalJogos],
       ['Vitórias', vitorias], ['Empates', empates], ['Derrotas', derrotas],
       ['Aproveitamento', comPlacar.length ? Math.round(((vitorias + empates*0.5)/comPlacar.length)*100)+'%' : '—'],
     ],
-    styles: { fontSize: 9 },
-    columnStyles: { 0: { fontStyle: 'bold' } }
+    columnStyles: { 0: { fontStyle: 'bold', textColor: _RPT.blueLt } }
   });
 
-  // ── Gráficos por goleira (mesmo estilo do pós-jogo / relatório de partida) ──
-  const PAGE_H = doc.internal.pageSize.getHeight();
-  let yc = doc.lastAutoTable.finalY + 12;
-  const _ensure = need => { if (yc + need > PAGE_H - 14) { doc.addPage(); yc = 16; } };
+  // ── Gráficos por goleira (mesmo estilo do pós-jogo, em painéis escuros) ──
+  const colW = 88, chImgH = Math.round((colW-4) * 130 / 260); // ~42
+  const hmW = 90, hmH = Math.round(hmW * 148 / 230);          // ~58
+  const panel = (x, y, w, h, label, labelCol) => {
+    R.sF(_RPT.panel2); doc.rect(x, y, w, h, 'F');
+    R.sD(_RPT.line); doc.setLineWidth(0.2); doc.rect(x, y, w, h, 'S');
+    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); R.sT(labelCol);
+    doc.text(label, x+3, y+5);
+  };
   let firstChart = true;
   gkIds.forEach(gkId => {
     const gk = goleiras.find(g => g.id === gkId);
@@ -5452,41 +5529,37 @@ function pdfCompeticao() {
     const distT = distC + distE, taxaDist = distT > 0 ? distC / distT : null;
     if (def + gol + distT === 0) return;
 
-    // Título da seção (uma vez) + bloco da goleira
-    _ensure(firstChart ? 8 + 8 + 52 + 10 : 8 + 52 + 10);
-    if (firstChart) {
-      doc.setFontSize(13); doc.setFont(undefined, 'bold'); doc.setTextColor(40, 40, 40);
-      doc.text('Gráficos da Competição', 14, yc); yc += 8; firstChart = false;
-    }
-    doc.setFontSize(11); doc.setFont(undefined, 'bold'); doc.setTextColor(30, 30, 53);
-    doc.text(gk.nome, 14, yc); yc += 2;
+    if (firstChart) { R.section('Gráficos da Competição', _RPT.cyan); firstChart = false; }
+
+    // Mantém o bloco da goleira junto quando couber
+    R.ensure(6 + (chImgH + 8) + 6 + (hmH + 8) + 12);
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5); R.sT(_RPT.blueLt);
+    doc.text(gk.nome, M, R.y); R.y += 4;
 
     // Linha 1: Defesas por tipo (barra) + Distribuição (donut)
     const barCV = _pdfBarChart(
-      ['Alta D', 'Alta E', '1×1', 'Baixa', 'Centr.', 'Esq.'],
-      [sum('dad'), sum('dae'), sum('d1x1'), sum('dbd') + sum('dbe'), sum('dc'), sum('esq')],
-      ['#3B82F6', '#6366F1', '#EC4899', '#10B981', '#F59E0B', '#EF4444']
+      ['Alta E', 'Alta D', 'Baixa E', 'Baixa D', 'Central', '1×1'],
+      [sum('dae'), sum('dad'), sum('dbe'), sum('dbd'), sum('dc'), sum('d1x1')],
+      ['#6366F1', '#3B82F6', '#22D3EE', '#10B981', '#F59E0B', '#EC4899']
     );
     const dnCV = _pdfDonut(distC, distE, taxaDist);
-    const colW = 90, chH = Math.round(colW * 130 / 260);
-    doc.setFontSize(8); doc.setFont(undefined, 'bold');
-    doc.setTextColor(0, 150, 180); doc.text('DEFESAS POR TIPO', 14, yc + 5);
-    doc.setTextColor(180, 120, 0); doc.text('DISTRIBUIÇÃO (PASSES)', 108, yc + 5);
-    if (barCV) doc.addImage(barCV.toDataURL('image/png'), 'PNG', 14, yc + 7, colW, chH);
-    if (dnCV) doc.addImage(dnCV.toDataURL('image/png'), 'PNG', 108, yc + 7, colW, chH);
-    yc += 7 + chH + 6;
+    const py = R.y, p1H = chImgH + 8, x2 = M + colW + 6;
+    panel(M, py, colW, p1H, 'DEFESAS POR TIPO', _RPT.cyan);
+    panel(x2, py, colW, p1H, 'DISTRIBUIÇÃO (PASSES)', _RPT.amber);
+    if (barCV) doc.addImage(barCV.toDataURL('image/png'), 'PNG', M+2, py+6, colW-4, chImgH);
+    if (dnCV) doc.addImage(dnCV.toDataURL('image/png'), 'PNG', x2+2, py+6, colW-4, chImgH);
+    R.y = py + p1H + 6;
 
     // Linha 2: Mapa de defesas (heatmap)
     const hmCV = _pdfHeatmap([[sum('dae'), sum('dc'), sum('dad')], [0, sum('d1x1'), 0], [sum('dbe'), sum('esq'), sum('dbd')]], def, gol);
-    const hmW = 92, hmH = Math.round(hmW * 148 / 230);
-    _ensure(hmH + 8);
-    doc.setFontSize(8); doc.setFont(undefined, 'bold'); doc.setTextColor(0, 150, 180);
-    doc.text('MAPA DE DEFESAS (ZONAS DO GOL)', 14, yc + 5);
-    if (hmCV) doc.addImage(hmCV.toDataURL('image/png'), 'PNG', 14, yc + 7, hmW, hmH);
-    yc += 7 + hmH + 12;
+    R.ensure(hmH + 8 + 4);
+    const hy = R.y, hpH = hmH + 8;
+    panel(M, hy, hmW+4, hpH, 'MAPA DE DEFESAS (ZONAS DO GOL)', _RPT.cyan);
+    if (hmCV) doc.addImage(hmCV.toDataURL('image/png'), 'PNG', M+2, hy+6, hmW, hmH);
+    R.y = hy + hpH + 12;
   });
 
-  doc.save('gkhub_' + comp.replace(/\s+/g,'_') + '.pdf');
+  R.finish('gkhub_' + comp.replace(/\s+/g,'_') + '_' + _rptDate() + '.pdf');
   logReport({ type: 'competicao', title: 'Relatório — ' + comp, competition: comp });
   toast('PDF gerado!','success');
   if (loadPreferences().notifPdf) _sendNotif('PDF gerado', `Relatório de ${comp} exportado`, 'pdf');
@@ -12156,7 +12229,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v147';
+const APP_VERSION = 'v148';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
