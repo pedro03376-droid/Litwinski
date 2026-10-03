@@ -1,5 +1,5 @@
 ---
-name: apple-design
+name: apple-design-hig
 description: >
   Cross-platform UI/UX design reviewer grounded in Apple Human Interface Guidelines principles.
   Use this skill to audit, review, critique, or improve any UI/UX design for mobile apps (iOS,
