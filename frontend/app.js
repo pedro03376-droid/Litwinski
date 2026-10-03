@@ -275,7 +275,7 @@ function renderCentralRelatorios() {
   const typeLabel = { individual: 'Individual', geral: 'Geral', partidas: 'Partidas', competicao: 'Competição', analise: 'Análise IA', ia: 'Insights IA', treinos: 'Treinos' };
   el.innerHTML = list.map(r => `
     <div style="display:flex;gap:12px;align-items:center;padding:12px 4px;border-bottom:1px solid var(--border);">
-      <span style="font-size:18px;">📄</span>
+      <span style="font-size:18px;"><svg class=ic><use href=#i-file-text></use></svg></span>
       <div style="flex:1;min-width:0;">
         <div style="font-weight:700;font-size:13px;">${_esc(r.title || 'Relatório')}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">
@@ -283,7 +283,7 @@ function renderCentralRelatorios() {
           ${r.athlete ? ' · ' + _esc(r.athlete) : ''}${r.competition ? ' · ' + _esc(r.competition) : ''} · ${formatDate(r.date)}
         </div>
       </div>
-      <button class="btn btn-ghost btn-sm" style="padding:4px 8px;color:${r.favorite ? '#FCD34D' : 'var(--muted)'};" onclick="repToggleFav('${r.id}')" title="Favoritar">${r.favorite ? '★' : '☆'}</button>
+      <button class="btn btn-ghost btn-sm" style="padding:4px 8px;color:${r.favorite ? '#FCD34D' : 'var(--muted)'};" onclick="repToggleFav('${r.id}')" title="Favoritar">${r.favorite ? '<svg class=ic><use href=#i-star></use></svg>' : '☆'}</button>
       <button class="btn btn-secondary btn-sm" onclick="repRegen('${_esc(r.type)}','${_esc(r.athleteId || '')}')">Gerar novamente</button>
       <button class="btn btn-ghost btn-sm" style="padding:4px 6px;color:#ef4444;" onclick="repDelete('${r.id}')">✕</button>
     </div>`).join('');
@@ -369,7 +369,7 @@ function renderClube() {
   if (c.cor1) set('clb-cor1', c.cor1); if (c.cor2) set('clb-cor2', c.cor2);
   _clbEscudo = c.escudo || '';
   const prev = document.getElementById('clb-escudo-prev');
-  if (prev) prev.innerHTML = _clbEscudo ? `<img src="${_clbEscudo}" style="width:100%;height:100%;object-fit:cover;">` : '🏛️';
+  if (prev) prev.innerHTML = _clbEscudo ? `<img src="${_clbEscudo}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-bank></use></svg>';
   // IGD weight inputs
   const w = igdWeights();
   const wrap = document.getElementById('clb-igd-weights');
@@ -562,7 +562,7 @@ function renderSeasonManager() {
         <button class="btn btn-sm btn-ghost" onclick="renomearTemporada('${s.id}')">Renomear</button>
         <button class="btn btn-sm btn-ghost" onclick="excluirTemporada('${s.id}')" style="color:var(--error);">Excluir</button>
       </div>
-      ${parts.some(p => !p.seasonId) ? `<button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="vincularPartidasSeason('${s.id}')">🔗 Vincular ${parts.filter(p => !p.seasonId).length} partida(s) sem temporada a esta</button>` : ''}
+      ${parts.some(p => !p.seasonId) ? `<button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="vincularPartidasSeason('${s.id}')"><svg class=ic><use href=#i-link></use></svg> Vincular ${parts.filter(p => !p.seasonId).length} partida(s) sem temporada a esta</button>` : ''}
     </div>`;
   }).join('') : '<div style="color:var(--muted);font-size:13px;padding:8px 0;">Nenhuma temporada criada ainda. Comece iniciando a sua primeira temporada — as próximas partidas ficarão vinculadas a ela.</div>';
 
@@ -576,7 +576,7 @@ function renderSeasonManager() {
       : '<span style="font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:2px 8px;">encerrada</span>';
     return `<div style="border:1px solid ${c.active ? 'rgba(245,197,66,.4)' : 'var(--border)'};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-        <span style="font-weight:700;font-size:14px;">🏆 ${_esc(c.nome)}</span>${badge}
+        <span style="font-weight:700;font-size:14px;"><svg class=ic><use href=#i-trophy></use></svg> ${_esc(c.nome)}</span>${badge}
         <span style="font-size:11px;color:var(--muted);margin-left:auto;">${compCount(c)} partida(s)</span>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
@@ -584,7 +584,7 @@ function renderSeasonManager() {
         <button class="btn btn-sm btn-ghost" onclick="renomearCompeticao('${c.id}')">Renomear</button>
         <button class="btn btn-sm btn-ghost" onclick="excluirCompeticao('${c.id}')" style="color:var(--error);">Excluir</button>
       </div>
-      ${_compCandidatas(c).length ? `<button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="vincularPartidasCompeticao('${c.id}')">🔗 Vincular partidas antigas a esta</button>` : ''}
+      ${_compCandidatas(c).length ? `<button class="btn btn-sm btn-secondary" style="width:100%;margin-top:8px;" onclick="vincularPartidasCompeticao('${c.id}')"><svg class=ic><use href=#i-link></use></svg> Vincular partidas antigas a esta</button>` : ''}
     </div>`;
   }).join('') : `<div style="color:var(--muted);font-size:12px;padding:4px 0;">${sAtiva ? 'Nenhuma competição nesta temporada ainda.' : 'Inicie uma temporada para criar competições.'}</div>`;
 
@@ -593,11 +593,11 @@ function renderSeasonManager() {
       <div class="modal-header"><span class="modal-title">🗓️ Temporadas & Competições</span><button class="modal-close" onclick="closeModal('season-modal')">&times;</button></div>
       <div class="modal-body">
         <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Temporadas</div>
-        <button class="btn btn-primary" style="width:100%;margin-bottom:14px;" onclick="iniciarTemporada()">🏁 Iniciar nova temporada</button>
+        <button class="btn btn-primary" style="width:100%;margin-bottom:14px;" onclick="iniciarTemporada()"><svg class=ic><use href=#i-flag-checkered></use></svg> Iniciar nova temporada</button>
         ${rows}
         <div style="border-top:1px solid var(--border);margin:16px 0 12px;"></div>
         <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;">Competições ${sAtiva ? '· ' + _esc(sAtiva.nome) : ''}</div>
-        <button class="btn btn-secondary" style="width:100%;margin-bottom:12px;" onclick="iniciarCompeticao()" ${!sAtiva ? 'disabled' : ''}>🏆 Iniciar competição</button>
+        <button class="btn btn-secondary" style="width:100%;margin-bottom:12px;" onclick="iniciarCompeticao()" ${!sAtiva ? 'disabled' : ''}><svg class=ic><use href=#i-trophy></use></svg> Iniciar competição</button>
         ${compRows}
         <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">As novas partidas ficam vinculadas à temporada e à competição ativas. Nada é apagado ao encerrar ou excluir.</div>
       </div>
@@ -736,8 +736,8 @@ function renderPeriodizacao() {
     const intInfo = r.intensidade ? PER_INT[r.intensidade] : null;
     const barW = intInfo ? Math.round(intInfo.v / 3 * 100) : 0;
     const opts = Object.keys(PER_INT).map(k => `<option value="${k}" ${r.intensidade === k ? 'selected' : ''}>${PER_INT[k].label}</option>`).join('');
-    const jogosBadge = jogos.length ? jogos.map(j => `<span style="font-size:10px;background:rgba(239,68,68,.15);color:#EF4444;border-radius:4px;padding:1px 6px;font-weight:700;">⚽ ${_esc(j.adversario || 'Jogo')}</span>`).join(' ') : '';
-    const tip = (nextHasGame && r.intensidade === 'forte') ? '<div style="font-size:10px;color:#A78BFA;margin-top:3px;">💡 Jogo na próxima semana — considere “Polimento” para chegar descansada.</div>' : '';
+    const jogosBadge = jogos.length ? jogos.map(j => `<span style="font-size:10px;background:rgba(239,68,68,.15);color:#EF4444;border-radius:4px;padding:1px 6px;font-weight:700;"><svg class=ic><use href=#i-soccer-ball></use></svg> ${_esc(j.adversario || 'Jogo')}</span>`).join(' ') : '';
+    const tip = (nextHasGame && r.intensidade === 'forte') ? '<div style="font-size:10px;color:#A78BFA;margin-top:3px;"><svg class=ic><use href=#i-lightbulb></use></svg> Jogo na próxima semana — considere “Polimento” para chegar descansada.</div>' : '';
     return `<div style="border:1px solid ${jogos.length ? 'rgba(239,68,68,.3)' : 'var(--border)'};border-radius:10px;padding:10px 12px;margin-bottom:8px;">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span style="font-weight:800;font-size:13px;min-width:70px;">Semana ${w.idx + 1}</span>
@@ -788,7 +788,7 @@ function openMetodologia() {
         </ul>`;
   modal.innerHTML = `
     <div class="modal" style="max-width:640px;">
-      <div class="modal-header"><span class="modal-title">📚 Metodologia & Referências</span><button class="modal-close" onclick="closeModal('metodo-modal')">&times;</button></div>
+      <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-books></use></svg> Metodologia & Referências</span><button class="modal-close" onclick="closeModal('metodo-modal')">&times;</button></div>
       <div class="modal-body" style="font-size:13px;line-height:1.6;">
         <div style="display:flex;gap:8px;margin-bottom:12px;">${tab('futsal', 'Futsal')}${tab('beach', 'Beach Soccer')}</div>
         <p><b>Modalidade:</b> ${GKHUB_MODALIDADES[mod]}. As notas automáticas combinam três eixos, com pesos ajustados à realidade da modalidade:</p>
@@ -1124,7 +1124,7 @@ function _pidObjHtml(o) {
       <div>
         <div style="font-weight:700;font-size:14px;${done ? 'text-decoration:line-through;opacity:.6;' : ''}">${_esc(o.descricao)}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">${_esc(o.topic || '')}${o.responsavel ? ' · ' + _esc(o.responsavel) : ''}${o.prazo ? ' · prazo ' + formatDate(o.prazo) : ''} · <span style="color:${prioColor};">${_esc(o.prioridade || '')}</span></div>
-        ${o.criterio ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">🎯 ${_esc(o.criterio)}</div>` : ''}
+        ${o.criterio ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;"><svg class=ic><use href=#i-target></use></svg> ${_esc(o.criterio)}</div>` : ''}
       </div>
       <div style="display:flex;gap:4px;flex-shrink:0;">
         <button class="btn btn-ghost btn-sm" style="padding:2px 8px;" onclick="pidProgress('${o.id}',25)" title="+25%">+</button>
@@ -1666,8 +1666,8 @@ function renderPartidas() {
       <td data-label="Defesas">${totalDef || '—'}</td>
       <td data-label="Ações">
         <div class="td-actions">
-          <button class="btn btn-ghost btn-sm" onclick="verRelatorioPartida('${p.id}')">📊 Relatório</button>
-          ${p.goalkeeperId ? `<button class="btn btn-ghost btn-sm" onclick="openPostGameCard('${p.goalkeeperId}','${p.id}')">📲 Card</button>` : ''}
+          <button class="btn btn-ghost btn-sm" onclick="verRelatorioPartida('${p.id}')"><svg class=ic><use href=#i-chart-bar></use></svg> Relatório</button>
+          ${p.goalkeeperId ? `<button class="btn btn-ghost btn-sm" onclick="openPostGameCard('${p.goalkeeperId}','${p.id}')"><svg class=ic><use href=#i-device-mobile></use></svg> Card</button>` : ''}
           <button class="btn btn-ghost btn-sm" onclick="editarPartida('${p.id}')">Editar</button>
           <button class="btn btn-danger btn-sm" onclick="excluirPartida('${p.id}')">Excluir</button>
         </div>
@@ -2190,7 +2190,7 @@ async function _aiPost(context) {
 // no lugar de um texto estático "Analisando…". `label` é a linha de status.
 function _aiSkeleton(label) {
   return '<div class="ai-skel">'
-    + '<div class="ai-skel-status">' + (label || '🤖 Analisando com IA…') + '</div>'
+    + '<div class="ai-skel-status">' + (label || '<svg class=ic><use href=#i-robot></use></svg> Analisando com IA…') + '</div>'
     + '<div class="skeleton ai-skel-score"></div>'
     + '<div class="skeleton skeleton-line" style="width:92%"></div>'
     + '<div class="skeleton skeleton-line" style="width:78%"></div>'
@@ -2221,8 +2221,8 @@ function _aiRenderResult(a, bodyEl, scoreLabel, opts) {
   if (gkId && a.trainingSuggestions && a.trainingSuggestions.length) {
     _AI_SUGG_CACHE = a.trainingSuggestions.slice();
     trainHtml = `<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-        <div style="font-weight:700;font-size:13px;">🏋️ Sugestões de treino</div>
-        <button class="btn btn-secondary btn-sm" onclick="pidFromAI('${_esc(gkId)}')">➕ Adicionar todas ao PID</button></div>
+        <div style="font-weight:700;font-size:13px;"><svg class=ic><use href=#i-barbell></use></svg> Sugestões de treino</div>
+        <button class="btn btn-secondary btn-sm" onclick="pidFromAI('${_esc(gkId)}')"><svg class=ic><use href=#i-plus></use></svg> Adicionar todas ao PID</button></div>
       <div>${a.trainingSuggestions.map((x, i) => `<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px;">
         <span>${_esc(x)}</span><button class="btn btn-ghost btn-sm" style="flex-shrink:0;padding:2px 8px;" onclick="pidFromAIOne('${_esc(gkId)}',${i})">+ PID</button></div>`).join('')}</div></div>`;
   } else {
@@ -2320,7 +2320,7 @@ async function mcAnaliseIA() {
   const btn = document.getElementById('mc-ai-btn');
   if (!wrap || !bodyEl) return;
   wrap.style.display = 'block';
-  bodyEl.innerHTML = _aiSkeleton('🤖 Analisando a partida com IA…');
+  bodyEl.innerHTML = _aiSkeleton('<svg class=ic><use href=#i-robot></use></svg> Analisando a partida com IA…');
   if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
   const p = (typeof mcPendingPId !== 'undefined' && mcPendingPId) ? DB.partidas.find(x => x.id === mcPendingPId) : null;
   const gk = p ? DB.goleiras.find(g => g.id === p.goalkeeperId) : null;
@@ -2338,7 +2338,7 @@ async function mcAnaliseIA() {
   if (!a) {
     // Sem IA no momento → mostra uma análise local (heurística) da partida.
     const local = _mcLocalAnalysis();
-    bodyEl.innerHTML = '<div style="font-size:12px;color:var(--warning);margin-bottom:10px;">⚠️ IA (Gemini) indisponível agora — mostrando análise automática local da partida:</div>';
+    bodyEl.innerHTML = '<div style="font-size:12px;color:var(--warning);margin-bottom:10px;"><svg class=ic><use href=#i-warning></use></svg> IA (Gemini) indisponível agora — mostrando análise automática local da partida:</div>';
     const box = document.createElement('div'); bodyEl.appendChild(box);
     _aiRenderResult(local, box, 'Nota da partida (local)', {});
     return;
@@ -2355,7 +2355,7 @@ async function tpAnaliseIA() {
   const btn = document.getElementById('tp-ai-btn');
   if (!wrap || !bodyEl) return;
   wrap.style.display = 'block';
-  bodyEl.innerHTML = _aiSkeleton('🤖 Gerando sugestão de treino com IA…');
+  bodyEl.innerHTML = _aiSkeleton('<svg class=ic><use href=#i-robot></use></svg> Gerando sugestão de treino com IA…');
   if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
   const dash = _tpDashCache || {};
   // fraquezas agregadas do elenco (dimensões IGD mais baixas)
@@ -2371,7 +2371,7 @@ async function tpAnaliseIA() {
   };
   const a = await _aiPost(ctx);
   if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
-  if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;">⚠️ IA (Gemini) indisponível no momento. Tente novamente em instantes.</div>'; return; }
+  if (!a) { bodyEl.innerHTML = '<div style="color:var(--warning);font-size:13px;"><svg class=ic><use href=#i-warning></use></svg> IA (Gemini) indisponível no momento. Tente novamente em instantes.</div>'; return; }
   _saveAIAnalysis('treino', null, a, 'Equipe');
   _aiRenderResult(a, bodyEl, 'Prontidão da equipe (IA)');
   try { logAudit('IA', 'Gerou sugestão de treino por IA'); } catch (e) {}
@@ -2433,7 +2433,7 @@ async function gerarAnaliseIA() {
   if (!gkId || !body) return;
   const ctx = _gkAIContext(gkId);
   if (!ctx.partidasAnalisadas) { body.innerHTML = '<div style="color:var(--muted);font-size:13px;">Registre ao menos um scout deste(a) goleiro(a) para gerar a análise.</div>'; return; }
-  body.innerHTML = _aiSkeleton('🤖 Analisando com IA…');
+  body.innerHTML = _aiSkeleton('<svg class=ic><use href=#i-robot></use></svg> Analisando com IA…');
   if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
   let res = null, errMsg = '';
   try { res = await api.post('/ai-analysis/insights', { context: ctx }); } catch (e) { res = null; errMsg = String(e && e.message || e); }
@@ -2447,7 +2447,7 @@ async function gerarAnaliseIA() {
     const diagHtml = diag ? `<div style="font-size:11px;color:var(--muted);margin-top:8px;">Detalhe técnico: <code>${_esc(diag).slice(0,180)}</code></div>` : '';
     // Fallback: insights locais (heurística) quando a IA não está disponível
     const local = gkIntelligence(gkId, DB.partidas, DB.scouts);
-    body.innerHTML = `<div style="font-size:12px;color:var(--warning);margin-bottom:10px;">⚠️ IA (Gemini) indisponível agora. Mostrando insights automáticos locais:</div>`
+    body.innerHTML = `<div style="font-size:12px;color:var(--warning);margin-bottom:10px;"><svg class=ic><use href=#i-warning></use></svg> IA (Gemini) indisponível agora. Mostrando insights automáticos locais:</div>`
       + (local.length ? local.map(i => `<div style="font-size:13px;padding:4px 0;">${i.icon} ${_esc(i.text)}</div>`).join('') : '<div style="color:var(--muted);font-size:13px;">Sem insights suficientes.</div>')
       + diagHtml;
     return;
@@ -2660,7 +2660,7 @@ function renderPerfilIGD(gkId, summary) {
       </div>
       <div>${bars}</div>
     </div>
-    ${insights.length ? `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px;">${insights.map(i => `<div style="font-size:12px;color:${i.level === 'good' ? 'var(--success)' : i.level === 'warn' ? 'var(--warning)' : 'var(--muted)'};">${i.level === 'good' ? '📈' : i.level === 'warn' ? '⚠️' : 'ℹ️'} ${_esc(i.text)}</div>`).join('')}</div>` : ''}`;
+    ${insights.length ? `<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;display:flex;flex-direction:column;gap:6px;">${insights.map(i => `<div style="font-size:12px;color:${i.level === 'good' ? 'var(--success)' : i.level === 'warn' ? 'var(--warning)' : 'var(--muted)'};">${i.level === 'good' ? '<svg class=ic><use href=#i-trend-up></use></svg>' : i.level === 'warn' ? '<svg class=ic><use href=#i-warning></use></svg>' : 'ℹ️'} ${_esc(i.text)}</div>`).join('')}</div>` : ''}`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -2780,7 +2780,7 @@ function renderDashHero(goleiras, partidas, scouts) {
   const topHtml = top
     ? `<div class="dash-hero-top">
         <div class="rank">${Math.round(topScore)}</div>
-        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;">🏆 Destaque</div>
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;"><svg class=ic><use href=#i-trophy></use></svg> Destaque</div>
         <div style="font-weight:800;font-size:15px;">${_esc(top.nome)}</div></div>
       </div>`
     : '';
@@ -2793,7 +2793,7 @@ function renderDashHero(goleiras, partidas, scouts) {
   el.innerHTML = `
     ${logoHtml}
     <div class="dash-hero-main">
-      <div class="dash-hero-greet">${saud}, treinador 👋</div>
+      <div class="dash-hero-greet">${saud}, treinador <svg class=ic><use href=#i-hand-waving></use></svg></div>
       <div class="dash-hero-title">${_esc(clube)}</div>
       ${chip}
     </div>
@@ -3421,7 +3421,7 @@ function renderPerfilExtras(gkId) {
   const ach = _gkAchievements(gkId);
   const earned = ach.filter(a => a.earned).length;
   achEl.innerHTML =
-    '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">🏅 ' + earned + ' de ' + ach.length + ' conquistas</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;"><svg class=ic><use href=#i-medal></use></svg> ' + earned + ' de ' + ach.length + ' conquistas</div>' +
     '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;">' +
     ach.map(a =>
       '<div title="' + _esc(a.desc) + '" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;' + (a.earned ? '' : 'opacity:.35;filter:grayscale(1);') + '">' +
@@ -3575,7 +3575,7 @@ function renderGKRating(gkId) {
 
   const projLine = r.projection
     ? '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;">' +
-        '<span style="font-size:16px;">🎯</span>' +
+        '<span style="font-size:16px;"><svg class=ic><use href=#i-target></use></svg></span>' +
         '<span>Projeção 6 semanas: <b style="color:' + _ratingTier(r.projection.value).color + ';">' + r.projection.value + '</b> ' +
         '<span style="color:var(--muted);">(' + (r.projection.diff >= 0 ? '+' : '') + r.projection.diff + ' no ritmo atual)</span></span>' +
       '</div>'
@@ -3851,7 +3851,7 @@ function renderPerfilPlano(gkId) {
     '</div>';
   }).join('');
   el.innerHTML =
-    '<div class="card-header"><span class="card-title">🎯 Plano de evolução</span><span style="font-size:11px;color:var(--muted);">pontos a desenvolver</span></div>' +
+    '<div class="card-header"><span class="card-title"><svg class=ic><use href=#i-target></use></svg> Plano de evolução</span><span style="font-size:11px;color:var(--muted);">pontos a desenvolver</span></div>' +
     '<div style="font-size:12px;color:var(--muted);margin-bottom:2px;">As 2 dimensões mais baixas do perfil, com treinos e o reteste (evolução ao longo dos scouts).</div>' +
     blocos;
 }
@@ -3944,7 +3944,7 @@ function openReacao() {
   if (!modal) { modal = document.createElement('div'); modal.id = 'reacao-modal'; modal.className = 'modal-backdrop'; document.body.appendChild(modal); }
   modal.innerHTML = `
     <div class="modal" style="max-width:460px;">
-      <div class="modal-header"><span class="modal-title">⚡ Treino de Reação</span><button class="modal-close" onclick="reacaoStop();closeModal('reacao-modal')">&times;</button></div>
+      <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-lightning></use></svg> Treino de Reação</span><button class="modal-close" onclick="reacaoStop();closeModal('reacao-modal')">&times;</button></div>
       <div class="modal-body" id="reacao-body"></div>
     </div>`;
   openModal('reacao-modal');
@@ -4120,8 +4120,8 @@ function renderReacao() {
     modeSel +
     status + play +
     `<button class="btn btn-primary" style="width:100%;margin-top:14px;" onclick="reacaoStart()" ${_reac.running ? 'disabled' : ''}>${avg && !_reac.running ? '↻ Repetir' : '▶ Começar'}</button>` +
-    (hist.length >= 2 && !_reac.running ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">📈 Evolução (${cfg.label})</div><div style="height:130px;"><canvas id="reac-evol"></canvas></div></div>` : '') +
-    (ranking.length ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;">🏆 Recordes — ${cfg.label}</div>` +
+    (hist.length >= 2 && !_reac.running ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;"><svg class=ic><use href=#i-trend-up></use></svg> Evolução (${cfg.label})</div><div style="height:130px;"><canvas id="reac-evol"></canvas></div></div>` : '') +
+    (ranking.length ? `<div style="margin-top:16px;"><div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;"><svg class=ic><use href=#i-trophy></use></svg> Recordes — ${cfg.label}</div>` +
       ranking.map((r, i) => `<div style="display:flex;gap:8px;font-size:13px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);"><span style="width:20px;color:var(--muted);">${i + 1}º</span><span style="flex:1;">${_esc(r.nome)}</span><b>${r.bestAvg} ms</b></div>`).join('') + '</div>' : '');
 
   // Gráfico de evolução (após o HTML estar no DOM)
@@ -4224,11 +4224,11 @@ function openGkCard(gkId) {
             <div style="font-size:8px;opacity:.7;margin-top:4px;">GK HUB</div>
           </div>
         </div>
-        ${semDados ? `<div style="text-align:center;font-size:11px;color:#F5C542;background:rgba(245,197,66,.12);padding:7px 12px;">⚠️ Dados insuficientes — registre scouts para calcular os atributos.</div>` : ''}
+        ${semDados ? `<div style="text-align:center;font-size:11px;color:#F5C542;background:rgba(245,197,66,.12);padding:7px 12px;"><svg class=ic><use href=#i-warning></use></svg> Dados insuficientes — registre scouts para calcular os atributos.</div>` : ''}
       </div>
       <div style="display:flex;gap:8px;max-width:320px;margin:12px auto 0;">
-        <button class="btn btn-ghost" id="gkcard-share-btn" style="flex:1;" onclick="compartilharGkCard('${_esc(gk.nome)}')">📤 Compartilhar</button>
-        <button class="btn btn-primary" style="flex:1;" onclick="baixarGkCard('${_esc(gk.nome)}')">⬇️ Baixar</button>
+        <button class="btn btn-ghost" id="gkcard-share-btn" style="flex:1;" onclick="compartilharGkCard('${_esc(gk.nome)}')"><svg class=ic><use href=#i-share-network></use></svg> Compartilhar</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="baixarGkCard('${_esc(gk.nome)}')"><svg class=ic><use href=#i-download-simple></use></svg> Baixar</button>
       </div>
     </div>`;
   openModal('gkcard-modal');
@@ -4392,8 +4392,8 @@ function openPostGameCard(gkId, partidaId) {
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;max-width:360px;margin:12px auto 0;">' +
-        '<button class="btn btn-ghost" id="pgcard-share-btn" style="flex:1;" onclick="compartilharPostGameCard(\'' + _esc(gk.nome) + '\')">📤 Compartilhar</button>' +
-        '<button class="btn btn-primary" style="flex:1;" onclick="baixarPostGameCard(\'' + _esc(gk.nome) + '\')">⬇️ Baixar</button>' +
+        '<button class="btn btn-ghost" id="pgcard-share-btn" style="flex:1;" onclick="compartilharPostGameCard(\'' + _esc(gk.nome) + '\')"><svg class=ic><use href=#i-share-network></use></svg> Compartilhar</button>' +
+        '<button class="btn btn-primary" style="flex:1;" onclick="baixarPostGameCard(\'' + _esc(gk.nome) + '\')"><svg class=ic><use href=#i-download-simple></use></svg> Baixar</button>' +
       '</div>' +
     '</div>';
   openModal('pgcard-modal');
@@ -4792,7 +4792,7 @@ function gerarAnalise(gkId) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
       <!-- Pontos Fortes -->
       <div style="background:rgba(0,230,118,.04);border:1px solid rgba(0,230,118,.2);border-radius:12px;padding:16px;">
-        <div style="font-size:11px;font-weight:700;color:var(--success);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">✅ Pontos Fortes</div>
+        <div style="font-size:11px;font-weight:700;color:var(--success);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;"><svg class=ic><use href=#i-check-circle></use></svg> Pontos Fortes</div>
         ${(forcas.length ? forcas.slice(0,4) : [{icon:'➕',texto:'Continue acumulando partidas para identificar padrões de força'}]).map(f=>`
           <div style="display:flex;gap:8px;margin-bottom:9px;font-size:12px;line-height:1.5;">
             <span style="flex-shrink:0;">${f.icon}</span>
@@ -4801,7 +4801,7 @@ function gerarAnalise(gkId) {
       </div>
       <!-- Pontos de Melhoria -->
       <div style="background:rgba(255,179,0,.04);border:1px solid rgba(255,179,0,.2);border-radius:12px;padding:16px;">
-        <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">⚠️ A Desenvolver</div>
+        <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;"><svg class=ic><use href=#i-warning></use></svg> A Desenvolver</div>
         ${(melhorias.length ? melhorias.slice(0,4) : [{icon:'💪',texto:'Manter o ritmo atual e continuar evoluindo nas métricas já consolidadas'}]).map(m=>`
           <div style="display:flex;gap:8px;margin-bottom:9px;font-size:12px;line-height:1.5;">
             <span style="flex-shrink:0;">${m.icon}</span>
@@ -4812,7 +4812,7 @@ function gerarAnalise(gkId) {
 
     <!-- Análise por zona de defesa -->
     <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px;">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px;">🗺️ Distribuição por Zona</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px;"><svg class=ic><use href=#i-map-trifold></use></svg> Distribuição por Zona</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
         ${[
           { zona:'Altas', val:defAlta, pct: totalDef>0?(defAlta/totalDef*100).toFixed(0):0, color:'#3B82F6' },
@@ -4836,7 +4836,7 @@ function gerarAnalise(gkId) {
 
     <!-- Recomendações técnicas -->
     <div style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);border-radius:12px;padding:16px;">
-      <div style="font-size:11px;font-weight:700;color:var(--primary-text);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📋 Recomendações Técnicas</div>
+      <div style="font-size:11px;font-weight:700;color:var(--primary-text);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;"><svg class=ic><use href=#i-clipboard-text></use></svg> Recomendações Técnicas</div>
       ${recs.slice(0,5).map((r,i)=>`
         <div style="display:flex;gap:10px;margin-bottom:10px;font-size:12px;line-height:1.5;">
           <span style="width:20px;height:20px;border-radius:50%;background:var(--primary);color:#000;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span>
@@ -5198,7 +5198,7 @@ function renderHeatmap() {
     ];
   }
   document.getElementById('heatmap-summary').innerHTML =
-    (beach ? '<div style="font-size:11px;color:var(--warning);margin-bottom:8px;">🏖️ Beach soccer: destaque para o jogo aéreo/voleio e a distribuição por arremesso (o goleiro é a 1ª linha de ataque).</div>' : '')
+    (beach ? '<div style="font-size:11px;color:var(--warning);margin-bottom:8px;"><svg class=ic><use href=#i-umbrella></use></svg> Beach soccer: destaque para o jogo aéreo/voleio e a distribuição por arremesso (o goleiro é a 1ª linha de ataque).</div>' : '')
     + `<table><thead><tr><th>Métrica</th><th>Total</th></tr></thead><tbody>${stats.map(([k,v])=>`<tr><td>${k}</td><td><strong>${v}</strong></td></tr>`).join('')}</tbody></table>`;
 }
 
@@ -5218,7 +5218,7 @@ function renderDistribChart(scouts) {
   const mao = { title: beach ? 'Mão (arremesso)' : 'Mão', certo:dmc, errado:dme, total:totalMao };
   // Beach soccer: o arremesso (mão) é a principal arma de ataque → vem primeiro
   const sections = beach ? [mao, pe] : [pe, mao];
-  const note = beach ? '<div style="font-size:11px;color:var(--warning);margin-bottom:12px;">🏖️ No beach soccer o arremesso longo (mão) é a principal forma de iniciar o ataque — priorize alcance e precisão.</div>' : '';
+  const note = beach ? '<div style="font-size:11px;color:var(--warning);margin-bottom:12px;"><svg class=ic><use href=#i-umbrella></use></svg> No beach soccer o arremesso longo (mão) é a principal forma de iniciar o ataque — priorize alcance e precisão.</div>' : '';
   detail.innerHTML = note + sections.map(s => {
     const acc = s.total > 0 ? Math.round(s.certo/s.total*100) : 0;
     const color = acc >= 70 ? 'var(--success)' : acc >= 50 ? 'var(--warning)' : 'var(--error)';
@@ -6074,19 +6074,19 @@ function mcUpdateHighlights() {
   const semGolDisplay=mcLastGolSec!==null?mcFormatTime(mcSeconds-mcLastGolSec):mcFormatTime(mcSeconds);
   el.innerHTML=`
     <div class="mc-highlight-row">
-      <span style="color:var(--muted);">⭐ Nota Máx.</span>
+      <span style="color:var(--muted);"><svg class=ic><use href=#i-star></use></svg> Nota Máx.</span>
       <span class="mc-highlight-val" style="color:#34D399;">${mcMaxNota.toFixed(1)}</span>
     </div>
     <div class="mc-highlight-row">
-      <span style="color:var(--muted);">📉 Nota Mín.</span>
+      <span style="color:var(--muted);"><svg class=ic><use href=#i-trend-down></use></svg> Nota Mín.</span>
       <span class="mc-highlight-val" style="color:var(--warning);">${mcMinNota.toFixed(1)}</span>
     </div>
     <div class="mc-highlight-row">
-      <span style="color:var(--muted);">🔥 Maior Sequência</span>
+      <span style="color:var(--muted);"><svg class=ic><use href=#i-fire></use></svg> Maior Sequência</span>
       <span class="mc-highlight-val" style="color:var(--primary-text);">${mcMaxStreak} def.</span>
     </div>
     <div class="mc-highlight-row">
-      <span style="color:var(--muted);">⏱ Seq. Atual</span>
+      <span style="color:var(--muted);"><svg class=ic><use href=#i-timer></use></svg> Seq. Atual</span>
       <span class="mc-highlight-val">${mcStreak} def.</span>
     </div>
     <div class="mc-highlight-row" style="border:none;">
@@ -6737,9 +6737,9 @@ function mcMostrarRelatorioFinal(segs, pId) {
   let html='<div id="mc-rel-content">';
   // Abas do relatório: Resumo · Gráficos · Timeline
   html += `<div class="mc-rel-tabs" style="display:flex;gap:6px;margin-bottom:16px;position:sticky;top:0;z-index:2;background:var(--card);padding:2px 0;">
-    <button class="btn btn-sm btn-primary mc-rel-tab" data-tab="resumo" onclick="mcRelTab('resumo')">📊 Resumo</button>
-    <button class="btn btn-sm btn-secondary mc-rel-tab" data-tab="graficos" onclick="mcRelTab('graficos')">📈 Gráficos</button>
-    <button class="btn btn-sm btn-secondary mc-rel-tab" data-tab="timeline" onclick="mcRelTab('timeline')">📅 Timeline</button>
+    <button class="btn btn-sm btn-primary mc-rel-tab" data-tab="resumo" onclick="mcRelTab('resumo')"><svg class=ic><use href=#i-chart-bar></use></svg> Resumo</button>
+    <button class="btn btn-sm btn-secondary mc-rel-tab" data-tab="graficos" onclick="mcRelTab('graficos')"><svg class=ic><use href=#i-trend-up></use></svg> Gráficos</button>
+    <button class="btn btn-sm btn-secondary mc-rel-tab" data-tab="timeline" onclick="mcRelTab('timeline')"><svg class=ic><use href=#i-calendar-blank></use></svg> Timeline</button>
   </div>`;
   html += '<div class="mc-rel-pane" data-pane="resumo">';
 
@@ -6811,17 +6811,17 @@ function mcMostrarRelatorioFinal(segs, pId) {
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
           <div style="background:rgba(16,185,129,.04);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:14px;">
-            <div style="font-size:11px;font-weight:700;color:var(--success);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">✅ Pontos Fortes</div>
+            <div style="font-size:11px;font-weight:700;color:var(--success);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;"><svg class=ic><use href=#i-check-circle></use></svg> Pontos Fortes</div>
             ${(forcas.length?forcas:[`Continue acumulando dados para análise`]).map(f=>`<div style="font-size:12px;line-height:1.5;margin-bottom:7px;display:flex;gap:6px;"><span>▸</span><span>${f}</span></div>`).join('')}
           </div>
           <div style="background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.2);border-radius:12px;padding:14px;">
-            <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">⚠ A Desenvolver</div>
+            <div style="font-size:11px;font-weight:700;color:var(--warning);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;"><svg class=ic><use href=#i-warning></use></svg> A Desenvolver</div>
             ${(mels.length?mels:[`Manter o nível atual e continuar evoluindo`]).map(m=>`<div style="font-size:12px;line-height:1.5;margin-bottom:7px;display:flex;gap:6px;"><span>▸</span><span>${m}</span></div>`).join('')}
           </div>
         </div>
 
         <div style="background:rgba(59,130,246,.04);border:1px solid rgba(59,130,246,.15);border-radius:12px;padding:14px;">
-          <div style="font-size:11px;font-weight:700;color:var(--primary-text);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;">📋 Recomendações de Treino</div>
+          <div style="font-size:11px;font-weight:700;color:var(--primary-text);letter-spacing:.8px;text-transform:uppercase;margin-bottom:10px;"><svg class=ic><use href=#i-clipboard-text></use></svg> Recomendações de Treino</div>
           ${recs.map((r,i)=>`<div style="display:flex;gap:8px;margin-bottom:8px;font-size:12px;line-height:1.5;"><span style="width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">${i+1}</span><span>${r}</span></div>`).join('')}
         </div>
       </div>`;
@@ -6832,25 +6832,25 @@ function mcMostrarRelatorioFinal(segs, pId) {
   const recentPesos=mcLog.slice(0,5).map(e=>MC_NOTA_PESOS[e.key]||0).reduce((a,b)=>a+b,0);
   const tendencia=recentPesos>=0.25?{icon:'📈',label:'Crescimento',color:'#34D399'}:recentPesos<=-0.25?{icon:'📉',label:'Queda',color:'#EF4444'}:{icon:'➡',label:'Estável',color:'#94A3B8'};
   html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📊 Resumo da Partida</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;"><svg class=ic><use href=#i-chart-bar></use></svg> Resumo da Partida</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
       <div style="background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:10px;">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">🔥 Melhor Momento</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;"><svg class=ic><use href=#i-fire></use></svg> Melhor Momento</div>
         <div style="font-size:18px;font-weight:800;color:#34D399;">${mcMaxNota.toFixed(1)}</div>
-        ${mcBestNotaSec>0?`<div style="font-size:11px;color:var(--muted);">⏱ ${mcFormatTime(mcBestNotaSec)}</div>`:''}
+        ${mcBestNotaSec>0?`<div style="font-size:11px;color:var(--muted);"><svg class=ic><use href=#i-timer></use></svg> ${mcFormatTime(mcBestNotaSec)}</div>`:''}
       </div>
       <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:10px;">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">📉 Pior Momento</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;"><svg class=ic><use href=#i-trend-down></use></svg> Pior Momento</div>
         <div style="font-size:18px;font-weight:800;color:#EF4444;">${mcMinNota.toFixed(1)}</div>
-        ${mcWorstNotaSec>0?`<div style="font-size:11px;color:var(--muted);">⏱ ${mcFormatTime(mcWorstNotaSec)}</div>`:''}
+        ${mcWorstNotaSec>0?`<div style="font-size:11px;color:var(--muted);"><svg class=ic><use href=#i-timer></use></svg> ${mcFormatTime(mcWorstNotaSec)}</div>`:''}
       </div>
       <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:10px;">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">✅ Seq. Positiva Máx.</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;"><svg class=ic><use href=#i-check-circle></use></svg> Seq. Positiva Máx.</div>
         <div style="font-size:18px;font-weight:800;color:#3B82F6;">${mcMaxPosStreak}</div>
         <div style="font-size:11px;color:var(--muted);">ações consecutivas</div>
       </div>
       <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:10px;">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;">⚠ Seq. Negativa Máx.</div>
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.8px;font-weight:700;text-transform:uppercase;margin-bottom:4px;"><svg class=ic><use href=#i-warning></use></svg> Seq. Negativa Máx.</div>
         <div style="font-size:18px;font-weight:800;color:#F59E0B;">${mcMaxNegStreak}</div>
         <div style="font-size:11px;color:var(--muted);">eventos negativos</div>
       </div>
@@ -6888,7 +6888,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
 
   if (hasHist) {
     html += `<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📈 Momento da Nota</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;"><svg class=ic><use href=#i-trend-up></use></svg> Momento da Nota</div>
       <div style="height:170px;"><canvas id="mc-chart-momentum"></canvas></div>
       <div style="font-size:11px;color:var(--muted);text-align:center;margin-top:8px;">Como a nota da goleira evoluiu durante a partida.</div>
     </div>`;
@@ -6896,7 +6896,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
   if (tDef + tGol > 0) {
     html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
       <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;">
-        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">🎯 Aproveitamento</div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;"><svg class=ic><use href=#i-target></use></svg> Aproveitamento</div>
         <div style="height:150px;"><canvas id="mc-chart-aprov"></canvas></div>
       </div>
       <div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;">
@@ -6914,17 +6914,17 @@ function mcMostrarRelatorioFinal(segs, pId) {
 
   // 🎥 Vídeo do jogo — cole o link e os lances viram clicáveis (abrem no tempo do lance)
   html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;">🎥 Vídeo do jogo</div>
+    <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:8px;"><svg class=ic><use href=#i-video-camera></use></svg> Vídeo do jogo</div>
     <input id="mc-video-url" class="form-input" style="font-size:12px;padding:8px;width:100%;" placeholder="Cole o link do vídeo (YouTube, Drive, Vimeo…)" value="${_esc(mcVideoUrl)}" onchange="mcSetVideoUrl(this.value)">
-    ${mcVideoUrl?'<div style="font-size:11px;color:var(--success);margin-top:6px;">✅ Clique no horário de cada lance (abaixo) para abrir o vídeo naquele momento.</div>':'<div style="font-size:11px;color:var(--muted);margin-top:6px;">Com o link colado, cada lance da timeline abre o vídeo no segundo exato.</div>'}
-    <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="openDefMap('${gkIds[0]||''}','${pId||''}', mcVideoUrl)">🎯 Mapa de Defesas (marcar lances do vídeo)</button>
+    ${mcVideoUrl?'<div style="font-size:11px;color:var(--success);margin-top:6px;"><svg class=ic><use href=#i-check-circle></use></svg> Clique no horário de cada lance (abaixo) para abrir o vídeo naquele momento.</div>':'<div style="font-size:11px;color:var(--muted);margin-top:6px;">Com o link colado, cada lance da timeline abre o vídeo no segundo exato.</div>'}
+    <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:10px;" onclick="openDefMap('${gkIds[0]||''}','${pId||''}', mcVideoUrl)"><svg class=ic><use href=#i-target></use></svg> Mapa de Defesas (marcar lances do vídeo)</button>
   </div>`;
 
   const timelineEvents=mcLog.filter(e=>e.tipo!=='periodo').slice(0,20);
   if (timelineEvents.length) {
     const typeColors2={def:'#3B82F6',gol:'#EF4444',dist:'#F59E0B',out:'#10B981',sub:'#F59E0B','placar-nos':'#10B981','placar-adv':'#EF4444',golgk:'#10B981',card:'#F5C542'};
     html+=`<div style="background:var(--card-2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;">
-      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;">📅 Timeline do Jogo</div>
+      <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px;"><svg class=ic><use href=#i-calendar-blank></use></svg> Timeline do Jogo</div>
       ${timelineEvents.map(e=>{
         const tempo = mcVideoUrl
           ? `<a href="${_esc(_videoAtTime(mcVideoUrl,e.sec))}" target="_blank" rel="noopener" style="color:var(--primary-text);text-decoration:underline;font-variant-numeric:tabular-nums;">${e.time}</a>`
@@ -7016,7 +7016,7 @@ function openDefMap(gkId, pId, videoUrl) {
   const gkOpts = DB.goleiras.map(g => `<option value="${g.id}" ${g.id === _defCtx.gkId ? 'selected' : ''}>${_esc(g.nome)}</option>`).join('');
   modal.innerHTML = `
     <div class="modal" style="max-width:640px;">
-      <div class="modal-header"><span class="modal-title">🎯 Mapa de Defesas (vídeo)</span><button class="modal-close" onclick="closeModal('defmap-modal')">&times;</button></div>
+      <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-target></use></svg> Mapa de Defesas (vídeo)</span><button class="modal-close" onclick="closeModal('defmap-modal')">&times;</button></div>
       <div class="modal-body" id="defmap-body"></div>
     </div>`;
   openModal('defmap-modal');
@@ -7158,7 +7158,7 @@ function renderDefMap() {
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
       <input id="def-time" class="form-input" style="width:110px;font-size:12px;padding:8px;" placeholder="mm:ss do vídeo">
-      <div style="display:flex;gap:6px;">${rBtn('def', '🧤 Defesa')}${rBtn('gol', '⚽ Gol')}</div>
+      <div style="display:flex;gap:6px;">${rBtn('def', '🧤 Defesa')}${rBtn('gol', '<svg class=ic><use href=#i-soccer-ball></use></svg> Gol')}</div>
       <button class="btn btn-primary btn-sm" style="margin-left:auto;" onclick="defAddLance()">+ Adicionar lance</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;">
@@ -7521,7 +7521,7 @@ function renderPenaltis() {
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <span class="card-title" style="flex-shrink:0;">🥅 Pênaltis — Adversário</span>
         <select class="form-select" style="min-width:160px;margin-left:auto;" onchange="_penSetEquipe(this.value)">${eqOpts}</select>
-        <button class="btn btn-secondary btn-sm" onclick="gerarFichaPenaltis()">🖨️ Ficha (PDF)</button>
+        <button class="btn btn-secondary btn-sm" onclick="gerarFichaPenaltis()"><svg class=ic><use href=#i-printer></use></svg> Ficha (PDF)</button>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:8px;">Prepare a disputa: registre como os adversários batem e como a goleira deles cai. Visão de frente para o gol.</div>
       <div style="display:flex;gap:6px;margin-top:12px;">${tabBtn('batedores', '👟 Batedores')}${tabBtn('goleira', '🧤 Goleira adversária')}</div>
@@ -7546,7 +7546,7 @@ function _penRenderBatedores() {
       ? `Nossa goleira deve cair à <b>${_penColLabel(z.domCol)}</b> — a bola costuma vir <b>${_penRowLabel(z.domRow)}</b> (${domN}/${tot} à ${_penColLabel(z.domCol)}).`
       : '';
     const foto = _penFoto(eq, nome);
-    const avatar = `<div onclick="penFotoClick('${_esc(eq)}','${_esc(nome)}')" title="Adicionar/alterar foto" style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;">${foto ? `<img src="${foto}" style="width:100%;height:100%;object-fit:cover;">` : '📷'}</div>`;
+    const avatar = `<div onclick="penFotoClick('${_esc(eq)}','${_esc(nome)}')" title="Adicionar/alterar foto" style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;">${foto ? `<img src="${foto}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-camera></use></svg>'}</div>`;
     return `<div class="card" style="margin-bottom:12px;">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
         ${avatar}
@@ -7560,7 +7560,7 @@ function _penRenderBatedores() {
         </div>
       </div>
       <div style="max-width:280px;margin:0 auto 8px;">${_penGoalSVG(arr, false)}</div>
-      ${rec ? `<div style="font-size:12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:8px;padding:8px 10px;">🎯 ${rec}</div>` : ''}
+      ${rec ? `<div style="font-size:12px;background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.25);border-radius:8px;padding:8px 10px;"><svg class=ic><use href=#i-target></use></svg> ${rec}</div>` : ''}
       ${arr.some(p => p.obs) ? `<div style="font-size:11px;color:var(--muted);margin-top:6px;">${arr.filter(p => p.obs).map(p => '• ' + _esc(p.obs)).join('<br>')}</div>` : ''}
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">${arr.map(p => `<button class="btn btn-ghost btn-sm" onclick="penDel('${p.id}')" style="font-size:10px;color:var(--error);padding:2px 6px;">× ${_penColLabel(_penCol(p.gx))} ${_penRow(p.gy)}</button>`).join('')}</div>
     </div>`;
@@ -7614,7 +7614,7 @@ function _penRenderGoleira() {
         ${_penConfBadge(tot)}
       </div>
       ${bar('esq', '↙ Cai para a esquerda')}${bar('centro', '⬆ Fica no meio')}${bar('dir', '↘ Cai para a direita')}
-      ${tot ? `<div style="font-size:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:8px 10px;margin-top:8px;">🎯 Ela tende a ${dom === 'centro' ? 'ficar no meio' : 'cair para a ' + _penColLabel(dom)}. <b>Recomendação:</b> bater ${dom === 'centro' ? 'nos cantos' : 'à ' + oposto}.</div>` : ''}
+      ${tot ? `<div style="font-size:12px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);border-radius:8px;padding:8px 10px;margin-top:8px;"><svg class=ic><use href=#i-target></use></svg> Ela tende a ${dom === 'centro' ? 'ficar no meio' : 'cair para a ' + _penColLabel(dom)}. <b>Recomendação:</b> bater ${dom === 'centro' ? 'nos cantos' : 'à ' + oposto}.</div>` : ''}
       ${arr.some(p => p.obs) ? `<div style="font-size:11px;color:var(--muted);margin-top:6px;">${arr.filter(p => p.obs).map(p => '• ' + _esc(p.obs)).join('<br>')}</div>` : ''}
       <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">${arr.map(p => `<button class="btn btn-ghost btn-sm" onclick="penDel('${p.id}')" style="font-size:10px;color:var(--error);padding:2px 6px;">× ${p.lado === 'esq' ? 'esq' : p.lado === 'dir' ? 'dir' : 'meio'}${p.resultado === 'defendeu' ? ' 🧤' : ''}</button>`).join('')}</div>
     </div>`;
@@ -7631,7 +7631,7 @@ function _penRenderGoleira() {
       <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;">${lBtn('esq', '↙ Esquerda')}${lBtn('centro', '⬆ Meio')}${lBtn('dir', '↘ Direita')}</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
         <select id="pen-gk-momento" class="form-select" style="flex:1;min-width:140px;" onchange="_penForm['pen-gk-momento']=this.value"><option value="">Momento —</option><option value="antecipa" ${_pf('pen-gk-momento')==='antecipa'?'selected':''}>Antecipa (cai antes)</option><option value="espera" ${_pf('pen-gk-momento')==='espera'?'selected':''}>Espera a batida</option></select>
-        <div style="display:flex;gap:6px;">${rBtn('defendeu', '🧤 Defendeu')}${rBtn('gol', '⚽ Levou gol')}</div>
+        <div style="display:flex;gap:6px;">${rBtn('defendeu', '🧤 Defendeu')}${rBtn('gol', '<svg class=ic><use href=#i-soccer-ball></use></svg> Levou gol')}</div>
       </div>
       <input id="pen-gk-obs" class="form-input" placeholder="Observação (ex.: sai muito cedo)" style="margin-bottom:10px;" value="${_esc(_pf('pen-gk-obs'))}" oninput="_penForm['pen-gk-obs']=this.value">
       <button class="btn btn-primary" style="width:100%;" onclick="penAddGoleira()">+ Adicionar observação</button>
@@ -8667,7 +8667,7 @@ function openTwoFactorSetup() {
   if (gk2faEnabled()) {
     modal.innerHTML = `
       <div class="modal" style="max-width:440px;">
-        <div class="modal-header"><span class="modal-title">🔒 2FA ativado</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
+        <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-lock></use></svg> 2FA ativado</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
         <div class="modal-body" style="font-size:13px;line-height:1.6;">
           <p>A verificação em duas etapas está <b style="color:var(--success);">ativa</b>. Ao abrir o app, será pedido o código do seu app autenticador.</p>
           <p style="color:var(--muted);margin-top:8px;">Para desativar, informe um código atual:</p>
@@ -8684,7 +8684,7 @@ function openTwoFactorSetup() {
   const otpauth = `otpauth://totp/GK%20Hub:${encodeURIComponent(user)}?secret=${_pending2FASecret}&issuer=GK%20Hub&period=30&digits=6`;
   modal.innerHTML = `
     <div class="modal" style="max-width:460px;">
-      <div class="modal-header"><span class="modal-title">🔒 Ativar 2FA</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
+      <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-lock></use></svg> Ativar 2FA</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
       <div class="modal-body" style="font-size:13px;line-height:1.6;">
         <p>1. Abra seu app autenticador (Google Authenticator, Authy, Microsoft Authenticator…) e adicione uma conta com <b>"inserir chave de configuração"</b>.</p>
         <p style="margin-top:8px;">2. Nome: <b>GK Hub</b> · Tipo: <b>Baseado em tempo</b> · Chave:</p>
@@ -8714,7 +8714,7 @@ async function confirm2FA() {
   const modal = document.getElementById('twofa-modal');
   modal.innerHTML = `
     <div class="modal" style="max-width:440px;">
-      <div class="modal-header"><span class="modal-title">✅ 2FA ativado</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
+      <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-check-circle></use></svg> 2FA ativado</span><button class="modal-close" onclick="closeModal('twofa-modal')">&times;</button></div>
       <div class="modal-body" style="font-size:13px;line-height:1.6;">
         <p style="color:var(--warning);"><b>Guarde estes códigos de recuperação</b> em local seguro. Cada um funciona uma vez, caso você perca o celular:</p>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;">
@@ -8745,7 +8745,7 @@ function _maybeShow2FA() {
   lock.style.cssText = 'position:fixed;inset:0;z-index:9000;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:20px;';
   lock.innerHTML = `
     <div style="max-width:340px;width:100%;text-align:center;">
-      <div style="font-size:40px;">🔒</div>
+      <div style="font-size:40px;"><svg class=ic><use href=#i-lock></use></svg></div>
       <h2 style="font-size:20px;font-weight:800;margin:10px 0 4px;">Verificação em 2 etapas</h2>
       <p style="color:var(--muted);font-size:13px;margin-bottom:18px;">Digite o código do seu app autenticador.</p>
       <input id="twofa-code" class="form-input" inputmode="numeric" maxlength="6" placeholder="000000" style="font-size:22px;letter-spacing:6px;text-align:center;" onkeydown="if(event.key==='Enter')_verify2FALogin()">
@@ -9165,7 +9165,7 @@ async function submitRegisterClub() {
       errEl.textContent = data.message || ('Erro ' + res.status);
       errEl.style.display = 'block';
     } else {
-      okEl.innerHTML = '✅ <strong>Clube cadastrado com sucesso!</strong><br>Período de teste: 30 dias.<br><br>Faça login com o email e senha cadastrados.';
+      okEl.innerHTML = '<svg class=ic><use href=#i-check-circle></use></svg> <strong>Clube cadastrado com sucesso!</strong><br>Período de teste: 30 dias.<br><br>Faça login com o email e senha cadastrados.';
       okEl.style.display = 'block';
       document.getElementById('reg-clubname').value = '';
       document.getElementById('reg-slug').value     = '';
@@ -9454,11 +9454,11 @@ function renderClubManager() {
   }).join('');
   m.innerHTML = `
     <div class="modal" style="max-width:480px;">
-      <div class="modal-header"><span class="modal-title">🏛️ Meus Clubes</span><button class="modal-close" onclick="closeModal('clubmgr-modal')">&times;</button></div>
+      <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-bank></use></svg> Meus Clubes</span><button class="modal-close" onclick="closeModal('clubmgr-modal')">&times;</button></div>
       <div class="modal-body">
         <div style="display:flex;gap:8px;margin-bottom:14px;">
           <button class="btn btn-primary" style="flex:1;" onclick="criarClube()">+ Criar clube</button>
-          <button class="btn btn-secondary" style="flex:1;" onclick="joinClubKey()">🔑 Entrar por código</button>
+          <button class="btn btn-secondary" style="flex:1;" onclick="joinClubKey()"><svg class=ic><use href=#i-key></use></svg> Entrar por código</button>
         </div>
         ${rows || '<div style="color:var(--muted);font-size:13px;">Nenhum clube ainda.</div>'}
         <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">Cada clube tem seus próprios dados, isolados. Ao trocar, o clube atual fica guardado neste aparelho e sincronizado na nuvem pelo código.</div>
@@ -9523,7 +9523,7 @@ function renderOnb() {
       <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Vamos configurar o seu clube. Leva 1 minuto.</p>
       <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Nome do clube *</label><input class="form-input" id="onb-nome" value="${_esc(_onb.nome)}" placeholder="Ex.: Associação Atlética"></div>
       <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px;">
-        <div style="width:64px;height:64px;border-radius:14px;overflow:hidden;background:var(--card-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;">${_onb.escudo ? `<img src="${_onb.escudo}" style="width:100%;height:100%;object-fit:cover;">` : '🏛️'}</div>
+        <div style="width:64px;height:64px;border-radius:14px;overflow:hidden;background:var(--card-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;">${_onb.escudo ? `<img src="${_onb.escudo}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-bank></use></svg>'}</div>
         <div>
           <label class="btn btn-secondary btn-sm" style="cursor:pointer;">Enviar escudo<input type="file" accept="image/*" style="display:none;" onchange="onbUploadEscudo(this)"></label>
           <div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><label class="form-label" style="margin:0;">Cor:</label><input type="color" id="onb-cor" value="${_onb.cor}" style="width:46px;height:32px;border:none;background:none;"></div>
@@ -9540,17 +9540,17 @@ function renderOnb() {
   } else {
     body = `
       <div style="text-align:center;padding:10px 0;">
-        <div style="font-size:44px;">🎉</div>
+        <div style="font-size:44px;"><svg class=ic><use href=#i-confetti></use></svg></div>
         <div style="font-size:16px;font-weight:800;margin:8px 0;">Tudo pronto, ${_esc(_onb.nome || 'treinador')}!</div>
         <p style="font-size:13px;color:var(--muted);line-height:1.6;">Seu clube está configurado. Agora você pode registrar partidas no <b>Match Center</b>, acompanhar o <b>GK Rating</b> e gerar relatórios.</p>
       </div>`;
   }
   const footer = _onb.step < 3
     ? `<button class="btn btn-ghost" onclick="onbSkip()">Pular</button>${_onb.step > 1 ? '<button class="btn btn-secondary" onclick="onbBack()">Voltar</button>' : ''}<button class="btn btn-primary" onclick="onbNext()">Continuar</button>`
-    : `${'<button class="btn btn-secondary" onclick="onbBack()">Voltar</button>'}<button class="btn btn-primary" onclick="onbFinish()">🚀 Começar a usar</button>`;
+    : `${'<button class="btn btn-secondary" onclick="onbBack()">Voltar</button>'}<button class="btn btn-primary" onclick="onbFinish()"><svg class=ic><use href=#i-rocket-launch></use></svg> Começar a usar</button>`;
   m.innerHTML = `
     <div class="modal" style="max-width:440px;">
-      <div class="modal-header"><span class="modal-title">👋 Configuração inicial</span></div>
+      <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-hand-waving></use></svg> Configuração inicial</span></div>
       <div class="modal-body">${body}<div style="text-align:center;margin-top:16px;">${dots}</div></div>
       <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end;">${footer}</div>
     </div>`;
@@ -9577,7 +9577,7 @@ function _maybeShowWelcome() {
   if (!m) { m = document.createElement('div'); m.id = 'welcome-modal'; m.className = 'modal-backdrop'; document.body.appendChild(m); }
   m.innerHTML = `
     <div class="modal" style="max-width:460px;">
-      <div class="modal-header"><span class="modal-title">👋 Bem-vindo(a) ao GK Hub</span></div>
+      <div class="modal-header"><span class="modal-title"><svg class=ic><use href=#i-hand-waving></use></svg> Bem-vindo(a) ao GK Hub</span></div>
       <div class="modal-body" style="font-size:13px;line-height:1.6;">
         <p>Este é o <b>código do SEU clube</b> na nuvem:</p>
         <div style="display:flex;gap:8px;align-items:center;margin:10px 0;">
@@ -9585,7 +9585,7 @@ function _maybeShowWelcome() {
           <button class="btn btn-secondary btn-sm" onclick="copyClubKey()">Copiar</button>
         </div>
         <div style="background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.25);border-radius:10px;padding:12px;color:var(--text);">
-          ⚠️ <b>Importante:</b><br>
+          <svg class=ic><use href=#i-warning></use></svg> <b>Importante:</b><br>
           • Compartilhe este código <b>apenas com a sua comissão técnica</b>.<br>
           • <b>NÃO</b> insira o código de outro clube — cada clube tem o seu, e os dados <b>nunca se misturam</b>.
         </div>
@@ -9868,7 +9868,7 @@ async function renderTpExercises() {
     list.map(x => `
       <div class="stat-card" style="padding:12px;">
         <div style="display:flex;justify-content:space-between;gap:6px;align-items:start;">
-          <div style="font-weight:700;font-size:14px;">${_esc(x.name || 'Exercício')}${(x._pending || _tpIsLocal(x.id)) ? ' <span style="font-size:11px;color:var(--warning);font-weight:600;">📥 no aparelho</span>' : ''}</div>
+          <div style="font-weight:700;font-size:14px;">${_esc(x.name || 'Exercício')}${(x._pending || _tpIsLocal(x.id)) ? ' <span style="font-size:11px;color:var(--warning);font-weight:600;"><svg class=ic><use href=#i-download-simple></use></svg> no aparelho</span>' : ''}</div>
           <button class="btn btn-ghost btn-sm" style="color:#ef4444;padding:2px 6px;" onclick="tpDeleteExercise('${_esc(x.id)}')">✕</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;">${_esc(TP_EX_LABEL[x.category] || x.category || '—')}${x.estimatedMinutes ? ' · ' + x.estimatedMinutes + ' min' : ''}${x.difficulty ? ' · dif. ' + x.difficulty : ''}</div>
@@ -10016,7 +10016,7 @@ function tpRenderCalendar() {
     const list = byDay[key] || [];
     const chips = list.slice(0, 3).map(ev =>
       `<div onclick="event.stopPropagation();${ev.onclick}" title="${_esc(ev.label)}" style="cursor:pointer;display:flex;align-items:center;gap:4px;font-size:11px;line-height:1.3;padding:1px 3px;border-radius:4px;background:var(--bg);margin-top:2px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">
-        <span style="flex:none;">${ev.kind === 'match' ? '⚽' : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${ev.color};"></span>`}</span>
+        <span style="flex:none;">${ev.kind === 'match' ? '<svg class=ic><use href=#i-soccer-ball></use></svg>' : `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${ev.color};"></span>`}</span>
         <span style="overflow:hidden;text-overflow:ellipsis;color:${ev.kind === 'match' ? '#00D4FF' : 'inherit'};">${_esc(ev.label)}</span>
       </div>`).join('');
     cells += `<div style="min-height:56px;border:1px solid var(--border,#2a2a3a);border-radius:8px;padding:4px;">
@@ -10035,7 +10035,7 @@ function tpRenderCalendar() {
   if (legend) legend.innerHTML = `
     <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--success);display:inline-block;"></span>Treino concluído</span>
     <span style="display:inline-flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;"></span>Treino agendado</span>
-    <span style="display:inline-flex;align-items:center;gap:4px;">⚽ Jogo</span>`;
+    <span style="display:inline-flex;align-items:center;gap:4px;"><svg class=ic><use href=#i-soccer-ball></use></svg> Jogo</span>`;
 }
 
 // Open a match from the training calendar: jump to Partidas and open its editor.
@@ -10104,7 +10104,7 @@ async function renderTreinos() {
     nextEl.innerHTML = n ? `
       <div style="font-size:15px;font-weight:700;">${_esc(n.title || 'Treino')}</div>
       <div style="color:var(--muted);font-size:13px;margin-top:4px;">${n.date ? formatDate(n.date) : '—'}${n.time ? ' · ' + _esc(n.time) : ''}</div>
-      ${n.location ? `<div style="color:var(--muted);font-size:13px;">📍 ${_esc(n.location)}</div>` : ''}
+      ${n.location ? `<div style="color:var(--muted);font-size:13px;"><svg class=ic><use href=#i-map-pin></use></svg> ${_esc(n.location)}</div>` : ''}
       <button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="tpOpenSession('${_esc(n.id)}')">Ver detalhes</button>
     ` : '<div style="color:var(--muted);font-size:13px;">Nenhum treino agendado.</div>';
   }
@@ -10144,7 +10144,7 @@ async function renderTreinos() {
             ? `onclick="toast('Salvo no aparelho — sincroniza quando o servidor voltar.','info')"`
             : `onclick="tpOpenSession('${_esc(s.id)}')"`;
           const statusCell = pend
-            ? `<span style="color:var(--warning);font-weight:600;font-size:12px;">📥 No aparelho</span>`
+            ? `<span style="color:var(--warning);font-weight:600;font-size:12px;"><svg class=ic><use href=#i-download-simple></use></svg> No aparelho</span>`
             : `<span style="color:${TP_STATUS_COLOR[st] || 'var(--muted)'};font-weight:600;font-size:12px;">${TP_STATUS_LABEL[st] || st}</span>`;
           return `<tr style="cursor:pointer;" ${click}>
             <td>${s.date ? formatDate(s.date) : '—'}${s.time ? '<br><span style="color:var(--muted);font-size:12px;">' + _esc(s.time) + '</span>' : ''}</td>
@@ -11114,10 +11114,10 @@ function verificarDados() {
   const orfaos = DB.scouts.filter(s => s.goalkeeperId && !DB.goleiras.some(g => g.id === s.goalkeeperId)).length;
   if (el) el.innerHTML =
     `<div style="background:var(--card-2);border:1px solid var(--border);border-radius:10px;padding:12px;">
-      <div style="font-weight:700;font-size:12px;margin-bottom:8px;">🔎 Integridade dos dados</div>
+      <div style="font-weight:700;font-size:12px;margin-bottom:8px;"><svg class=ic><use href=#i-magnifying-glass></use></svg> Integridade dos dados</div>
       ${rows}
       <div style="border-top:1px solid var(--border);margin-top:8px;padding-top:8px;font-size:11px;color:var(--muted);">
-        Tamanho: ~${kb} KB · ${bkTxt}${orfaos ? ` · <span style="color:var(--warning);">${orfaos} scout(s) sem goleira vinculada</span>` : ' · ✅ sem inconsistências'}
+        Tamanho: ~${kb} KB · ${bkTxt}${orfaos ? ` · <span style="color:var(--warning);">${orfaos} scout(s) sem goleira vinculada</span>` : ' · <svg class=ic><use href=#i-check-circle></use></svg> sem inconsistências'}
       </div>
     </div>`;
   toast('Verificação concluída.', 'success');
@@ -11222,7 +11222,7 @@ async function renderBackupHistory() {
     if (!days.length) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);">Nenhum backup automático ainda (é criado 1x por dia ao abrir o app).</div>'; return; }
     el.innerHTML = days.map(d =>
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px;">' +
-        '<span>📦 ' + _esc(d) + '</span>' +
+        '<span><svg class=ic><use href=#i-package></use></svg> ' + _esc(d) + '</span>' +
         '<button class="btn btn-secondary btn-sm" onclick="restoreBackupDate(\'' + _esc(d) + '\')">Restaurar</button>' +
       '</div>').join('');
   } catch (e) {
@@ -11443,7 +11443,7 @@ function renderSubCard() {
       '<span style="font-size:13px;color:var(--muted);">Plano: <b style="color:var(--text);">' + planLbl + '</b> · ' + quando + '</span>' +
     '</div>' +
     '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
-      '<button class="btn btn-primary btn-sm" onclick="openSub(false)">' + (st.state === 'expirado' ? '💳 Assinar / Renovar' : '💳 Gerenciar assinatura') + '</button>' +
+      '<button class="btn btn-primary btn-sm" onclick="openSub(false)">' + (st.state === 'expirado' ? '<svg class=ic><use href=#i-credit-card></use></svg> Assinar / Renovar' : '<svg class=ic><use href=#i-credit-card></use></svg> Gerenciar assinatura') + '</button>' +
     '</div>';
 }
 function _subBodyHTML(gate) {
@@ -11456,7 +11456,7 @@ function _subBodyHTML(gate) {
     : '<div style="font-size:12px;color:var(--warning);margin-top:6px;">Chave PIX ainda não configurada — fale com o suporte do GK Hub para pagar.</div>';
   const adminBlock = (typeof _isAdmin === 'function' && _isAdmin())
     ? ('<div style="margin-top:18px;border-top:1px dashed var(--border);padding-top:14px;">' +
-        '<div style="font-weight:700;font-size:13px;margin-bottom:8px;">🔑 Admin — gerar código de ativação</div>' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:8px;"><svg class=ic><use href=#i-key></use></svg> Admin — gerar código de ativação</div>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
           '<button class="btn btn-secondary btn-sm" onclick="gerarCodigoAssinatura(\'mensal\')">Gerar Mensal</button>' +
           '<button class="btn btn-secondary btn-sm" onclick="gerarCodigoAssinatura(\'anual\')">Gerar Anual</button>' +
@@ -11466,7 +11466,7 @@ function _subBodyHTML(gate) {
     : '';
   return (
     (gate
-      ? '<div style="text-align:center;margin-bottom:14px;"><div style="font-size:30px;">🔒</div><div style="font-weight:800;font-size:18px;margin-top:4px;">Seu acesso expirou</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">Seus dados estão salvos. Assine para continuar usando — ou exporte tudo quando quiser.</div></div>'
+      ? '<div style="text-align:center;margin-bottom:14px;"><div style="font-size:30px;"><svg class=ic><use href=#i-lock></use></svg></div><div style="font-weight:800;font-size:18px;margin-top:4px;">Seu acesso expirou</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">Seus dados estão salvos. Assine para continuar usando — ou exporte tudo quando quiser.</div></div>'
       : '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:' + meta.col + '22;color:' + meta.col + ';border:1px solid ' + meta.col + '55;padding:4px 12px;border-radius:999px;font-weight:700;font-size:13px;">' + meta.lbl + '</span>' +
         '<span style="font-size:13px;color:var(--muted);">' + (st.state === 'expirado' ? 'Renove para reativar' : st.diasRest + ' dia(s) · até ' + formatDate(_subDay(st.paidUntil))) + '</span></div>') +
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
@@ -11486,8 +11486,8 @@ function _subBodyHTML(gate) {
     '<div id="sub-code-msg" style="font-size:12px;margin-top:8px;"></div>' +
     (gate
       ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">' +
-          '<button class="btn btn-secondary btn-sm" onclick="exportBackup()">⬇️ Exportar meus dados</button>' +
-          '<button class="btn btn-ghost btn-sm" onclick="openLegal()">📄 Política & Termos</button>' +
+          '<button class="btn btn-secondary btn-sm" onclick="exportBackup()"><svg class=ic><use href=#i-download-simple></use></svg> Exportar meus dados</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="openLegal()"><svg class=ic><use href=#i-file-text></use></svg> Política & Termos</button>' +
           '<button class="btn btn-ghost btn-sm" onclick="authLogout()">Sair</button>' +
         '</div>'
       : '') +
@@ -12285,16 +12285,16 @@ function renderFavorites() {
     gkEl.innerHTML = gks.length
       ? gks.map(g => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
           <div style="font-size:13px;font-weight:600;">${_esc(g.nome)}</div>
-          <button class="btn btn-ghost btn-sm" onclick="toggleFavorite('goleiras','${g.id}');renderFavorites();" style="color:var(--warning);">★</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleFavorite('goleiras','${g.id}');renderFavorites();" style="color:var(--warning);"><svg class=ic><use href=#i-star></use></svg></button>
         </div>`).join('')
-      : '<div style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma goleira favoritada.<br><small>Clique ★ na lista de goleiras.</small></div>';
+      : '<div style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma goleira favoritada.<br><small>Clique <svg class=ic><use href=#i-star></use></svg> na lista de goleiras.</small></div>';
   }
   if (ptEl) {
     ptEl.innerHTML = pts.length
       ? pts.map(p => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
           <div style="font-size:13px;font-weight:600;">${_esc(p.adversario||'—')}</div>
           <div style="font-size:11px;color:var(--muted);">${p.data||''}</div>
-          <button class="btn btn-ghost btn-sm" onclick="toggleFavorite('partidas','${p.id}');renderFavorites();" style="color:var(--warning);">★</button>
+          <button class="btn btn-ghost btn-sm" onclick="toggleFavorite('partidas','${p.id}');renderFavorites();" style="color:var(--warning);"><svg class=ic><use href=#i-star></use></svg></button>
         </div>`).join('')
       : '<div style="color:var(--muted);font-size:13px;padding:12px 0;">Nenhuma partida favoritada.</div>';
   }
@@ -12494,7 +12494,7 @@ function _showUpdateBanner() {
   const b = document.createElement('div');
   b.id = 'gkhub-update-banner';
   b.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:700;display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border-h);border-radius:14px;padding:12px 16px;box-shadow:0 12px 32px rgba(0,0,0,.4);font-size:13px;max-width:92vw;';
-  b.innerHTML = '<span>✨ Nova versão disponível.</span>'
+  b.innerHTML = '<span><svg class=ic><use href=#i-sparkle></use></svg> Nova versão disponível.</span>'
     + '<button class="btn btn-primary btn-sm" onclick="location.reload()">Atualizar</button>'
     + '<button class="btn btn-ghost btn-sm" onclick="sessionStorage.setItem(\'gkhub_update_dismissed\',\'1\');this.parentElement.remove()">Depois</button>';
   document.body.appendChild(b);
@@ -12541,7 +12541,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v157';
+const APP_VERSION = 'v158';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
@@ -12654,7 +12654,7 @@ function showInstallGuide() {
         </div>
       </div>
       <div style="margin-top:16px;padding:10px 14px;background:rgba(59,130,246,.08);border-radius:10px;font-size:11px;color:var(--muted);">
-        ⚠️ Abra este link no <strong style="color:var(--primary-text);">Safari</strong> — Chrome e Firefox no iOS não suportam instalação de PWA.
+        <svg class=ic><use href=#i-warning></use></svg> Abra este link no <strong style="color:var(--primary-text);">Safari</strong> — Chrome e Firefox no iOS não suportam instalação de PWA.
       </div>
       ` : `
       <div style="display:flex;flex-direction:column;gap:14px;">

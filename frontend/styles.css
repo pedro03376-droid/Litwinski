@@ -2088,3 +2088,14 @@ p, .empty-state p, .card-subtitle { text-wrap: pretty; }
   font-family: var(--font-display);
   letter-spacing: -0.02em;
 }
+
+/* Ícones SVG (sprite Phosphor). Herdam cor e tamanho do texto ao redor,
+   então substituem emoji sem quebrar alinhamento de botão/título. */
+.ic {
+  width: 1em; height: 1em;
+  display: inline-block;
+  vertical-align: -0.135em;
+  fill: currentColor;
+  flex-shrink: 0;
+}
+.card-title .ic, .btn .ic { margin-right: .1em; }
