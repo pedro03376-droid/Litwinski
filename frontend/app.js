@@ -6778,7 +6778,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
 
     html+=`
       <div style="margin-bottom:20px;">
-        <div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,rgba(59,130,246,.06),rgba(139,92,246,.06));border:1px solid rgba(59,130,246,.15);border-radius:14px;margin-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(145deg,rgba(59,130,246,.08),rgba(34,211,238,92,246,.06));border:1px solid rgba(59,130,246,.15);border-radius:14px;margin-bottom:16px;">
           <div style="text-align:center;flex-shrink:0;">
             <div style="font-size:44px;font-weight:900;color:${nivelColor};line-height:1;">${nota.toFixed(1)}</div>
             <div style="font-size:11px;color:var(--muted);letter-spacing:1px;font-weight:600;">NOTA FINAL</div>
@@ -12541,7 +12541,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v156';
+const APP_VERSION = 'v157';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

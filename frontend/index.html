@@ -19,7 +19,7 @@
   <!-- Fonts & CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -451,11 +451,11 @@
           <div class="stat-sub">jogos sem sofrer gol</div>
         </div>
         <div class="stat-card">
-          <div class="stat-icon-wrap" style="background:rgba(139,92,246,.12);">
-            <svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" width="20" height="20"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          <div class="stat-icon-wrap" style="background:rgba(34,211,238,.12);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="2" width="20" height="20"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           </div>
           <div class="stat-label">Média de Performance</div>
-          <div class="stat-value" style="color:#8B5CF6;text-shadow:0 0 24px rgba(139,92,246,.35);" id="stat-avg-perf">—</div>
+          <div class="stat-value" style="color:#22D3EE;text-shadow:0 0 24px rgba(34,211,238,.35);" id="stat-avg-perf">—</div>
           <div class="stat-sub">pontuação média</div>
         </div>
       </div><!-- /stats-grid -->
@@ -626,7 +626,7 @@
           </div>
           <div class="form-grid">
             <div class="form-group"><label class="form-label">Cor primária</label><input type="color" class="form-input" id="clb-cor1" value="#3B82F6" style="height:42px;padding:4px;"></div>
-            <div class="form-group"><label class="form-label">Cor secundária</label><input type="color" class="form-input" id="clb-cor2" value="#8B5CF6" style="height:42px;padding:4px;"></div>
+            <div class="form-group"><label class="form-label">Cor secundária</label><input type="color" class="form-input" id="clb-cor2" value="#1D4ED8" style="height:42px;padding:4px;"></div>
           </div>
         </div>
       </div>
@@ -881,7 +881,7 @@
         <div class="mc-counter"><div class="val" id="mc-c-gol" style="color:var(--error);">0</div><div class="lbl">Gols Sofr.</div></div>
         <div class="mc-counter"><div class="val" id="mc-c-dist" style="color:var(--warning);">0</div><div class="lbl">Distribuições</div></div>
         <div class="mc-counter"><div class="val" id="mc-c-int" style="color:#6EE7B7;">0</div><div class="lbl">Interceptações</div></div>
-        <div class="mc-counter" style="background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.08));border-color:rgba(59,130,246,.2);">
+        <div class="mc-counter" style="background:linear-gradient(145deg,rgba(59,130,246,.10),rgba(34,211,238,.06));border-color:rgba(59,130,246,.2);">
           <div class="val" id="mc-c-streak" style="color:var(--primary);">0</div>
           <div class="lbl">Sequência Def.</div>
         </div>
@@ -1687,11 +1687,11 @@
             <div class="stat-value stat-yellow" id="act-gks">0</div>
           </div>
           <div class="stat-card">
-            <div class="stat-icon-wrap" style="background:rgba(139,92,246,.12);">
-              <svg viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            <div class="stat-icon-wrap" style="background:rgba(34,211,238,.12);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="2" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
             </div>
             <div class="stat-label">PDFs Gerados</div>
-            <div class="stat-value" style="color:#8B5CF6;" id="act-pdfs">0</div>
+            <div class="stat-value" style="color:#22D3EE;" id="act-pdfs">0</div>
           </div>
         </div>
         <div class="card">
@@ -2305,7 +2305,7 @@
 <!-- ══ MODAL: RELATÓRIO PÓS-JOGO ══ -->
 <div class="modal-backdrop" id="modal-mc-relatorio">
   <div class="modal" style="max-width:700px;max-height:93vh;">
-    <div class="modal-header" style="background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(139,92,246,.08));">
+    <div class="modal-header" style="background:linear-gradient(145deg,rgba(59,130,246,.10),rgba(34,211,238,.06));">
       <div>
         <span class="modal-title">Relatório Pós-Jogo</span>
         <div id="mc-rel-subtitle" style="font-size:11px;color:var(--muted);margin-top:2px;"></div>
