@@ -29,13 +29,74 @@
 
 
 // ═══════════════════════════════════════════════════════════
+// ARMAZENAMENTO DE FOTOS — IndexedDB (muito mais espaço que o
+// localStorage ~5MB). As fotos (base64) saem das coleções e vão pro
+// IndexedDB; a coleção guarda só uma referência "idb:<id>". Leitura é
+// síncrona via cache em memória (hidratado no boot). Nuvem e backup
+// continuam com a foto embutida (self-contained) — ver _schedulePush
+// e _gkSnapshot. Degrada bem: sem IndexedDB, as fotos ficam inline.
+// ═══════════════════════════════════════════════════════════
+const _PHOTO_FIELD = { goleiras: 'foto', pen_fotos: 'foto' };
+const _phCache = new Map();   // id -> dataURL
+const _phRev = new Map();     // dataURL -> id
+let _phDBp = null;
+function _phDB() {
+  if (_phDBp) return _phDBp;
+  _phDBp = new Promise((res, rej) => {
+    try { const r = indexedDB.open('gkhub_photos', 1);
+      r.onupgradeneeded = () => { try { r.result.createObjectStore('photos'); } catch (e) {} };
+      r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+    } catch (e) { rej(e); }
+  });
+  return _phDBp;
+}
+async function _photosHydrate() {
+  if (!('indexedDB' in window)) return;
+  try {
+    const db = await _phDB();
+    await new Promise((res) => {
+      const tx = db.transaction('photos', 'readonly'); const cur = tx.objectStore('photos').openCursor();
+      cur.onsuccess = e => { const c = e.target.result; if (c) { _phCache.set(c.key, c.value); _phRev.set(c.value, c.key); c.continue(); } else res(); };
+      cur.onerror = () => res();
+    });
+  } catch (e) {}
+}
+function _phPut(id, url) { try { _phDB().then(db => { const tx = db.transaction('photos', 'readwrite'); tx.objectStore('photos').put(url, id); }).catch(() => {}); } catch (e) {} }
+function _phNewId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function _phRefToUrl(v) { if (typeof v !== 'string') return v; if (v.indexOf('idb:') === 0) { return _phCache.get(v.slice(4)) || ''; } return v; }
+function _phUrlToRef(v) {
+  if (typeof v !== 'string' || v.indexOf('data:') !== 0) return v;
+  if (!('indexedDB' in window)) return v;   // sem IndexedDB: mantém inline
+  let id = _phRev.get(v);
+  if (!id) { id = _phNewId(); _phCache.set(id, v); _phRev.set(v, id); _phPut(id, v); }
+  return 'idb:' + id;
+}
+function _phResolveArr(arr, f) { return Array.isArray(arr) ? arr.map(it => { if (it && typeof it === 'object' && f in it) { const u = _phRefToUrl(it[f]); if (u !== it[f]) return { ...it, [f]: u }; } return it; }) : arr; }
+function _phExtractArr(arr, f) { return Array.isArray(arr) ? arr.map(it => { if (it && typeof it === 'object' && typeof it[f] === 'string' && it[f].indexOf('data:') === 0) return { ...it, [f]: _phUrlToRef(it[f]) }; return it; }) : arr; }
+// Hidrata o cache e converte fotos inline já existentes em referências (libera o localStorage).
+async function _photosBoot() {
+  await _photosHydrate();
+  const was = DB._suppressSync; DB._suppressSync = true;
+  try { Object.keys(_PHOTO_FIELD).forEach(k => { try { const arr = DB.load(k); if (Array.isArray(arr) && arr.length) DB.save(k, arr); } catch (e) {} }); } catch (e) {}
+  DB._suppressSync = was;
+  try { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a && typeof navigate === 'function') navigate(a); } catch (e) {}
+  try { if (typeof refreshDashboard === 'function') refreshDashboard(); } catch (e) {}
+}
+
+// ═══════════════════════════════════════════════════════════
 // DATA STORE
 // ═══════════════════════════════════════════════════════════
 const DB = {
-  load(key) { try { return JSON.parse(localStorage.getItem('gkhub_'+key) || '[]'); } catch { return []; } },
+  load(key) {
+    let v; try { v = JSON.parse(localStorage.getItem('gkhub_'+key) || '[]'); } catch { return []; }
+    if (_PHOTO_FIELD[key]) v = _phResolveArr(v, _PHOTO_FIELD[key]);   // ref "idb:<id>" -> dataURL
+    return v;
+  },
   save(key, data) {
+    // Fotos vão pro IndexedDB; no localStorage guarda só a referência.
+    const toStore = _PHOTO_FIELD[key] ? _phExtractArr(data, _PHOTO_FIELD[key]) : data;
     try {
-      localStorage.setItem('gkhub_'+key, JSON.stringify(data));
+      localStorage.setItem('gkhub_'+key, JSON.stringify(toStore));
     } catch (e) {
       // Armazenamento cheio: avisa em vez de falhar silenciosamente e perder dados.
       if (e && (e.name === 'QuotaExceededError' || e.code === 22 || /quota/i.test(e.message || ''))) {
@@ -44,9 +105,8 @@ const DB = {
       }
       throw e;
     }
-    // Sincronização automática a cada ação: todo save de uma coleção do clube
-    // envia a coleção à nuvem (debounce). Inclui as principais (goleiras/
-    // partidas/scouts) e as novas — ver _isAutoSync/_NEW_SYNC/_CORE_SYNC.
+    // Sincronização automática a cada ação: envia a coleção à nuvem (debounce)
+    // com a foto EMBUTIDA (data, não a referência) — nuvem continua self-contained.
     if (!DB._suppressSync && typeof _schedulePush === 'function' && typeof _isAutoSync === 'function' && _isAutoSync(key)) _schedulePush(key, data);
   },
   get goleiras()  { return this.load('goleiras'); },
@@ -11001,7 +11061,13 @@ function _gkSnapshot() {
   const data = {};
   for (let i = 0; i < localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith('gkhub_') && !_BACKUP_SKIP.includes(k)) data[k] = localStorage.getItem(k);
+    if (k && k.startsWith('gkhub_') && !_BACKUP_SKIP.includes(k)) {
+      let val = localStorage.getItem(k);
+      // Reinsere as fotos (que ficam no IndexedDB) no backup, p/ ficar self-contained.
+      const col = k.slice(6);
+      if (_PHOTO_FIELD[col]) { try { val = JSON.stringify(_phResolveArr(JSON.parse(val), _PHOTO_FIELD[col])); } catch (e) {} }
+      data[k] = val;
+    }
   }
   return { _meta: { app: 'GK Hub', v: 38, exportedAt: new Date().toISOString() }, data };
 }
@@ -12408,6 +12474,7 @@ initFirebaseFromStorage();
 try { cloudPullCore(false); } catch (e) {}
 try { setTimeout(() => { _autoBackup(); }, 6000); } catch (e) {}   // backup automático diário (nuvem)
 try { setTimeout(() => { _registerUsage(); }, 4000); } catch (e) {}   // registro central de uso (admin)
+try { _photosBoot(); } catch (e) {}   // IndexedDB: hidrata cache de fotos + migra inline->ref
 try { setTimeout(_maybeShowWelcome, 2500); } catch (e) {}
 try { cloudPullNew(true).then(c => { if (c) { const a = document.querySelector('.page.active')?.id?.replace('page-', ''); if (a === 'dashboard') refreshDashboard(); updateNotifBadge(); try { updateTopbarSeason(); } catch (e) {} } }); } catch (e) {}
 
@@ -12474,7 +12541,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v153';
+const APP_VERSION = 'v154';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
