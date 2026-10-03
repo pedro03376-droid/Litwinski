@@ -9300,7 +9300,7 @@ function joinClubKey() {
 // guardados (gkhub_clubdata_<key>) e os do clube destino são carregados.
 // A nuvem já é separada por código (namespace), então nada se mistura.
 // ═══════════════════════════════════════════════════════════
-const _CLUB_GLOBAL_SKIP = ['gkhub_session', 'gkhub_google_redirect', 'gkhub_fcm_token', 'gkhub_push_sub', 'gkhub_2fa_ok', 'gkhub_2fa_secret', 'gkhub_sidebar_collapsed', 'gkhub_club_key', 'gkhub_clubs', 'gkhub_active_workspace', 'gkhub_onboarded', 'gkhub_welcome_seen', 'gkhub_ai_url', 'gkhub_backend_email', 'gkhub_user_name', 'gkhub_last_autobackup'];
+const _CLUB_GLOBAL_SKIP = ['gkhub_session', 'gkhub_google_redirect', 'gkhub_fcm_token', 'gkhub_push_sub', 'gkhub_2fa_ok', 'gkhub_2fa', 'gkhub_2fa_secret', 'gkhub_sidebar_collapsed', 'gkhub_club_key', 'gkhub_clubs', 'gkhub_active_workspace', 'gkhub_onboarded', 'gkhub_welcome_seen', 'gkhub_ai_url', 'gkhub_backend_email', 'gkhub_user_name', 'gkhub_last_autobackup'];
 function _isClubScoped(k) { return k && k.startsWith('gkhub_') && !_CLUB_GLOBAL_SKIP.includes(k) && !k.startsWith('gkhub_clubdata_') && !k.startsWith('gkhub_cidades_'); }
 function _clubList() { try { return JSON.parse(localStorage.getItem('gkhub_clubs') || '[]'); } catch (e) { return []; } }
 function _clubRegister(key, nome) {
@@ -10987,7 +10987,7 @@ async function rtdbDelete(path) {
    Proteção contra perda de dados (tudo local vira 1 snapshot).
    ═══════════════════════════════════════════════════════════ */
 // Chaves efêmeras/de dispositivo que NÃO devem ir no backup
-const _BACKUP_SKIP = ['gkhub_session', 'gkhub_google_redirect', 'gkhub_fcm_token', 'gkhub_push_sub', 'gkhub_2fa_ok'];
+const _BACKUP_SKIP = ['gkhub_session', 'gkhub_google_redirect', 'gkhub_fcm_token', 'gkhub_push_sub', 'gkhub_2fa_ok', 'gkhub_2fa', 'gkhub_2fa_secret'];
 function _gkSnapshot() {
   const data = {};
   for (let i = 0; i < localStorage.length; i++) {
@@ -12401,7 +12401,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v150';
+const APP_VERSION = 'v151';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
