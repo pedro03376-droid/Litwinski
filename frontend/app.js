@@ -9490,8 +9490,9 @@ function _maybeShowWelcome() {
   if (document.getElementById('twofa-lock')) return;              // aguarda 2FA
   const _ov0 = document.getElementById('auth-overlay');
   if (_ov0 && !_ov0.classList.contains('hidden')) return;        // ainda no login
-  // Aceite de Termos & Política (LGPD) — gate antes de qualquer outra coisa.
-  if (!_legalAccepted()) { openLegal(true); return; }
+  // LGPD: sem muro de aceite. A Política/Termos fica acessível por link
+  // (rodapé do login e card "Privacidade e LGPD" no Clube). O consentimento
+  // do responsável continua sendo capturado no cadastro de cada atleta.
   // Primeiro acesso (sem clube e sem goleiras) → assistente de configuração
   if (!localStorage.getItem('gkhub_onboarded') && DB.goleiras.length === 0 && !(clubSettings().nome)) { startOnboarding(); return; }
   if (localStorage.getItem('gkhub_welcome_seen')) return;
@@ -11232,22 +11233,22 @@ function _lgpdPopulate() {
 const LEGAL_VERSION = '2026-10';
 function _legalHTML() {
   return (
-    '<p style="font-size:11px;color:var(--muted);">Versão ' + LEGAL_VERSION + ' · Preencha os campos [entre colchetes] e revise com um(a) advogado(a).</p>' +
+    '<p style="font-size:11px;color:var(--muted);">Versão ' + LEGAL_VERSION + '</p>' +
     '<h3 style="margin:12px 0 6px;">Política de Privacidade</h3>' +
-    '<p><b>Controlador:</b> [NOME DO RESPONSÁVEL/EMPRESA], contato <b>[E-MAIL DE CONTATO]</b>. O GK Hub é uma plataforma de análise de desempenho de goleiros(as) de futsal e beach soccer.</p>' +
+    '<p><b>Controlador:</b> GK Hub, com contato pelo <b>canal de atendimento informado no aplicativo</b>. O GK Hub é uma plataforma de análise de desempenho de goleiros(as) de futsal e beach soccer.</p>' +
     '<p><b>Dados que tratamos:</b> dados do clube; dados de atletas (nome, data de nascimento, dados físicos, posição, foto opcional) e dados de desempenho (scouts, partidas, notas, lesões, plano individual). Não solicitamos dados sensíveis além dos necessários à finalidade esportiva.</p>' +
     '<p><b>Finalidade:</b> registrar e analisar o desempenho esportivo dos(as) atletas para uso da comissão técnica.</p>' +
     '<p><b>Base legal e menores:</b> o tratamento é feito mediante <b>consentimento</b>. Para atletas <b>menores de idade</b>, o consentimento é dado e registrado pelo(a) <b>responsável legal</b> no cadastro do(a) atleta (nome do responsável e data).</p>' +
     '<p><b>Compartilhamento:</b> os dados são armazenados em nuvem (Google Firebase) para sincronização entre dispositivos do clube. Recursos de IA usam a API do Google (Gemini) apenas com dados de desempenho, sem identificar o(a) atleta além do necessário. Não vendemos dados.</p>' +
     '<p><b>Direitos do titular:</b> acesso, correção, <b>portabilidade</b> (exportar em JSON) e <b>eliminação</b> (direito ao esquecimento) — exercidos no próprio app (Clube → Privacidade e LGPD) ou pelo contato acima.</p>' +
     '<p><b>Segurança e retenção:</b> dados isolados por clube; sessão e 2FA nunca saem do aparelho; ações ficam registradas na Auditoria. Os dados são mantidos enquanto o clube usar o serviço e podem ser apagados a qualquer momento pelo titular/responsável.</p>' +
-    '<p><b>Encarregado (DPO):</b> [E-MAIL DO ENCARREGADO].</p>' +
+    '<p><b>Encarregado (DPO):</b> solicitações sobre dados pessoais podem ser feitas pelo canal de atendimento informado no aplicativo.</p>' +
     '<h3 style="margin:16px 0 6px;">Termos de Uso</h3>' +
     '<p>1. O GK Hub concede uma licença de uso pessoal e intransferível à comissão técnica do clube assinante.</p>' +
     '<p>2. O(a) usuário(a) é responsável pela veracidade dos dados inseridos e por obter o consentimento dos titulares (ou responsáveis, no caso de menores).</p>' +
-    '<p>3. <b>Assinatura:</b> o uso é mediante plano pago [DESCREVER PLANO/PREÇO]. O período de teste, quando houver, é informado no cadastro.</p>' +
+    '<p>3. <b>Assinatura:</b> o uso é mediante plano pago, conforme o plano contratado. O período de teste, quando houver, é informado no cadastro.</p>' +
     '<p>4. O serviço é fornecido "como está"; buscamos disponibilidade e precisão, mas não garantimos ausência de falhas. Faça backups (o app oferece exportação).</p>' +
-    '<p>5. Foro e legislação: [CIDADE/UF], Brasil, conforme a LGPD (Lei 13.709/2018).</p>'
+    '<p>5. Foro e legislação: comarca do domicílio do contratante, Brasil, conforme a LGPD (Lei 13.709/2018).</p>'
   );
 }
 function openLegal(gate) {
@@ -12229,7 +12230,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v148';
+const APP_VERSION = 'v149';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
