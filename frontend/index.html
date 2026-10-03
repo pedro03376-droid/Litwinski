@@ -146,6 +146,14 @@
   </div>
 </div>
 
+<!-- ══ SUBSCRIPTION / BLOCK OVERLAY ══ -->
+<div id="sub-block" style="display:none;position:fixed;inset:0;z-index:9990;background:rgba(6,10,20,.92);align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;">
+  <div style="width:100%;max-width:560px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:22px;position:relative;margin:auto;">
+    <button id="sub-close" class="modal-close" onclick="closeSub()" style="position:absolute;top:14px;right:16px;display:none;">&times;</button>
+    <div id="sub-body"></div>
+  </div>
+</div>
+
 <!-- ══ CLUB SELECTOR OVERLAY ══ -->
 <div id="club-selector-overlay" style="display:none;position:fixed;inset:0;z-index:9998;background:var(--bg);align-items:center;justify-content:center;padding:20px;">
   <div style="width:100%;max-width:440px;">
@@ -623,6 +631,10 @@
       </div>
       <div style="display:flex;justify-content:flex-end;margin-top:16px;">
         <button class="btn btn-primary" onclick="saveClube()">💾 Salvar informações do clube</button>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header"><span class="card-title">💳 Assinatura</span></div>
+        <div id="sub-status-box"></div>
       </div>
       <div class="card" style="margin-top:20px;">
         <div class="card-header"><span class="card-title">⚙️ Preferências</span></div>

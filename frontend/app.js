@@ -307,6 +307,7 @@ function renderClube() {
   if (wrap) wrap.innerHTML = Object.keys(IGD_DIM_LABEL).map(k => `
     <div class="form-group"><label class="form-label">${IGD_DIM_LABEL[k]}</label>
       <input type="number" class="form-input" id="clb-w-${k}" value="${w[k]}" min="0" max="100"></div>`).join('');
+  try { renderSubCard(); } catch (e) {}
 }
 function clbUploadEscudo(input) {
   const f = input.files && input.files[0]; if (!f) return;
@@ -337,6 +338,7 @@ function saveClube() {
     escala: parseInt(val('clb-escala'), 10) || 10, treinoMin: parseInt(val('clb-treino-min'), 10) || 60,
     escudo: _clbEscudo || '',
   };
+  c.sub = clubSettings().sub;   // preserva o estado da assinatura ao salvar o clube
   localStorage.setItem('gkhub_club_settings', JSON.stringify(c));
   const w = {};
   Object.keys(IGD_DIM_LABEL).forEach(k => { w[k] = parseInt(document.getElementById('clb-w-' + k)?.value, 10) || 0; });
@@ -9493,6 +9495,8 @@ function _maybeShowWelcome() {
   // LGPD: sem muro de aceite. A Política/Termos fica acessível por link
   // (rodapé do login e card "Privacidade e LGPD" no Clube). O consentimento
   // do responsável continua sendo capturado no cadastro de cada atleta.
+  // Assinatura: bloqueio suave quando o acesso expira (não afeta trial/ativo).
+  try { if (_subEnforce()) return; } catch (e) {}
   // Primeiro acesso (sem clube e sem goleiras) → assistente de configuração
   if (!localStorage.getItem('gkhub_onboarded') && DB.goleiras.length === 0 && !(clubSettings().nome)) { startOnboarding(); return; }
   if (localStorage.getItem('gkhub_welcome_seen')) return;
@@ -11230,6 +11234,173 @@ function _lgpdPopulate() {
 /* ── Política de Privacidade & Termos (com aceite) ──────────
    Rascunho jurídico-base em PT-BR. Os campos entre [colchetes] devem ser
    preenchidos pelo responsável pelo negócio e revisados por um advogado. */
+// ═══════════════════════════════════════════════════════════
+// ASSINATURA / COBRANÇA — R$ 99/mês · R$ 990/ano · teste 14 dias
+// Local-first: estado em club_settings.sub (sincroniza via /clubinfo).
+// Ativação por CÓDIGO gerado pelo admin (sem backend de pagamento).
+// ═══════════════════════════════════════════════════════════
+const BILLING = {
+  moeda: 'R$', mensal: 99, anual: 990, trialDays: 14,
+  pixKey: '',        // ← chave PIX do GK Hub (a preencher)
+  pixTitular: '',    // ← titular da conta PIX (a preencher)
+  _secret: 'gkhub-2026-assinatura',   // salt do checksum (fase pré-lançamento)
+};
+function _subDay(ts) { try { return new Date(ts).toISOString().slice(0, 10); } catch (e) { return ''; } }
+function _subGet() { const s = clubSettings(); return (s && s.sub) ? s.sub : null; }
+function _subSet(sub) {
+  const s = clubSettings(); s.sub = sub;
+  try { localStorage.setItem('gkhub_club_settings', JSON.stringify(s)); } catch (e) {}
+  try { _pushClubInfo({ ...s, igdWeights: igdWeights() }); } catch (e) {}   // sincroniza entre aparelhos do clube
+}
+function _subInit() {
+  let sub = _subGet();
+  if (!sub) {
+    const now = Date.now();
+    sub = { plan: 'trial', trialStart: now, paidUntil: now + BILLING.trialDays * 864e5, activatedAt: null, usedCodes: [] };
+    _subSet(sub);
+  }
+  return sub;
+}
+function _subStatus() {
+  const sub = _subGet() || _subInit();
+  const now = Date.now(), until = sub.paidUntil || 0;
+  return {
+    state: until > now ? (sub.plan === 'trial' ? 'trial' : 'ativo') : 'expirado',
+    plan: sub.plan, paidUntil: until, diasRest: Math.ceil((until - now) / 864e5), sub,
+  };
+}
+function _subChecksum(planToken, nonce) {
+  const base = planToken + '|' + nonce + '|' + BILLING._secret;
+  let h = 0; for (let i = 0; i < base.length; i++) h = (h * 31 + base.charCodeAt(i)) >>> 0;
+  return ('0' + (h % 1296).toString(36)).slice(-2).toUpperCase();
+}
+function _subGenCode(plan) {
+  const planToken = plan === 'anual' ? 'ANUAL' : 'MENSAL';
+  const nonce = (Date.now().toString(36) + Math.random().toString(36).slice(2, 6)).slice(-6).toUpperCase();
+  return 'GKH-' + planToken + '-' + nonce + '-' + _subChecksum(planToken, nonce);
+}
+function _subApplyCode(raw) {
+  const code = String(raw || '').trim().toUpperCase().replace(/\s+/g, '');
+  const m = code.match(/^GKH-(MENSAL|ANUAL)-([A-Z0-9]{4,8})-([A-Z0-9]{2})$/);
+  if (!m) return { ok: false, msg: 'Código inválido. Confira e tente de novo.' };
+  const planToken = m[1], nonce = m[2], chk = m[3];
+  if (_subChecksum(planToken, nonce) !== chk) return { ok: false, msg: 'Código inválido. Confira e tente de novo.' };
+  const sub = _subGet() || _subInit();
+  sub.usedCodes = sub.usedCodes || [];
+  if (sub.usedCodes.includes(nonce)) return { ok: false, msg: 'Este código já foi usado neste clube.' };
+  const months = planToken === 'ANUAL' ? 12 : 1;
+  const d = new Date(Math.max(Date.now(), sub.paidUntil || 0));
+  d.setMonth(d.getMonth() + months);
+  sub.paidUntil = d.getTime();
+  sub.plan = planToken === 'ANUAL' ? 'anual' : 'mensal';
+  sub.activatedAt = Date.now();
+  sub.usedCodes.push(nonce);
+  _subSet(sub);
+  try { logAudit('Assinatura', 'Ativou plano ' + sub.plan + ' até ' + _subDay(sub.paidUntil)); } catch (e) {}
+  return { ok: true, plan: sub.plan, until: sub.paidUntil };
+}
+const _SUB_META = {
+  trial:    { lbl: 'Teste grátis', col: '#3B82F6' },
+  ativo:    { lbl: 'Ativo',        col: '#10B981' },
+  expirado: { lbl: 'Expirado',     col: '#EF4444' },
+};
+function renderSubCard() {
+  const box = document.getElementById('sub-status-box'); if (!box) return;
+  const st = _subStatus(), meta = _SUB_META[st.state];
+  const planLbl = st.plan === 'anual' ? 'Anual' : st.plan === 'mensal' ? 'Mensal' : 'Teste';
+  const quando = st.state === 'expirado'
+    ? 'Expirou em ' + (st.paidUntil ? formatDate(_subDay(st.paidUntil)) : '—')
+    : (st.diasRest + ' dia(s) restante(s) · até ' + formatDate(_subDay(st.paidUntil)));
+  box.innerHTML =
+    '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">' +
+      '<span style="background:' + meta.col + '22;color:' + meta.col + ';border:1px solid ' + meta.col + '55;padding:4px 12px;border-radius:999px;font-weight:700;font-size:13px;">' + meta.lbl + '</span>' +
+      '<span style="font-size:13px;color:var(--muted);">Plano: <b style="color:var(--text);">' + planLbl + '</b> · ' + quando + '</span>' +
+    '</div>' +
+    '<div style="display:flex;gap:10px;flex-wrap:wrap;">' +
+      '<button class="btn btn-primary btn-sm" onclick="openSub(false)">' + (st.state === 'expirado' ? '💳 Assinar / Renovar' : '💳 Gerenciar assinatura') + '</button>' +
+    '</div>';
+}
+function _subBodyHTML(gate) {
+  const st = _subStatus();
+  const meta = _SUB_META[st.state];
+  const pix = BILLING.pixKey
+    ? ('<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;"><code style="background:var(--bg);padding:8px 12px;border-radius:8px;font-size:13px;word-break:break-all;">' + _esc(BILLING.pixKey) + '</code>' +
+       '<button class="btn btn-secondary btn-sm" onclick="_subCopyPix()">Copiar chave</button></div>' +
+       (BILLING.pixTitular ? '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Titular: ' + _esc(BILLING.pixTitular) + '</div>' : ''))
+    : '<div style="font-size:12px;color:var(--warning);margin-top:6px;">Chave PIX ainda não configurada — fale com o suporte do GK Hub para pagar.</div>';
+  const adminBlock = (typeof _isAdmin === 'function' && _isAdmin())
+    ? ('<div style="margin-top:18px;border-top:1px dashed var(--border);padding-top:14px;">' +
+        '<div style="font-weight:700;font-size:13px;margin-bottom:8px;">🔑 Admin — gerar código de ativação</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+          '<button class="btn btn-secondary btn-sm" onclick="gerarCodigoAssinatura(\'mensal\')">Gerar Mensal</button>' +
+          '<button class="btn btn-secondary btn-sm" onclick="gerarCodigoAssinatura(\'anual\')">Gerar Anual</button>' +
+        '</div>' +
+        '<div id="sub-gen-out" style="margin-top:8px;"></div>' +
+      '</div>')
+    : '';
+  return (
+    (gate
+      ? '<div style="text-align:center;margin-bottom:14px;"><div style="font-size:30px;">🔒</div><div style="font-weight:800;font-size:18px;margin-top:4px;">Seu acesso expirou</div><div style="font-size:13px;color:var(--muted);margin-top:4px;">Seus dados estão salvos. Assine para continuar usando — ou exporte tudo quando quiser.</div></div>'
+      : '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;"><span style="background:' + meta.col + '22;color:' + meta.col + ';border:1px solid ' + meta.col + '55;padding:4px 12px;border-radius:999px;font-weight:700;font-size:13px;">' + meta.lbl + '</span>' +
+        '<span style="font-size:13px;color:var(--muted);">' + (st.state === 'expirado' ? 'Renove para reativar' : st.diasRest + ' dia(s) · até ' + formatDate(_subDay(st.paidUntil))) + '</span></div>') +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">' +
+      '<div style="border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;">' +
+        '<div style="font-size:12px;color:var(--muted);">Mensal</div><div style="font-size:24px;font-weight:800;">' + BILLING.moeda + ' ' + BILLING.mensal + '</div><div style="font-size:11px;color:var(--muted);">por mês / clube</div></div>' +
+      '<div style="border:1px solid var(--primary);border-radius:12px;padding:14px;text-align:center;position:relative;">' +
+        '<div style="position:absolute;top:-9px;left:50%;transform:translateX(-50%);background:var(--primary);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:999px;">2 MESES GRÁTIS</div>' +
+        '<div style="font-size:12px;color:var(--muted);">Anual</div><div style="font-size:24px;font-weight:800;">' + BILLING.moeda + ' ' + BILLING.anual + '</div><div style="font-size:11px;color:var(--muted);">por ano / clube</div></div>' +
+    '</div>' +
+    '<div style="font-weight:700;font-size:13px;margin-bottom:4px;">1) Pague via PIX</div>' + pix +
+    '<div style="font-weight:700;font-size:13px;margin:16px 0 4px;">2) Informe o código de ativação</div>' +
+    '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Após o pagamento, envie o comprovante e você receberá um código. Cole aqui:</div>' +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;">' +
+      '<input class="form-input" id="sub-code-input" placeholder="GKH-MENSAL-XXXXXX-XX" style="flex:1;min-width:200px;text-transform:uppercase;">' +
+      '<button class="btn btn-primary" onclick="aplicarCodigoAssinatura(' + (gate ? 'true' : 'false') + ')">Ativar</button>' +
+    '</div>' +
+    '<div id="sub-code-msg" style="font-size:12px;margin-top:8px;"></div>' +
+    (gate
+      ? '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">' +
+          '<button class="btn btn-secondary btn-sm" onclick="exportBackup()">⬇️ Exportar meus dados</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="openLegal()">📄 Política & Termos</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="authLogout()">Sair</button>' +
+        '</div>'
+      : '') +
+    adminBlock
+  );
+}
+function openSub(gate) {
+  const ov = document.getElementById('sub-block'); if (!ov) return;
+  const body = document.getElementById('sub-body'); if (body) body.innerHTML = _subBodyHTML(gate);
+  const close = document.getElementById('sub-close'); if (close) close.style.display = gate ? 'none' : 'flex';
+  ov.dataset.gate = gate ? '1' : '';
+  ov.style.display = 'flex';
+}
+function closeSub() { const ov = document.getElementById('sub-block'); if (ov && ov.dataset.gate !== '1') ov.style.display = 'none'; }
+function _subCopyPix() { try { navigator.clipboard.writeText(BILLING.pixKey || ''); toast('Chave PIX copiada!', 'success'); } catch (e) {} }
+function gerarCodigoAssinatura(plan) {
+  const code = _subGenCode(plan);
+  const out = document.getElementById('sub-gen-out');
+  if (out) out.innerHTML = '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;"><code style="background:var(--bg);padding:8px 12px;border-radius:8px;font-size:13px;">' + code + '</code>' +
+    '<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard.writeText(\'' + code + '\');toast(\'Código copiado!\',\'success\')">Copiar</button></div>' +
+    '<div style="font-size:11px;color:var(--muted);margin-top:4px;">Envie este código ao clube (plano ' + (plan === 'anual' ? 'anual' : 'mensal') + ').</div>';
+}
+function aplicarCodigoAssinatura(gate) {
+  const inp = document.getElementById('sub-code-input');
+  const msg = document.getElementById('sub-code-msg');
+  const r = _subApplyCode(inp ? inp.value : '');
+  if (!r.ok) { if (msg) { msg.style.color = 'var(--error)'; msg.textContent = '✕ ' + r.msg; } return; }
+  if (msg) { msg.style.color = 'var(--success)'; msg.textContent = '✓ Plano ' + (r.plan === 'anual' ? 'anual' : 'mensal') + ' ativado até ' + formatDate(_subDay(r.until)) + '!'; }
+  toast('Assinatura ativada!', 'success');
+  try { renderSubCard(); } catch (e) {}
+  if (gate) { setTimeout(() => location.reload(), 1200); }
+  else { setTimeout(() => { closeSub(); }, 1200); }
+}
+function _subEnforce() {
+  _subInit();
+  if (typeof _isAdmin === 'function' && _isAdmin()) return false;   // dono nunca é bloqueado
+  if (_subStatus().state === 'expirado') { openSub(true); return true; }
+  return false;
+}
 const LEGAL_VERSION = '2026-10';
 function _legalHTML() {
   return (
@@ -12230,7 +12401,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v149';
+const APP_VERSION = 'v150';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
