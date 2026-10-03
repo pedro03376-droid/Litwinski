@@ -5388,15 +5388,40 @@ function _pdfReport(title, subtitle) {
       return _y;
     },
     // Painel escuro com título claro — moldura intencional p/ gráficos (canvas)
-    chartPanel(label, labelColor, w, hMm, drawFn){
-      this.ensure(hMm+10);
-      const x=M, py=_y;
-      sF(_RPT.panel2); doc.rect(x, py, w, hMm+8, 'F');
-      sD(_RPT.line); doc.setLineWidth(0.2); doc.rect(x, py, w, hMm+8, 'S');
-      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); sT(labelColor||_RPT.cyan);
-      doc.text(label, x+3, py+5);
-      drawFn(x+2, py+7, w-4, hMm);
-      return { bottom: py+hMm+8 };
+    // Painel de gráfico ocupando a largura toda. A altura sai da proporção
+    // do canvas, então nunca distorce.
+    chartFull(label, color, cv, maxH){
+      if (!cv) return _y;
+      const w = W - 2*M;
+      const h = Math.min(maxH || 999, Math.round((w-4) * (cv.height/cv.width)));
+      this.ensure(h + 12);
+      const py = _y;
+      sF(_RPT.panel2); doc.rect(M, py, w, h+9, 'F');
+      sD(_RPT.line); doc.setLineWidth(0.2); doc.rect(M, py, w, h+9, 'S');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); sT(color||_RPT.cyan);
+      doc.text(label, M+3, py+5);
+      try { doc.addImage(cv.toDataURL('image/png'), 'PNG', M+2, py+7, w-4, h, undefined, 'FAST'); } catch(e){}
+      _y = py + h + 9 + 6;
+      return _y;
+    },
+    // Dois gráficos lado a lado (cada item: {label, color, cv}).
+    chartPair(a, b){
+      const colW = (W - 2*M - 6) / 2;
+      const hOf = cv => cv ? Math.round((colW-4) * (cv.height/cv.width)) : 0;
+      const h = Math.max(hOf(a && a.cv), hOf(b && b.cv));
+      if (!h) return _y;
+      this.ensure(h + 14);
+      const py = _y, x2 = M + colW + 6;
+      [[M, a], [x2, b]].forEach(([x, it]) => {
+        if (!it || !it.cv) return;
+        sF(_RPT.panel2); doc.rect(x, py, colW, h+9, 'F');
+        sD(_RPT.line); doc.setLineWidth(0.2); doc.rect(x, py, colW, h+9, 'S');
+        doc.setFont('helvetica','bold'); doc.setFontSize(7.5); sT(it.color || _RPT.cyan);
+        doc.text(it.label, x+3, py+5);
+        try { doc.addImage(it.cv.toDataURL('image/png'), 'PNG', x+2, py+7, colW-4, hOf(it.cv), undefined, 'FAST'); } catch(e){}
+      });
+      _y = py + h + 9 + 6;
+      return _y;
     },
     finish(filename){
       const pages=doc.internal.getNumberOfPages();
@@ -5426,6 +5451,29 @@ function pdfGeral() {
   });
   R.section('Elenco — Performance');
   R.table({ head: [['Goleiro(a)','Equipe','Categoria','Nota','Classificação']], body: rows });
+  // ── Gráficos: comparativo do elenco ──
+  const comp = goleiras.map(g => {
+    const sc = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === g.id));
+    const sum = k => sc.reduce((a,s) => a + (+s[k]||0), 0);
+    return { nome: g.nome, avg: avgPerformance(g.id),
+      def: sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq'),
+      gols: sum('gda')+sum('gfa')+sum('gpe')+sum('gfl') };
+  }).filter(x => x.avg != null || x.def > 0);
+  if (comp.length) {
+    const PAL = ['#3B82F6','#10B981','#F59E0B','#22D3EE','#EC4899','#6366F1'];
+    const top = comp.slice(0, 6);
+    R.section('Comparativo do Elenco', _RPT.cyan);
+    R.chartPair(
+      { label:'NOTA MÉDIA', color:_RPT.blueLt, cv:_pdfBarChart(
+          top.map(x => x.nome.split(' ')[0].slice(0,7)),
+          top.map(x => x.avg != null ? +x.avg.toFixed(1) : 0),
+          top.map((_, i) => PAL[i % PAL.length])) },
+      { label:'DEFESAS NO TOTAL', color:_RPT.green, cv:_pdfBarChart(
+          top.map(x => x.nome.split(' ')[0].slice(0,7)),
+          top.map(x => x.def),
+          top.map((_, i) => PAL[i % PAL.length])) }
+    );
+  }
   R.section('Resumo', _RPT.green);
   R.table({ body: [['Total de goleiras', goleiras.length],['Partidas', DB.partidas.length],['Scouts', DB.scouts.length]],
     columnStyles: { 0: { fontStyle:'bold', textColor:_RPT.blueLt } } });
@@ -5462,6 +5510,45 @@ function pdfIndividual() {
       ['Saídas do gol', sum('sai')],['Interceptações', sum('int')],
       ['Gols sofridos', sum('gda')+sum('gfa')+sum('gpe')+sum('gfl')],
     ], columnStyles: { 0: { fontStyle:'bold', textColor:_RPT.blueLt } } });
+
+    // ── Gráficos ──
+    const def  = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
+    const gols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+    const distC = sum('dpc')+sum('dmc'), distE = sum('dpe')+sum('dme');
+    const taxaDist = (distC+distE) > 0 ? distC/(distC+distE) : null;
+
+    // Evolução da nota por partida (ordem cronológica)
+    const pts = scouts.map(s => {
+      const p = DB.partidas.find(x => x.id === s.partidaId);
+      return { p, nota: calcPerformance(s) };
+    }).filter(x => x.p && x.nota != null)
+      .sort((a,b) => String(a.p.data||'').localeCompare(String(b.p.data||'')))
+      .map(x => ({ label: (x.p.adversario||'—').slice(0,9), value: x.nota }));
+
+    if (pts.length >= 2 || def + gols > 0) R.section('Gráficos', _RPT.cyan);
+    if (pts.length >= 2) {
+      R.chartFull('EVOLUÇÃO DA NOTA POR PARTIDA', _RPT.blueLt,
+        _pdfTrendChart(pts, { color:'#3B82F6', floor:0, decimals:1 }), 56);
+    }
+    if (def + gols > 0) {
+      R.chartPair(
+        { label:'DEFESAS POR TIPO', color:_RPT.cyan, cv:_pdfBarChart(
+            ['Alta E','Alta D','Baixa E','Baixa D','Central','1×1'],
+            [sum('dae'),sum('dad'),sum('dbe'),sum('dbd'),sum('dc'),sum('d1x1')],
+            ['#6366F1','#3B82F6','#22D3EE','#10B981','#F59E0B','#EC4899']) },
+        { label:'DISTRIBUIÇÃO (PASSES)', color:_RPT.amber, cv:_pdfDonut(distC, distE, taxaDist) }
+      );
+      R.chartPair(
+        { label:'MAPA DE DEFESAS (ZONAS DO GOL)', color:_RPT.cyan, cv:_pdfHeatmap(
+            [[sum('dae'),sum('dc'),sum('dad')],[0,sum('d1x1'),0],[sum('dbe'),sum('esq'),sum('dbd')]], def, gols) },
+        gols > 0 ? { label:'GOLS SOFRIDOS POR TIPO', color:_RPT.red, cv:_pdfPie([
+            { label:'Dentro da área', value:sum('gda'), color:'#EF4444' },
+            { label:'Fora da área',   value:sum('gfa'), color:'#F59E0B' },
+            { label:'Pênalti',        value:sum('gpe'), color:'#8B5CF6' },
+            { label:'Falta',          value:sum('gfl'), color:'#22D3EE' },
+          ], gols, 'sofridos') } : null
+      );
+    }
   }
   R.finish('gkhub_'+gk.nome.replace(/\s/g,'_')+'_'+_rptDate()+'.pdf');
   logReport({ type: 'individual', title: 'Relatório Individual — ' + gk.nome, athlete: gk.nome, athleteId: gk.id });
@@ -5480,6 +5567,27 @@ function pdfPartidas() {
     const score = hasScore ? `${r} ${p.gf}×${p.gc}` : '—';
     return [p.data?formatDate(p.data):'—', p.adversario, p.competicao||'—', gkMap[p.goalkeeperId]||'—', score];
   });
+  // ── Gráficos: aproveitamento e gols sofridos ──
+  const comPlacar = partidas.filter(p => p.gf != null && p.gc != null);
+  if (comPlacar.length) {
+    const v = comPlacar.filter(p => p.gf > p.gc).length;
+    const e = comPlacar.filter(p => p.gf === p.gc).length;
+    const d = comPlacar.filter(p => p.gf < p.gc).length;
+    const aprov = Math.round(((v + e*0.5) / comPlacar.length) * 100);
+    const cron = [...comPlacar].sort((a,b) => String(a.data||'').localeCompare(String(b.data||'')));
+    R.section('Panorama', _RPT.cyan);
+    R.chartPair(
+      { label:'RESULTADOS', color:_RPT.green, cv:_pdfPie([
+          { label:'Vitórias', value:v, color:'#10B981' },
+          { label:'Empates',  value:e, color:'#F59E0B' },
+          { label:'Derrotas', value:d, color:'#EF4444' },
+        ], aprov + '%', 'aproveitamento') },
+      { label:'SALDO DE GOLS POR PARTIDA', color:_RPT.blueLt, cv: cron.length >= 2
+          ? _pdfTrendChart(cron.slice(-12).map(p => ({ label:(p.adversario||'—').slice(0,8), value:(p.gf - p.gc) })),
+              { color:'#22D3EE', decimals:0 })
+          : null }
+    );
+  }
   R.section('Partidas Registradas');
   R.table({ head: [['Data','Adversário','Competição','Goleiro(a)','Resultado']], body: rows,
     columnStyles: { 4: { fontStyle:'bold', halign:'center' } } });
@@ -5577,15 +5685,8 @@ function pdfCompeticao() {
     columnStyles: { 0: { fontStyle: 'bold', textColor: _RPT.blueLt } }
   });
 
-  // ── Gráficos por goleira (mesmo estilo do pós-jogo, em painéis escuros) ──
-  const colW = 88, chImgH = Math.round((colW-4) * 130 / 260); // ~42
-  const hmW = 90, hmH = Math.round(hmW * 148 / 230);          // ~58
-  const panel = (x, y, w, h, label, labelCol) => {
-    R.sF(_RPT.panel2); doc.rect(x, y, w, h, 'F');
-    R.sD(_RPT.line); doc.setLineWidth(0.2); doc.rect(x, y, w, h, 'S');
-    doc.setFont('helvetica','bold'); doc.setFontSize(7.5); R.sT(labelCol);
-    doc.text(label, x+3, y+5);
-  };
+  // ── Gráficos por goleira (painéis do framework: a altura sai da
+  //    proporção do canvas, então mudar um gráfico não distorce o PDF) ──
   let firstChart = true;
   gkIds.forEach(gkId => {
     const gk = goleiras.find(g => g.id === gkId);
@@ -5602,32 +5703,28 @@ function pdfCompeticao() {
 
     if (firstChart) { R.section('Gráficos da Competição', _RPT.cyan); firstChart = false; }
 
-    // Mantém o bloco da goleira junto quando couber
-    R.ensure(6 + (chImgH + 8) + 6 + (hmH + 8) + 12);
+    R.ensure(14);
     doc.setFont('helvetica','bold'); doc.setFontSize(10.5); R.sT(_RPT.blueLt);
     doc.text(gk.nome, M, R.y); R.y += 4;
 
-    // Linha 1: Defesas por tipo (barra) + Distribuição (donut)
-    const barCV = _pdfBarChart(
-      ['Alta E', 'Alta D', 'Baixa E', 'Baixa D', 'Central', '1×1'],
-      [sum('dae'), sum('dad'), sum('dbe'), sum('dbd'), sum('dc'), sum('d1x1')],
-      ['#6366F1', '#3B82F6', '#22D3EE', '#10B981', '#F59E0B', '#EC4899']
+    R.chartPair(
+      { label:'DEFESAS POR TIPO', color:_RPT.cyan, cv:_pdfBarChart(
+          ['Alta E', 'Alta D', 'Baixa E', 'Baixa D', 'Central', '1×1'],
+          [sum('dae'), sum('dad'), sum('dbe'), sum('dbd'), sum('dc'), sum('d1x1')],
+          ['#6366F1', '#3B82F6', '#22D3EE', '#10B981', '#F59E0B', '#EC4899']) },
+      { label:'DISTRIBUIÇÃO (PASSES)', color:_RPT.amber, cv:_pdfDonut(distC, distE, taxaDist) }
     );
-    const dnCV = _pdfDonut(distC, distE, taxaDist);
-    const py = R.y, p1H = chImgH + 8, x2 = M + colW + 6;
-    panel(M, py, colW, p1H, 'DEFESAS POR TIPO', _RPT.cyan);
-    panel(x2, py, colW, p1H, 'DISTRIBUIÇÃO (PASSES)', _RPT.amber);
-    if (barCV) doc.addImage(barCV.toDataURL('image/png'), 'PNG', M+2, py+6, colW-4, chImgH);
-    if (dnCV) doc.addImage(dnCV.toDataURL('image/png'), 'PNG', x2+2, py+6, colW-4, chImgH);
-    R.y = py + p1H + 6;
-
-    // Linha 2: Mapa de defesas (heatmap)
-    const hmCV = _pdfHeatmap([[sum('dae'), sum('dc'), sum('dad')], [0, sum('d1x1'), 0], [sum('dbe'), sum('esq'), sum('dbd')]], def, gol);
-    R.ensure(hmH + 8 + 4);
-    const hy = R.y, hpH = hmH + 8;
-    panel(M, hy, hmW+4, hpH, 'MAPA DE DEFESAS (ZONAS DO GOL)', _RPT.cyan);
-    if (hmCV) doc.addImage(hmCV.toDataURL('image/png'), 'PNG', M+2, hy+6, hmW, hmH);
-    R.y = hy + hpH + 12;
+    R.chartPair(
+      { label:'MAPA DE DEFESAS (ZONAS DO GOL)', color:_RPT.cyan, cv:_pdfHeatmap(
+          [[sum('dae'), sum('dc'), sum('dad')], [0, sum('d1x1'), 0], [sum('dbe'), sum('esq'), sum('dbd')]], def, gol) },
+      gol > 0 ? { label:'GOLS SOFRIDOS POR TIPO', color:_RPT.red, cv:_pdfPie([
+          { label:'Dentro da área', value:sum('gda'), color:'#EF4444' },
+          { label:'Fora da área',   value:sum('gfa'), color:'#F59E0B' },
+          { label:'Pênalti',        value:sum('gpe'), color:'#8B5CF6' },
+          { label:'Falta',          value:sum('gfl'), color:'#22D3EE' },
+        ], gol, 'sofridos') } : null
+    );
+    R.y += 6;
   });
 
   R.finish('gkhub_' + comp.replace(/\s+/g,'_') + '_' + _rptDate() + '.pdf');
@@ -7640,12 +7737,113 @@ function _penRenderGoleira() {
 }
 
 // ── PDF canvas helpers ───────────────────────────────────────
+// Gráficos do PDF: o canvas é desenhado em coordenadas lógicas mas
+// rasterizado em 3x, senão 260px a 90mm dão ~73 DPI (borra na impressão).
+// Com 3x vai a ~220 DPI, que é padrão de impressão.
+const _PDF_CHART_SCALE = 3;
+
+// Tendência por categoria (ex.: nota por partida). Diferente de
+// _pdfLineChart, que é por tempo decorrido dentro de um jogo.
+function _pdfTrendChart(points, opts) {
+  if (!points || points.length < 2) return null;
+  const o = opts || {};
+  const col = o.color || '#3B82F6';
+  const W = 540, H = 170, pad = { t: 20, r: 38, b: 34, l: 42 };
+  const cW = W - pad.l - pad.r, cH = H - pad.t - pad.b;
+  const S = _PDF_CHART_SCALE;
+  const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S;
+  const c = cv.getContext('2d'); c.scale(S, S);
+  c.fillStyle = '#0F172A'; c.fillRect(0, 0, W, H);
+
+  const vals = points.map(p => +p.value || 0);
+  let min = o.min != null ? o.min : Math.min(...vals);
+  let max = o.max != null ? o.max : Math.max(...vals);
+  if (max === min) { max = min + 1; min = Math.max(0, min - 1); }
+  const pad2 = (max - min) * 0.15; min = Math.max(o.floor != null ? o.floor : -Infinity, min - pad2); max = max + pad2;
+  const rng = max - min || 1;
+  const tx = i => pad.l + (points.length === 1 ? cW / 2 : (i / (points.length - 1)) * cW);
+  const ty = v => pad.t + cH - ((v - min) / rng) * cH;
+
+  // grade + eixo Y
+  for (let i = 0; i <= 4; i++) {
+    const v = min + rng * i / 4, gy = ty(v);
+    c.strokeStyle = 'rgba(255,255,255,.07)'; c.lineWidth = 0.8;
+    c.beginPath(); c.moveTo(pad.l, gy); c.lineTo(W - pad.r, gy); c.stroke();
+    c.fillStyle = '#64748B'; c.font = '11px Arial'; c.textAlign = 'right'; c.textBaseline = 'middle';
+    c.fillText(v.toFixed(o.decimals != null ? o.decimals : 1), pad.l - 5, gy);
+  }
+  // área
+  const g = c.createLinearGradient(0, pad.t, 0, pad.t + cH);
+  g.addColorStop(0, col + '55'); g.addColorStop(1, col + '05');
+  c.beginPath(); c.moveTo(tx(0), ty(vals[0]));
+  vals.forEach((v, i) => c.lineTo(tx(i), ty(v)));
+  c.lineTo(tx(vals.length - 1), pad.t + cH); c.lineTo(tx(0), pad.t + cH);
+  c.closePath(); c.fillStyle = g; c.fill();
+  // linha
+  c.beginPath(); vals.forEach((v, i) => i ? c.lineTo(tx(i), ty(v)) : c.moveTo(tx(i), ty(v)));
+  c.strokeStyle = col; c.lineWidth = 2.4; c.lineJoin = 'round'; c.stroke();
+  // pontos + rótulos do eixo X
+  const maxI = vals.indexOf(Math.max(...vals)), minI = vals.indexOf(Math.min(...vals));
+  points.forEach((p, i) => {
+    const x = tx(i), y = ty(vals[i]);
+    c.beginPath(); c.arc(x, y, i === maxI ? 4.5 : i === minI ? 4.5 : 3, 0, Math.PI * 2);
+    c.fillStyle = i === maxI ? '#34D399' : i === minI ? '#EF4444' : col; c.fill();
+    c.strokeStyle = '#0F172A'; c.lineWidth = 1.5; c.stroke();
+    c.fillStyle = '#64748B'; c.font = '10px Arial'; c.textAlign = 'center'; c.textBaseline = 'top';
+    c.fillText(String(p.label || '').slice(0, 9), Math.max(30, Math.min(W - 30, x)), H - 20);
+    if (i === maxI || i === minI) {
+      c.fillStyle = i === maxI ? '#34D399' : '#EF4444'; c.font = 'bold 11px Arial'; c.textBaseline = 'bottom';
+      c.fillText(vals[i].toFixed(o.decimals != null ? o.decimals : 1), x, y - 7);
+    }
+  });
+  return cv;
+}
+
+// Rosca genérica com legenda — para distribuições categóricas
+// (resultados, tipos de gol). _pdfDonut é fixo em certo/errado.
+function _pdfPie(segments, centerLabel, centerSub) {
+  const segs = (segments || []).filter(s => (+s.value || 0) > 0);
+  const W = 260, H = 130, cx = 66, cy = 65, r = 50;
+  const S = _PDF_CHART_SCALE;
+  const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S;
+  const c = cv.getContext('2d'); c.scale(S, S);
+  c.fillStyle = '#0F172A'; c.fillRect(0, 0, W, H);
+  const total = segs.reduce((a2, s) => a2 + (+s.value || 0), 0);
+  if (total > 0) {
+    let ang = -Math.PI / 2;
+    segs.forEach(s => {
+      const sw = ((+s.value || 0) / total) * Math.PI * 2;
+      c.beginPath(); c.moveTo(cx, cy); c.arc(cx, cy, r, ang, ang + sw); c.closePath();
+      c.fillStyle = s.color; c.fill();
+      c.strokeStyle = '#0F172A'; c.lineWidth = 1.5; c.stroke();
+      ang += sw;
+    });
+  } else {
+    c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fillStyle = '#1E293B'; c.fill();
+  }
+  c.beginPath(); c.arc(cx, cy, r * 0.64, 0, Math.PI * 2); c.fillStyle = '#0F172A'; c.fill();
+  c.fillStyle = '#E2E8F0'; c.font = 'bold 19px Arial'; c.textAlign = 'center'; c.textBaseline = 'middle';
+  c.fillText(String(centerLabel == null ? total : centerLabel), cx, cy - 4);
+  if (centerSub) { c.fillStyle = '#64748B'; c.font = '7.5px Arial'; c.fillText(centerSub, cx, cy + 13); }
+  // legenda
+  const lx = 132;
+  segs.slice(0, 4).forEach((s, i) => {
+    const ly = 24 + i * 24;
+    c.fillStyle = s.color; c.beginPath(); c.arc(lx, ly + 4, 5, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#94A3B8'; c.font = '10px Arial'; c.textAlign = 'left'; c.textBaseline = 'middle';
+    c.fillText(String(s.label).slice(0, 14), lx + 11, ly + 1);
+    c.fillStyle = '#E2E8F0'; c.font = 'bold 12px Arial';
+    c.fillText(String(s.value) + (total ? '  (' + Math.round(s.value / total * 100) + '%)' : ''), lx + 11, ly + 13);
+  });
+  return cv;
+}
 function _pdfLineChart(history) {
   if (!history||history.length<2) return null;
   const W=540,H=140,pad={t:22,r:16,b:28,l:44};
   const cW=W-pad.l-pad.r, cH=H-pad.t-pad.b;
-  const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
-  const c=cv.getContext('2d');
+  const S=_PDF_CHART_SCALE;
+  const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+  const c=cv.getContext('2d'); c.scale(S,S);
   c.fillStyle='#0F172A'; c.fillRect(0,0,W,H);
   const notaVals=history.map(p=>p.nota);
   const minN=Math.max(0,Math.min(...notaVals)-0.5), maxN=Math.min(10,Math.max(...notaVals)+0.5);
@@ -7691,8 +7889,9 @@ function _pdfLineChart(history) {
 function _pdfBarChart(labels,values,colors) {
   const W=260,H=130,pad={t:14,r:8,b:24,l:8};
   const cW=W-pad.l-pad.r,cH=H-pad.t-pad.b;
-  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
-  const c=cv.getContext('2d');
+  const S=_PDF_CHART_SCALE;
+  const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+  const c=cv.getContext('2d'); c.scale(S,S);
   c.fillStyle='#0F172A';c.fillRect(0,0,W,H);
   const maxV=Math.max(...values,1);
   const bw=cW/values.length;
@@ -7714,8 +7913,9 @@ function _pdfBarChart(labels,values,colors) {
 function _pdfDonut(distC,distE,taxaDist) {
   // Wide canvas (same aspect as bar chart 260×130) so it displays without distortion
   const W=260,H=130,cx=75,cy=65,r=52;
-  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
-  const c=cv.getContext('2d');
+  const S=_PDF_CHART_SCALE;
+  const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+  const c=cv.getContext('2d'); c.scale(S,S);
   c.fillStyle='#0F172A';c.fillRect(0,0,W,H);
   const total=distC+distE;
   if(total>0){
@@ -7744,9 +7944,10 @@ function _pdfDonut(distC,distE,taxaDist) {
 }
 
 function _pdfHeatmap(data,totalDef,totalGol) {
-  const W=230,H=148,ox=10,oy=18,fw=172,fh=108;
-  const cv=document.createElement('canvas');cv.width=W;cv.height=H;
-  const c=cv.getContext('2d');
+  const W=256,H=148,ox=10,oy=18,fw=172,fh=108;
+  const S=_PDF_CHART_SCALE;
+  const cv=document.createElement('canvas'); cv.width=W*S; cv.height=H*S;
+  const c=cv.getContext('2d'); c.scale(S,S);
   c.fillStyle='#0A0E1A';c.fillRect(0,0,W,H);
   // Field bg
   c.fillStyle='#111827';c.fillRect(ox,oy,fw,fh);
@@ -8181,7 +8382,7 @@ function _mcExportarRelatorioPDFImpl() {
   y=sh('EVOLUÇÃO DO DESEMPENHO NA PARTIDA',y);
   const tlCV=_pdfLineChart(mcNotaHistory);
   if(tlCV){
-    doc.addImage(tlCV.toDataURL('image/png'),'PNG',15,y,W-30,48);
+    doc.addImage(tlCV.toDataURL('image/png'),'PNG',15,y,W-30,48, undefined, 'FAST');
     y+=52;
     // Phase tags
     const fases=mcDetectFases();
@@ -8249,16 +8450,16 @@ function _mcExportarRelatorioPDFImpl() {
     [sum('dad'),sum('dae'),sum('d1x1'),sum('dbd')+sum('dbe'),sum('dc'),sum('esq')],
     ['#3B82F6','#6366F1','#EC4899','#10B981','#F59E0B','#EF4444']
   );
-  if(defCV)doc.addImage(defCV.toDataURL('image/png'),'PNG',lX,y,hW,chartH);
+  if(defCV)doc.addImage(defCV.toDataURL('image/png'),'PNG',lX,y,hW,chartH, undefined, 'FAST');
   const dstCV=_pdfDonut(distC,distE,taxaDist);
-  if(dstCV)doc.addImage(dstCV.toDataURL('image/png'),'PNG',rX,y,hW,chartH);
+  if(dstCV)doc.addImage(dstCV.toDataURL('image/png'),'PNG',rX,y,hW,chartH, undefined, 'FAST');
   y+=chartH+5;
 
   // Heatmap + season bars
   y=sh('MAPA DE CHUTES / DEFESAS',y);
   sh('VS. MÉDIA DA TEMPORADA',y-9,[52,211,153],rX);
   const hmCV=_pdfHeatmap([[sum('dae'),0,sum('dad')],[sum('dc'),sum('esq'),sum('dc')],[sum('dbe'),0,sum('dbd')]],def,gol);
-  if(hmCV)doc.addImage(hmCV.toDataURL('image/png'),'PNG',lX,y,hW,hmH);
+  if(hmCV)doc.addImage(hmCV.toDataURL('image/png'),'PNG',lX,y,hW,hmH, undefined, 'FAST');
 
   // Heatmap analysis text
   const hmTotal=def+gol;
@@ -12546,7 +12747,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v159';
+const APP_VERSION = 'v160';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
