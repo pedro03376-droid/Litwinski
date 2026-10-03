@@ -5319,7 +5319,7 @@ function pdfHeader(doc, title) {
   doc.text(_clb.display || _clb.nome || 'GK Hub', 14, 14);
   doc.setTextColor(180,180,200);
   doc.setFontSize(9); doc.setFont(undefined,'normal');
-  doc.text([_clb.cidade, _clb.estado].filter(Boolean).join(' / ') || 'Goalkeeper Performance Platform', 14, 21);
+  doc.text([_clb.cidade, _clb.estado].filter(Boolean).join(' / ') || 'Análise de goleiros(as)', 14, 21);
   doc.setTextColor(40,40,40);
   doc.setFontSize(14); doc.setFont(undefined,'bold');
   doc.text(title, 14, 40);
@@ -8845,7 +8845,12 @@ function _updateSidebarUser() {
   const dateEl = document.getElementById('topbar-date');
   if (dateEl) {
     const now = new Date();
-    dateEl.textContent = now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' });
+    // Compacto: o pt-BR por extenso vira "sáb., 03 de out. de 2026" (24 car.)
+    // e empurra a barra. Monta-se "sáb, 03 out 2026" (16 car.).
+    const wd = now.toLocaleDateString('pt-BR', { weekday: 'short' }).replace(/\.$/, '');
+    const mo = now.toLocaleDateString('pt-BR', { month: 'short' }).replace(/\.$/, '');
+    const dd = String(now.getDate()).padStart(2, '0');
+    dateEl.textContent = `${wd}, ${dd} ${mo} ${now.getFullYear()}`;
   }
   // Restore active workspace in sidebar
   const saved = localStorage.getItem('gkhub_active_workspace');
@@ -9111,7 +9116,7 @@ function authLogout() {
   if (document.getElementById('auth-pass'))  document.getElementById('auth-pass').value  = '';
   document.getElementById('auth-err').style.display = 'none';
   document.getElementById('sidebar-club-name').textContent = 'GKHub';
-  document.getElementById('sidebar-club-sub').textContent  = 'Goalkeeper Performance Platform';
+  document.getElementById('sidebar-club-sub').textContent  = 'Análise de goleiros(as)';
 }
 
 /* ── Club Registration ───────────────────────────────── */
@@ -12541,7 +12546,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v158';
+const APP_VERSION = 'v159';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

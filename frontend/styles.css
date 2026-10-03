@@ -137,10 +137,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 10px;
       min-height: 72px;
       flex-shrink: 0;
     }
-    .sidebar-logo-text { transition: opacity var(--transition), width var(--transition); overflow: hidden; white-space: nowrap; }
+    /* flex:1 + min-width:0 = o bloco de texto ocupa o espaço que sobra e
+       trunca de forma previsível, em vez de empurrar o botão de recolher. */
+    .sidebar-logo-text { flex: 1; min-width: 0; transition: opacity var(--transition), width var(--transition); overflow: hidden; white-space: nowrap; }
     .sidebar-logo h1 {
       font-size: 20px;
       font-weight: 800;
@@ -2099,3 +2102,10 @@ p, .empty-state p, .card-subtitle { text-wrap: pretty; }
   flex-shrink: 0;
 }
 .card-title .ic, .btn .ic { margin-right: .1em; }
+
+/* Topo: separa conectividade da data com um divisor sutil, em vez de
+   espaço solto (as duas liam como blocos desgarrados). */
+#topbar-date {
+  padding-left: 10px;
+  border-left: 1px solid var(--border);
+}
