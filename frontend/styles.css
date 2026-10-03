@@ -123,7 +123,7 @@
       flex-direction: column;
       position: fixed;
       top: 0; left: 0;
-      z-index: 100;
+      z-index: var(--z-sidebar);
       transition: width var(--transition), transform var(--transition);
       overflow: hidden;
     }
@@ -252,8 +252,8 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity .15s;
-      z-index: 200;
-      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+      z-index: var(--z-nav);
+      box-shadow: 0 8px 24px rgba(2,6,23,.3);
     }
     @media (hover: hover) and (pointer: fine) {
       body.sidebar-collapsed .nav-item:hover::after{ opacity: 1; }
@@ -285,7 +285,7 @@
       padding: 0 32px;
       position: sticky;
       top: 0;
-      z-index: 50;
+      z-index: var(--z-raised);
     }
     .topbar-title {
       font-size: 16px;
@@ -329,7 +329,7 @@
     .btn-primary {
       background: linear-gradient(135deg,#3B82F6,#2563EB);
       color: #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,.3), 0 0 0 0 rgba(59,130,246,.3);
+      box-shadow: 0 1px 3px rgba(2,6,23,.3), 0 0 0 0 rgba(59,130,246,.3);
     }
     @media (hover: hover) and (pointer: fine) {
       .btn-primary:hover{ box-shadow: var(--glow-primary), 0 4px 12px rgba(37,99,235,.35); }
@@ -344,12 +344,12 @@
       .btn-ghost:hover{ background: rgba(255,255,255,.08); border-color: var(--border-h); }
     }
 
-    .btn-danger { background: linear-gradient(135deg,#EF4444,#DC2626); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .btn-danger { background: linear-gradient(135deg,#EF4444,#DC2626); color: #fff; box-shadow: 0 1px 3px rgba(2,6,23,.3); }
     @media (hover: hover) and (pointer: fine) {
       .btn-danger:hover{ box-shadow: var(--glow-error); }
     }
 
-    .btn-success { background: linear-gradient(135deg,#10B981,#059669); color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); }
+    .btn-success { background: linear-gradient(135deg,#10B981,#059669); color: #fff; box-shadow: 0 1px 3px rgba(2,6,23,.3); }
     @media (hover: hover) and (pointer: fine) {
       .btn-success:hover{ box-shadow: var(--glow-success); }
     }
@@ -370,7 +370,7 @@
     @media (hover: hover) and (pointer: fine) {
       .card:hover{
       border-color: var(--border-h);
-      box-shadow: 0 10px 40px rgba(0,0,0,.25), 0 0 0 1px rgba(59,130,246,.06);
+      box-shadow: 0 10px 40px rgba(2,6,23,.25), 0 0 0 1px rgba(59,130,246,.06);
       transform: translateY(-2px);
     }
     }
@@ -413,7 +413,7 @@
       transition: opacity .3s;
     }
     @media (hover: hover) and (pointer: fine) {
-      .stat-card:hover{ border-color: rgba(59,130,246,.25); box-shadow: 0 10px 40px rgba(0,0,0,.25); transform: translateY(-3px); }
+      .stat-card:hover{ border-color: rgba(59,130,246,.25); box-shadow: 0 10px 40px rgba(2,6,23,.25); transform: translateY(-3px); }
     }
     @media (hover: hover) and (pointer: fine) {
       .stat-card:hover::before{ opacity: 1; }
@@ -507,7 +507,7 @@
       background: rgba(0,0,0,.65);
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
-      z-index: 200;
+      z-index: var(--z-nav);
       align-items: center;
       justify-content: center;
       padding: 20px;
@@ -524,7 +524,7 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 25px 60px rgba(0,0,0,.5);
+      box-shadow: 0 25px 60px rgba(2,6,23,.5);
       animation: pageIn .22s ease;
     }
 
@@ -610,7 +610,7 @@
     /* ════════════════════════════════════════════════════════
        TOASTS
     ════════════════════════════════════════════════════════ */
-    .toast-container { position: fixed; bottom: 96px; right: 28px; z-index: 600; display: flex; flex-direction: column; gap: 8px; }
+    .toast-container { position: fixed; bottom: 96px; right: 28px; z-index: var(--z-toast); display: flex; flex-direction: column; gap: 8px; }
     .toast {
       display: flex;
       align-items: center;
@@ -622,7 +622,7 @@
       min-width: 250px;
       animation: slideIn .28s cubic-bezier(.34,1.56,.64,1);
       border: 1px solid transparent;
-      box-shadow: 0 8px 30px rgba(0,0,0,.35);
+      box-shadow: 0 8px 30px rgba(2,6,23,.35);
     }
     .toast-success { background: #0d2118; color: #34D399; border-color: rgba(16,185,129,.25); }
     .toast-error   { background: #1f0f0f; color: #FCA5A5; border-color: rgba(239,68,68,.25); }
@@ -651,7 +651,7 @@
       aspect-ratio: 2/1;
       margin: 0 auto;
       overflow: hidden;
-      box-shadow: inset 0 0 40px rgba(0,0,0,.4);
+      box-shadow: inset 0 0 40px rgba(2,6,23,.4);
     }
     .heatmap-court::before {
       content: '';
@@ -674,7 +674,7 @@
     .heatmap-court.hm-beach {
       background: linear-gradient(180deg,#3a2c14 0%,#2a1f0e 100%);
       border-color: rgba(245,200,110,.35);
-      box-shadow: inset 0 0 40px rgba(0,0,0,.45);
+      box-shadow: inset 0 0 40px rgba(2,6,23,.45);
     }
     .heatmap-court.hm-beach::before {
       width: 46%; height: 78%; top: 50%; left: 50%; transform: translate(-50%,-50%);
@@ -828,7 +828,7 @@
       cursor: pointer;
       transition: all .18s;
     }
-    .tab-btn.active { color: var(--text); background: var(--card); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+    .tab-btn.active { color: var(--text); background: var(--card); font-weight: 600; box-shadow: 0 1px 4px rgba(2,6,23,.25); }
     @media (hover: hover) and (pointer: fine) {
       .tab-btn:hover:not(.active){ color: var(--text); background: rgba(255,255,255,.04); }
     }
@@ -916,7 +916,7 @@
       transition:border-color .2s, box-shadow .2s, transform .2s;
     }
     @media (hover: hover) and (pointer: fine) {
-      .mc-counter:hover{ border-color:var(--border-h); box-shadow:0 8px 24px rgba(0,0,0,.3); transform:translateY(-2px); }
+      .mc-counter:hover{ border-color:var(--border-h); box-shadow:0 8px 24px rgba(2,6,23,.3); transform:translateY(-2px); }
     }
     .mc-counter .val { font-size:36px; font-weight:800; line-height:1; letter-spacing:-1px; }
     .mc-counter .lbl { font-size:11px; color:var(--muted); margin-top:5px; text-transform:uppercase; letter-spacing:.8px; font-weight:600; }
@@ -1012,14 +1012,14 @@
       border-radius: 24px;
       font-size: 12px;
       font-weight: 600;
-      z-index: 300;
+      z-index: var(--z-dropdown);
       display: flex;
       align-items: center;
       gap: 8px;
       backdrop-filter: blur(12px);
       animation: slideDown .3s ease;
       pointer-events: none;
-      box-shadow: 0 8px 24px rgba(0,0,0,.3);
+      box-shadow: 0 8px 24px rgba(2,6,23,.3);
     }
     .offline-dot {
       width: 7px; height: 7px; border-radius: 50%;
@@ -1048,14 +1048,14 @@
       position: fixed; inset: 0;
       background: rgba(16,185,129,.04);
       pointer-events: none;
-      z-index: 999;
+      z-index: var(--z-backdrop);
       animation: syncFlash .8s ease forwards;
     }
 
 
     /* ── LOGIN OVERLAY ─────────────────────────────────────── */
     #auth-overlay {
-      position: fixed; inset: 0; z-index: 9999;
+      position: fixed; inset: 0; z-index: var(--z-overlay);
       background: var(--bg);
       display: flex; align-items: center; justify-content: center;
       padding: 20px;
@@ -1067,7 +1067,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       padding: 36px 28px 28px;
-      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+      box-shadow: 0 24px 80px rgba(2,6,23,.55);
       text-align: center;
     }
     .auth-logo-text {
@@ -1086,7 +1086,7 @@
       color: #3c4043; font-size: 15px; font-weight: 600;
       cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
       -webkit-tap-highlight-color: transparent; user-select: none;
-      box-shadow: 0 1px 3px rgba(0,0,0,.12);
+      box-shadow: 0 1px 3px rgba(2,6,23,.12);
       transition: box-shadow .15s, transform .1s;
     }
     .btn-google:active { box-shadow: 0 0 0 3px rgba(66,133,244,.3); transform: scale(.98); }
@@ -1106,7 +1106,7 @@
     .auth-register-link { font-size:12px;color:var(--muted);margin-top:18px; }
     .auth-register-link a { color:var(--primary-text);text-decoration:none;font-weight:600;cursor:pointer; }
     #register-overlay {
-      position:fixed;inset:0;z-index:10000;
+      position:fixed;inset:0;z-index: var(--z-max);
       background:rgba(0,0,0,.7);backdrop-filter:blur(6px);
       display:flex;align-items:center;justify-content:center;padding:20px;
     }
@@ -1115,7 +1115,7 @@
       width:100%;max-width:400px;
       background:var(--card);border:1px solid var(--border);
       border-radius:var(--radius-lg);padding:32px 28px 28px;
-      box-shadow:0 24px 80px rgba(0,0,0,.6);
+      box-shadow:0 24px 80px rgba(2,6,23,.6);
     }
     .register-card h2 { font-size:20px;font-weight:700;margin-bottom:4px; }
     .register-card p { font-size:12px;color:var(--muted);margin-bottom:24px; }
@@ -1190,21 +1190,21 @@
     ════════════════════════════════════════════════════════ */
     .card {
       border-color: rgba(255,255,255,.05) !important;
-      box-shadow: 0 4px 24px rgba(0,0,0,.18);
+      box-shadow: 0 4px 24px rgba(2,6,23,.18);
     }
     @media (hover: hover) and (pointer: fine) {
       .card:hover{
-      box-shadow: 0 10px 30px rgba(0,0,0,.28), 0 0 0 1px rgba(59,130,246,.08) !important;
+      box-shadow: 0 10px 30px rgba(2,6,23,.28), 0 0 0 1px rgba(59,130,246,.08) !important;
       transform: translateY(-3px) !important;
     }
     }
     .stat-card {
       border-color: rgba(255,255,255,.05) !important;
-      box-shadow: 0 4px 24px rgba(0,0,0,.18);
+      box-shadow: 0 4px 24px rgba(2,6,23,.18);
     }
     @media (hover: hover) and (pointer: fine) {
       .stat-card:hover{
-      box-shadow: 0 10px 30px rgba(0,0,0,.28) !important;
+      box-shadow: 0 10px 30px rgba(2,6,23,.28) !important;
       transform: translateY(-3px) !important;
     }
     }
@@ -1247,7 +1247,7 @@
       text-align: center;
       cursor: pointer;
       transition: transform .22s cubic-bezier(.34,1.56,.64,1), box-shadow .22s, border-color .22s;
-      box-shadow: 0 4px 20px rgba(0,0,0,.18);
+      box-shadow: 0 4px 20px rgba(2,6,23,.18);
       position: relative;
       overflow: hidden;
     }
@@ -1259,14 +1259,14 @@
       transition: opacity .25s;
     }
     @media (hover: hover) and (pointer: fine) {
-      .destaque-card:hover{ transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,.3); }
+      .destaque-card:hover{ transform: translateY(-4px); box-shadow: 0 12px 30px rgba(2,6,23,.3); }
     }
     @media (hover: hover) and (pointer: fine) {
       .destaque-card:hover::before{ opacity: 1; }
     }
     .destaque-icon {
       font-size: 26px; margin-bottom: 10px; display: block;
-      filter: drop-shadow(0 2px 8px rgba(0,0,0,.3));
+      filter: drop-shadow(0 2px 8px rgba(2,6,23,.3));
     }
     .destaque-label {
       font-size: 11px; color: var(--muted); text-transform: uppercase;
@@ -1287,13 +1287,13 @@
        Oculta no desktop (a barra completa já fica no topo do card). */
     .mc-sticky-bar {
       display: none;
-      position: sticky; top: 66px; z-index: 40;
+      position: sticky; top: 66px; z-index: var(--z-sticky);
       align-items: center; justify-content: space-between; gap: 10px;
       margin-bottom: 10px; padding: 8px 14px;
       background: color-mix(in srgb, var(--card) 92%, transparent);
       backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
       border: 1px solid var(--border-h); border-radius: 12px;
-      box-shadow: 0 6px 18px -8px rgba(0,0,0,.5);
+      box-shadow: 0 6px 18px -8px rgba(2,6,23,.5);
     }
     .mc-sticky-bar .mcsb-item { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
     .mc-sticky-bar .mcsb-ic { font-size: 13px; }
@@ -1387,8 +1387,8 @@
       -webkit-backdrop-filter: blur(20px);
       border: 1px solid var(--border);
       border-radius: 16px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.04);
-      z-index: 1000;
+      box-shadow: 0 20px 60px rgba(2,6,23,.5), 0 0 0 1px rgba(255,255,255,.04);
+      z-index: var(--z-modal);
       overflow: hidden;
       animation: dropdownIn .2s cubic-bezier(.34,1.56,.64,1);
     }
@@ -1442,7 +1442,7 @@
     @media (hover: hover) and (pointer: fine) {
       .user-tab:hover{ color: var(--text); background: rgba(255,255,255,.05); }
     }
-    .user-tab.active { background: var(--card); color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+    .user-tab.active { background: var(--card); color: var(--text); box-shadow: 0 2px 8px rgba(2,6,23,.2); }
     .user-tab svg { flex-shrink: 0; }
     .user-tab-content { display: none; animation: pageIn .25s ease; }
     .user-tab-content.active { display: block; }
@@ -1543,9 +1543,9 @@
 
     /* ── Elevation scale (tokens) ── */
     :root {
-      --elev-1: 0 1px 2px rgba(0,0,0,.20), 0 1px 3px rgba(0,0,0,.14);
-      --elev-2: 0 4px 12px rgba(0,0,0,.22), 0 1px 3px rgba(0,0,0,.16);
-      --elev-3: 0 12px 32px rgba(0,0,0,.30), 0 2px 8px rgba(0,0,0,.18);
+      --elev-1: 0 1px 2px rgba(2,6,23,.20), 0 1px 3px rgba(2,6,23,.14);
+      --elev-2: 0 4px 12px rgba(2,6,23,.22), 0 1px 3px rgba(2,6,23,.16);
+      --elev-3: 0 12px 32px rgba(2,6,23,.30), 0 2px 8px rgba(2,6,23,.18);
       --ring:   0 0 0 3px rgba(59,130,246,.45);
     }
 
@@ -1695,7 +1695,7 @@
 
     /* ── Ações Rápidas (FAB) ── */
     .fab-btn {
-      position: fixed; bottom: 28px; right: 28px; z-index: 480;
+      position: fixed; bottom: 28px; right: 28px; z-index: var(--z-fab);
       width: 56px; height: 56px; border-radius: 50%; border: none;
       background: linear-gradient(135deg,#3B82F6,#2563EB); color: #fff;
       display: flex; align-items: center; justify-content: center;
@@ -1708,7 +1708,7 @@
     .fab-btn:active { transform: scale(.94); }
     body.fab-open .fab-btn { transform: rotate(135deg); }
     .fab-menu {
-      position: fixed; bottom: 96px; right: 28px; z-index: 480;
+      position: fixed; bottom: 96px; right: 28px; z-index: var(--z-fab);
       display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
       opacity: 0; pointer-events: none; transform: translateY(10px);
       transition: opacity .2s, transform .2s;
@@ -1732,7 +1732,7 @@
 
     /* Accessibility: skip to main content (visible only on keyboard focus) */
     .skip-link {
-      position: fixed; top: 8px; left: 8px; z-index: 9999;
+      position: fixed; top: 8px; left: 8px; z-index: var(--z-overlay);
       background: var(--primary); color: #fff; padding: 10px 16px; border-radius: 8px;
       font-size: 13px; font-weight: 600; transform: translateY(-160%); transition: transform .15s;
     }
@@ -1740,11 +1740,11 @@
 
     /* Menu (sidebar) scroll button — reaches the lower menu options */
     #menu-scroll {
-      position: absolute; right: 12px; bottom: 74px; z-index: 120;
+      position: absolute; right: 12px; bottom: 74px; z-index: var(--z-topbar);
       width: 34px; height: 34px; border-radius: 50%;
       background: var(--primary); color: #fff; border: 2px solid var(--surface);
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 14px rgba(0,0,0,.4); transition: transform .18s, background .18s;
+      box-shadow: 0 4px 14px rgba(2,6,23,.4); transition: transform .18s, background .18s;
     }
     @media (hover: hover) and (pointer: fine) {
       #menu-scroll:hover{ transform: translateY(-2px); }
@@ -1754,7 +1754,7 @@
 
     /* Scroll helper button — left of the FAB */
     #scroll-helper {
-      position: fixed; bottom: 28px; right: 96px; z-index: 480;
+      position: fixed; bottom: 28px; right: 96px; z-index: var(--z-fab);
       width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border-h);
       background: var(--card); color: var(--text);
       display: flex; align-items: center; justify-content: center;
@@ -1817,9 +1817,9 @@
   --primary-d: #3B74E0;
   --primary-text: #9CC0FF;
   /* Sombras suaves (profundidade sem exagero) */
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.25);
-  --shadow:    0 6px 20px -8px rgba(0,0,0,.45);
-  --shadow-lg: 0 18px 48px -16px rgba(0,0,0,.55);
+  --shadow-sm: 0 1px 2px rgba(2,6,23,.25);
+  --shadow:    0 6px 20px -8px rgba(2,6,23,.45);
+  --shadow-lg: 0 18px 48px -16px rgba(2,6,23,.55);
   --radius:    14px;
   --radius-lg: 18px;
   --transition: .22s cubic-bezier(.4,0,.2,1);
@@ -2029,3 +2029,52 @@ button, a, [role="button"], .btn, .nav-item, .mc-btn, .tab-btn,
 
 /* Scroll interno não arrasta a página atrás (modais, listas, menu) */
 .modal-body, .sidebar, #notif-list { overscroll-behavior: contain; }
+
+/* Escala de z-index — mesmos valores de antes, agora nomeados. */
+:root {
+  --z-sticky: 40;
+  --z-raised: 50;
+  --z-sidebar: 100;
+  --z-topbar: 120;
+  --z-nav: 200;
+  --z-dropdown: 300;
+  --z-fab: 480;
+  --z-toast: 600;
+  --z-backdrop: 999;
+  --z-modal: 1000;
+  --z-overlay: 9999;
+  --z-max: 10000;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   POLIMENTO VISUAL — textura, números tabulares, quebra de título
+   ═══════════════════════════════════════════════════════════ */
+
+/* Grão sutil: quebra a "chapação" digital do fundo.
+   z-index negativo = fica ATRÁS do conteúdo, então não adiciona ruído
+   sobre texto/números (legibilidade primeiro). Nunca intercepta toque. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 120px 120px;
+}
+body.theme-light::before { opacity: .025; }
+@media (prefers-reduced-motion: reduce) { body::before { opacity: .02; } }
+
+/* Números tabulares: placar, nota, contador e tabela não "dançam"
+   ao mudar de valor (dígitos com a mesma largura). */
+table, .stat-value, .stat-card, .badge, .result-pill, .mc-counter,
+.gk-rating, .nota-badge, .mcsb-item, code, .kpi-value, input[type="number"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Títulos: evita palavra órfã sozinha na última linha. */
+h1, h2, h3, h4, .card-title, .modal-title, .page-title, .stat-label {
+  text-wrap: balance;
+}
+p, .empty-state p, .card-subtitle { text-wrap: pretty; }
