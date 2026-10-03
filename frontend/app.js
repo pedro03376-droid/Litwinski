@@ -34,7 +34,16 @@
 const DB = {
   load(key) { try { return JSON.parse(localStorage.getItem('gkhub_'+key) || '[]'); } catch { return []; } },
   save(key, data) {
-    localStorage.setItem('gkhub_'+key, JSON.stringify(data));
+    try {
+      localStorage.setItem('gkhub_'+key, JSON.stringify(data));
+    } catch (e) {
+      // Armazenamento cheio: avisa em vez de falhar silenciosamente e perder dados.
+      if (e && (e.name === 'QuotaExceededError' || e.code === 22 || /quota/i.test(e.message || ''))) {
+        try { toast('Armazenamento deste navegador cheio. Exporte um backup e remova fotos/dados antigos para liberar espaço.', 'error'); } catch (_) {}
+        return;   // não sincroniza um dado que não foi salvo localmente
+      }
+      throw e;
+    }
     // Sincronização automática a cada ação: todo save de uma coleção do clube
     // envia a coleção à nuvem (debounce). Inclui as principais (goleiras/
     // partidas/scouts) e as novas — ver _isAutoSync/_NEW_SYNC/_CORE_SYNC.
@@ -11888,13 +11897,26 @@ function handleProfilePhoto(input) {
   if (!file) return;
   const reader = new FileReader();
   reader.onload = e => {
-    const dataUrl = e.target.result;
-    const profile = loadProfile();
-    profile.foto = dataUrl;
-    profile.updatedAt = new Date().toISOString();
-    localStorage.setItem(_PROFILE_KEY, JSON.stringify(profile));
-    _applyProfilePhoto(dataUrl);
-    toast('Foto atualizada!', 'success');
+    const img = new Image();
+    img.onload = () => {
+      // Avatar: redimensiona p/ 256×256 JPEG — evita guardar foto de celular
+      // (vários MB) crua no localStorage.
+      const S = 256, c = document.createElement('canvas'); c.width = S; c.height = S;
+      const ctx = c.getContext('2d');
+      const scale = Math.max(S / img.width, S / img.height);
+      const w = img.width * scale, h = img.height * scale;
+      ctx.drawImage(img, (S - w) / 2, (S - h) / 2, w, h);
+      const dataUrl = c.toDataURL('image/jpeg', 0.85);
+      const profile = loadProfile();
+      profile.foto = dataUrl;
+      profile.updatedAt = new Date().toISOString();
+      try { localStorage.setItem(_PROFILE_KEY, JSON.stringify(profile)); }
+      catch (err) { toast('Armazenamento cheio. Exporte um backup e libere espaço.', 'error'); return; }
+      _applyProfilePhoto(dataUrl);
+      toast('Foto atualizada!', 'success');
+    };
+    img.onerror = () => toast('Imagem inválida.', 'error');
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -12452,7 +12474,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v152';
+const APP_VERSION = 'v153';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
