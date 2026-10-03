@@ -10987,7 +10987,7 @@ async function rtdbDelete(path) {
    Proteção contra perda de dados (tudo local vira 1 snapshot).
    ═══════════════════════════════════════════════════════════ */
 // Chaves efêmeras/de dispositivo que NÃO devem ir no backup
-const _BACKUP_SKIP = ['gkhub_session', 'gkhub_google_redirect', 'gkhub_fcm_token', 'gkhub_push_sub', 'gkhub_2fa_ok', 'gkhub_2fa', 'gkhub_2fa_secret'];
+const _BACKUP_SKIP = ['gkhub_session', 'gkhub_google_redirect', 'gkhub_fcm_token', 'gkhub_push_sub', 'gkhub_2fa_ok', 'gkhub_2fa', 'gkhub_2fa_secret', 'gkhub_club_key'];
 function _gkSnapshot() {
   const data = {};
   for (let i = 0; i < localStorage.length; i++) {
@@ -11000,6 +11000,27 @@ function _gkRestore(snapshot) {
   const data = (snapshot && snapshot.data) ? snapshot.data : snapshot;
   if (!data || typeof data !== 'object') throw new Error('formato inválido');
   Object.keys(data).forEach(k => { if (k.startsWith('gkhub_') && !_BACKUP_SKIP.includes(k)) localStorage.setItem(k, data[k]); });
+  // A chave do clube só viaja no backup PROTEGIDO (criptografado). Quando
+  // presente, restaura para reconectar a nuvem automaticamente.
+  if (data.gkhub_club_key) { try { localStorage.setItem('gkhub_club_key', data.gkhub_club_key); } catch (e) {} }
+}
+// ── Backup protegido por senha (AES-GCM + PBKDF2, 100% no navegador) ──
+function _ab2b64(buf) { const b = new Uint8Array(buf); let s = ''; const c = 0x8000; for (let i = 0; i < b.length; i += c) s += String.fromCharCode.apply(null, b.subarray(i, i + c)); return btoa(s); }
+function _b642u8(s) { return Uint8Array.from(atob(s), c => c.charCodeAt(0)); }
+async function _bkKey(password, salt) {
+  const km = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveKey']);
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', salt, iterations: 150000, hash: 'SHA-256' }, km, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+}
+async function _bkEncrypt(obj, password) {
+  const salt = crypto.getRandomValues(new Uint8Array(16)), iv = crypto.getRandomValues(new Uint8Array(12));
+  const key = await _bkKey(password, salt);
+  const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return { _gkenc: 1, v: 1, salt: _ab2b64(salt), iv: _ab2b64(iv), data: _ab2b64(ct) };
+}
+async function _bkDecrypt(wrapper, password) {
+  const key = await _bkKey(password, _b642u8(wrapper.salt));
+  const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: _b642u8(wrapper.iv) }, key, _b642u8(wrapper.data));
+  return JSON.parse(new TextDecoder().decode(pt));
 }
 // Verificação de integridade: conta registros e mostra o estado do backup.
 function verificarDados() {
@@ -11035,13 +11056,43 @@ function exportBackup() {
   try { logAudit('Dados', 'Exportou backup completo'); } catch (e) {}
   toast('Backup exportado. Guarde o arquivo em local seguro.', 'success');
 }
+async function exportBackupSecure() {
+  if (!(window.crypto && crypto.subtle)) { toast('Navegador não suporta backup protegido. Use HTTPS.', 'error'); return; }
+  const pw = prompt('Defina uma senha para proteger o backup.\nANOTE a senha — sem ela o arquivo não abre (não há recuperação).');
+  if (pw == null) return;
+  if (pw.length < 6) { toast('Use uma senha de pelo menos 6 caracteres.', 'error'); return; }
+  if (prompt('Confirme a senha:') !== pw) { toast('As senhas não conferem.', 'error'); return; }
+  try {
+    const snap = _gkSnapshot();
+    try { const ck = localStorage.getItem('gkhub_club_key'); if (ck) snap.data.gkhub_club_key = ck; } catch (e) {}   // chave do clube só no arquivo protegido
+    const wrapper = await _bkEncrypt(snap, pw);
+    const blob = new Blob([JSON.stringify(wrapper)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = 'gkhub_backup_protegido_' + new Date().toISOString().slice(0, 10) + '.gkhub'; a.click();
+    URL.revokeObjectURL(url);
+    try { logAudit('Dados', 'Exportou backup protegido (criptografado)'); } catch (e) {}
+    toast('Backup protegido exportado. Guarde a senha — ela não pode ser recuperada.', 'success');
+  } catch (e) { toast('Não foi possível gerar o backup protegido.', 'error'); }
+}
 function importBackupFile(input) {
   const f = input.files && input.files[0]; if (!f) return;
   if (!confirm('Importar vai SOBRESCREVER os dados atuais deste navegador com o backup. Deseja continuar?')) { input.value = ''; return; }
   const r = new FileReader();
-  r.onload = () => {
-    try { _gkRestore(JSON.parse(r.result)); try { logAudit('Dados', 'Importou backup'); } catch (e) {} toast('Backup restaurado! Recarregando…', 'success'); setTimeout(() => location.reload(), 900); }
-    catch (e) { toast('Arquivo de backup inválido.', 'error'); }
+  r.onload = async () => {
+    try {
+      const parsed = JSON.parse(r.result);
+      let snap = parsed;
+      if (parsed && parsed._gkenc) {   // backup protegido
+        const pw = prompt('Este backup é protegido. Digite a senha:');
+        if (pw == null) { input.value = ''; return; }
+        try { snap = await _bkDecrypt(parsed, pw); }
+        catch (e) { toast('Senha incorreta ou arquivo corrompido.', 'error'); input.value = ''; return; }
+      }
+      _gkRestore(snap);
+      try { logAudit('Dados', 'Importou backup'); } catch (e) {}
+      toast('Backup restaurado! Recarregando…', 'success');
+      setTimeout(() => location.reload(), 900);
+    } catch (e) { toast('Arquivo de backup inválido.', 'error'); }
   };
   r.readAsText(f);
 }
@@ -12401,7 +12452,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v151';
+const APP_VERSION = 'v152';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

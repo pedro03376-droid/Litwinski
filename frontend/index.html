@@ -654,8 +654,9 @@
         <div class="card-header"><span class="card-title">💾 Backup e Dados</span></div>
         <p style="color:var(--muted);font-size:13px;margin-bottom:14px;">Os dados ficam salvos neste navegador. Faça backup para não perder nada ao trocar de aparelho ou limpar o cache.</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
-          <button class="btn btn-primary btn-sm" onclick="exportBackup()">⬇️ Exportar backup (.json)</button>
-          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">⬆️ Importar backup<input type="file" accept="application/json,.json" style="display:none;" onchange="importBackupFile(this)"></label>
+          <button class="btn btn-primary btn-sm" onclick="exportBackupSecure()">🔒 Backup protegido (senha)</button>
+          <button class="btn btn-secondary btn-sm" onclick="exportBackup()">⬇️ Exportar backup (.json)</button>
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;">⬆️ Importar backup<input type="file" accept="application/json,.json,.gkhub" style="display:none;" onchange="importBackupFile(this)"></label>
           <button class="btn btn-secondary btn-sm" onclick="cloudSyncNow()">🔄 Sincronizar agora</button>
           <button class="btn btn-secondary btn-sm" onclick="cloudBackup()">☁️ Backup na nuvem</button>
           <button class="btn btn-secondary btn-sm" onclick="cloudRestore()">☁️ Restaurar da nuvem</button>
@@ -663,7 +664,7 @@
           <button class="btn btn-ghost btn-sm" onclick="verificarDados()">🔎 Verificar dados</button>
         </div>
         <div id="clb-integridade" style="margin-top:10px;"></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:10px;">Importar/restaurar substitui os dados atuais. O backup não inclui sua sessão de login por segurança.</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:10px;">Importar/restaurar substitui os dados atuais. Por segurança, o backup <b>não inclui</b> sua sessão de login, o 2FA nem a chave do clube. Para levar tudo (inclusive reconectar a nuvem) use o <b>Backup protegido</b> — ele é criptografado por senha.</div>
         <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
             <div style="font-weight:700;font-size:13px;">🗂️ Histórico de backups (nuvem)</div>
