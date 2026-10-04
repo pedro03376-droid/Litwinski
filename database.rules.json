@@ -19,32 +19,32 @@
         },
 
         "backups": {
-          "latest":  { ".validate": "newData.hasChildren()" },
+          "latest": { ".validate": "newData.hasChildren()" },
           "history": {
-            ".validate": "newData.numChildren() <= 40",
             "$dia": { ".validate": "$dia.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/) && newData.hasChildren()" }
           },
-          "$outro": { ".validate": false }
+          "$outro": { ".validate": "!newData.isString() || newData.val().length <= 20000" }
         },
 
-        "goleiras":     { ".validate": "newData.numChildren() <= 500",   "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 400000" } } },
-        "partidas":     { ".validate": "newData.numChildren() <= 5000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "scouts":       { ".validate": "newData.numChildren() <= 20000", "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "lesoes":       { ".validate": "newData.numChildren() <= 5000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "pid":          { ".validate": "newData.numChildren() <= 5000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "aianalyses":   { ".validate": "newData.numChildren() <= 2000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 100000" } } },
-        "notifications":{ ".validate": "newData.numChildren() <= 2000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "tp_sessions":  { ".validate": "newData.numChildren() <= 10000", "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "tp_exercises": { ".validate": "newData.numChildren() <= 10000", "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "tp_goals":     { ".validate": "newData.numChildren() <= 5000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "seasons":      { ".validate": "newData.numChildren() <= 500",   "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "competicoes":  { ".validate": "newData.numChildren() <= 1000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "def_lances":   { ".validate": "newData.numChildren() <= 50000", "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "penaltis":     { ".validate": "newData.numChildren() <= 20000", "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "pen_fotos":    { ".validate": "newData.numChildren() <= 2000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 400000" } } },
-        "reacao":       { ".validate": "newData.numChildren() <= 20000", "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "reacao_hist":  { ".validate": "newData.numChildren() <= 50000", "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
-        "periodizacao": { ".validate": "newData.numChildren() <= 5000",  "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "goleiras":     { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 400000" } } },
+        "pen_fotos":    { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 400000" } } },
+        "aianalyses":   { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 100000" } } },
+
+        "partidas":     { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "scouts":       { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "lesoes":       { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "pid":          { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "notifications":{ "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "tp_sessions":  { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "tp_exercises": { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "tp_goals":     { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "seasons":      { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "competicoes":  { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "def_lances":   { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "penaltis":     { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "reacao":       { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "reacao_hist":  { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
+        "periodizacao": { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
 
         "$desconhecido": { ".validate": "!newData.isString() || newData.val().length <= 20000" }
       }
