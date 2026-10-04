@@ -1900,7 +1900,121 @@ function renderScouts() {
 // ═══════════════════════════════════════════════════════════
 // PERFORMANCE
 // ═══════════════════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════════════════
+// COMPARAÇÃO DIRETA ENTRE DUAS GOLEIRAS (head-to-head)
+// Reaproveita as métricas já calculadas; nenhuma conta nova.
+// ═══════════════════════════════════════════════════════════
+function _h2hStats(gkId) {
+  const gk = DB.goleiras.find(g => g.id === gkId);
+  if (!gk) return null;
+  const sc = _mergeScouts(DB.scouts.filter(s => s.goalkeeperId === gkId));
+  const sum = k => sc.reduce((acc, s) => acc + (+s[k] || 0), 0);
+  const def = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
+  const gols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+  const distC = sum('dpc')+sum('dmc'), distT = distC + sum('dpe') + sum('dme');
+  const safe = (fn, d) => { try { return fn(); } catch(e) { return d; } };
+  const rating = safe(() => computeGKRating(gkId, false), { score:null });
+  const gsaa = safe(() => computeGSAAFromScouts(gkId), { shots:0 });
+  const jogos = [...new Set(sc.map(s => s.partidaId).filter(Boolean))].length || sc.length;
+  return {
+    gk, jogos,
+    nota: avgPerformance(gkId),
+    rating: rating.score,
+    taxaDef: (def + gols) ? Math.round(def / (def + gols) * 100) : null,
+    def, gols,
+    dist: distT ? Math.round(distC / distT * 100) : null,
+    gsaa: gsaa.shots ? gsaa.gsaa : null,
+    umXum: sum('d1x1'),
+    cmd: sum('int') + sum('sai'),
+  };
+}
+function _h2hFill() {
+  const gks = DB.goleiras;
+  const a = document.getElementById('h2h-a'), b = document.getElementById('h2h-b');
+  if (!a || !b) return;
+  const opts = gks.map(g => '<option value="' + g.id + '">' + _esc(g.nome) + '</option>').join('');
+  const keepA = a.value, keepB = b.value;
+  a.innerHTML = opts; b.innerHTML = opts;
+  a.value = keepA && gks.some(g => g.id === keepA) ? keepA : (gks[0] ? gks[0].id : '');
+  b.value = keepB && gks.some(g => g.id === keepB) ? keepB : (gks[1] ? gks[1].id : (gks[0] ? gks[0].id : ''));
+}
+function renderH2H() {
+  const card = document.getElementById('h2h-card');
+  const box = document.getElementById('h2h-body');
+  if (!card || !box) return;
+  if (DB.goleiras.length < 2) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  _h2hFill();
+  const A = _h2hStats(document.getElementById('h2h-a').value);
+  const B = _h2hStats(document.getElementById('h2h-b').value);
+  if (!A || !B) { box.innerHTML = ''; return; }
+  if (A.gk.id === B.gk.id) {
+    box.innerHTML = '<div class="empty-state"><p>Selecione duas goleiras diferentes.</p></div>';
+    return;
+  }
+
+  // maior é melhor em tudo, menos em gols sofridos
+  const METRICAS = [
+    { k:'nota',    lbl:'Nota média',        fmt:v=>v!=null?v.toFixed(1):'—', melhor:'maior' },
+    { k:'rating',  lbl:'GK Rating',         fmt:v=>v!=null?v:'—',            melhor:'maior' },
+    { k:'taxaDef', lbl:'% de defesa',       fmt:v=>v!=null?v+'%':'—',        melhor:'maior' },
+    { k:'gsaa',    lbl:'Gols evitados',     fmt:v=>v!=null?(v>=0?'+':'')+v:'—', melhor:'maior' },
+    { k:'dist',    lbl:'Distribuição',      fmt:v=>v!=null?v+'%':'—',        melhor:'maior' },
+    { k:'def',     lbl:'Defesas',           fmt:v=>v,                        melhor:'maior' },
+    { k:'gols',    lbl:'Gols sofridos',     fmt:v=>v,                        melhor:'menor' },
+    { k:'umXum',   lbl:'Defesas 1×1',       fmt:v=>v,                        melhor:'maior' },
+    { k:'cmd',     lbl:'Saídas + intercept.', fmt:v=>v,                      melhor:'maior' },
+    { k:'jogos',   lbl:'Partidas com scout', fmt:v=>v,                       melhor:'neutro' },
+  ];
+
+  let venceA = 0, venceB = 0;
+  const linhas = METRICAS.map(m => {
+    const va = A[m.k], vb = B[m.k];
+    let lead = null;
+    if (m.melhor !== 'neutro' && va != null && vb != null && va !== vb) {
+      lead = (m.melhor === 'maior' ? (va > vb) : (va < vb)) ? 'a' : 'b';
+      if (lead === 'a') venceA++; else venceB++;
+    }
+    // barra proporcional ao maior valor absoluto do par
+    const max = Math.max(Math.abs(+va || 0), Math.abs(+vb || 0)) || 1;
+    const pa = Math.round(Math.abs(+va || 0) / max * 100);
+    const pb = Math.round(Math.abs(+vb || 0) / max * 100);
+    const cor = l => l ? 'var(--success)' : 'var(--border-h)';
+    return '<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--border);">' +
+        '<div style="text-align:right;">' +
+          '<div style="font-size:13px;font-weight:' + (lead==='a'?'800':'600') + ';color:' + (lead==='a'?'var(--success)':'var(--text)') + ';font-variant-numeric:tabular-nums;">' + m.fmt(va) + '</div>' +
+          '<div style="height:4px;border-radius:3px;background:var(--bg);margin-top:4px;overflow:hidden;display:flex;justify-content:flex-end;">' +
+            '<div style="height:100%;width:' + pa + '%;background:' + cor(lead==='a') + ';"></div></div>' +
+        '</div>' +
+        '<div style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:108px;text-align:center;">' + m.lbl + '</div>' +
+        '<div>' +
+          '<div style="font-size:13px;font-weight:' + (lead==='b'?'800':'600') + ';color:' + (lead==='b'?'var(--success)':'var(--text)') + ';font-variant-numeric:tabular-nums;">' + m.fmt(vb) + '</div>' +
+          '<div style="height:4px;border-radius:3px;background:var(--bg);margin-top:4px;overflow:hidden;">' +
+            '<div style="height:100%;width:' + pb + '%;background:' + cor(lead==='b') + ';"></div></div>' +
+        '</div>' +
+      '</div>';
+  }).join('');
+
+  const chip = (n, v, destaque) =>
+    '<div style="flex:1;min-width:0;text-align:center;padding:10px 6px;border-radius:10px;background:' +
+      (destaque ? 'rgba(16,185,129,.10)' : 'var(--card-2)') + ';border:1px solid ' + (destaque ? 'rgba(16,185,129,.35)' : 'var(--border)') + ';">' +
+      '<div style="font-size:13px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(n) + '</div>' +
+      '<div style="font-size:11px;color:var(--muted);margin-top:2px;">' + v + ' indicador(es) à frente</div></div>';
+
+  box.innerHTML =
+    '<div style="display:flex;gap:10px;margin-bottom:12px;">' +
+      chip(A.gk.nome, venceA, venceA > venceB) +
+      chip(B.gk.nome, venceB, venceB > venceA) +
+    '</div>' + linhas +
+    '<div style="font-size:11px;color:var(--muted);margin-top:12px;line-height:1.5;">' +
+      'Verde marca quem lidera cada indicador. Em <b>gols sofridos</b>, menor é melhor. ' +
+      'As barras são proporcionais ao maior valor do par — servem para comparar, não como escala absoluta.' +
+    '</div>';
+}
+
 function renderPerformance() {
+  try { renderH2H(); } catch (e) {}
   const goleiras = DB.goleiras;
   const listEl = document.getElementById('perf-gk-list');
   if (!goleiras.length) {
@@ -12898,7 +13012,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v161';
+const APP_VERSION = 'v162';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

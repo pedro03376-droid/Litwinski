@@ -2120,3 +2120,49 @@ select.form-select {
 @media (max-width: 768px) {
   select.form-select { max-width: 60vw; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   MOVIMENTO — refinos pontuais.
+   O app já anima página (pageIn), números (countUp), modal e dropdown,
+   então aqui NÃO se acrescenta motion por enquete: corrige-se o easing
+   de entrada e adiciona-se a cascata que faltava em listas.
+   ═══════════════════════════════════════════════════════════ */
+
+/* Entrada pede ease-out (desacelera ao chegar). O projeto usava
+   ease-in-out, que começa devagar e faz a entrada parecer arrastada. */
+.page.active { animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
+.stat-value  { animation-timing-function: cubic-bezier(.16, 1, .3, 1); }
+
+/* Cascata nas listas: itens entram em sequência curta em vez de surgirem
+   todos de uma vez. Só transform/opacity (aceleradas por GPU) e limitado
+   aos 8 primeiros — depois disso a espera incomodaria mais do que ajuda. */
+@keyframes rowIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.page.active tbody tr,
+.page.active .sr-item,
+.page.active .fab-item {
+  animation: rowIn .28s cubic-bezier(.16, 1, .3, 1) backwards;
+}
+.page.active tbody tr:nth-child(1), .page.active .sr-item:nth-child(1) { animation-delay: .02s; }
+.page.active tbody tr:nth-child(2), .page.active .sr-item:nth-child(2) { animation-delay: .05s; }
+.page.active tbody tr:nth-child(3), .page.active .sr-item:nth-child(3) { animation-delay: .08s; }
+.page.active tbody tr:nth-child(4), .page.active .sr-item:nth-child(4) { animation-delay: .11s; }
+.page.active tbody tr:nth-child(5), .page.active .sr-item:nth-child(5) { animation-delay: .14s; }
+.page.active tbody tr:nth-child(6), .page.active .sr-item:nth-child(6) { animation-delay: .17s; }
+.page.active tbody tr:nth-child(7), .page.active .sr-item:nth-child(7) { animation-delay: .20s; }
+.page.active tbody tr:nth-child(n+8), .page.active .sr-item:nth-child(n+8) { animation-delay: .22s; }
+
+/* Quem pediu menos movimento não recebe cascata nenhuma. */
+@media (prefers-reduced-motion: reduce) {
+  .page.active tbody tr, .page.active .sr-item, .page.active .fab-item { animation: none !important; }
+}
+
+/* Grade/flex só deixa de estourar se os filhos puderem encolher abaixo do
+   próprio conteúdo. Sem min-width:0 um nome longo (ou a opção mais longa de
+   um <select>) infla a coluna inteira e arrasta a página junto. */
+.resp-2col > * { min-width: 0; }
+#perf-gk-list, #perf-gk-list > div, #h2h-body, #h2h-card { min-width: 0; }
+#perf-gk-list > div > span,
+#perf-gk-list > div > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
