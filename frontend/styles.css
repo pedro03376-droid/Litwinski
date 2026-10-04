@@ -2109,3 +2109,14 @@ p, .empty-state p, .card-subtitle { text-wrap: pretty; }
   padding-left: 10px;
   border-left: 1px solid var(--border);
 }
+
+/* Um <select> se dimensiona pela OPÇÃO MAIS LONGA, e isso infla o container
+   pai junto — por isso max-width:100% não resolve (referência circular).
+   No celular o teto precisa ser relativo à viewport. */
+select.form-select {
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+@media (max-width: 768px) {
+  select.form-select { max-width: 60vw; }
+}

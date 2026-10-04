@@ -5388,6 +5388,72 @@ function _pdfReport(title, subtitle) {
       return _y;
     },
     // Painel escuro com título claro — moldura intencional p/ gráficos (canvas)
+
+    // Faixa de destaque com foto da atleta.
+    athleteHero(gk, sub){
+      const h = 24, w = W - 2*M;
+      this.ensure(h + 8);
+      const py = _y;
+      sF(_RPT.panel); doc.rect(M, py, w, h, 'F');
+      sF(_RPT.blue); doc.rect(M, py, 1.8, h, 'F');
+      let tx = M + 7;
+      if (gk && gk.foto) { try { doc.addImage(gk.foto, 'JPEG', M+6, py+3, 18, 18, undefined, 'FAST'); tx = M + 29; } catch(e){} }
+      doc.setFont('helvetica','bold'); doc.setFontSize(14); sT([248,250,252]);
+      doc.text(String((gk && gk.nome) || '').slice(0,34), tx, py+11);
+      if (sub) { doc.setFont('helvetica','normal'); doc.setFontSize(8); sT(_RPT.mut);
+        doc.text(String(sub).slice(0,70), tx, py+17); }
+      _y = py + h + 7;
+      return _y;
+    },
+    // Linha de cartões de indicador. items: {label, value, sub, color}
+    kpiRow(items){
+      const list = (items||[]).filter(Boolean); const n = list.length;
+      if (!n) return _y;
+      const gap = 4, w = (W - 2*M - gap*(n-1)) / n, h = 27;
+      this.ensure(h + 7);
+      const py = _y;
+      list.forEach((it, i) => {
+        const x = M + i*(w+gap), col = it.color || _RPT.blue;
+        sF(_RPT.panel); doc.rect(x, py, w, h, 'F');
+        sF(col); doc.rect(x, py, w, 2, 'F');
+        doc.setFont('helvetica','bold'); doc.setFontSize(5.6); sT(_RPT.mut);
+        doc.text(String(it.label).toUpperCase().slice(0,22), x+3, py+7.5);
+        doc.setFont('helvetica','bold'); doc.setFontSize(15); sT(col);
+        doc.text(String(it.value), x+w/2, py+18.5, { align:'center' });
+        if (it.sub) { doc.setFont('helvetica','normal'); doc.setFontSize(5.4); sT(_RPT.mut);
+          doc.text(String(it.sub).slice(0,26), x+w/2, py+24, { align:'center' }); }
+      });
+      _y = py + h + 7;
+      return _y;
+    },
+    // Bloco de texto corrido (parecer, resumo). Quebra entre páginas.
+    paragraph(text, color){
+      const w = W - 2*M;
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+      const lines = doc.splitTextToSize(String(text||''), w - 8);
+      const h = lines.length * 4.3 + 8;
+      this.ensure(h + 5);
+      sF(_RPT.panel2); doc.rect(M, _y, w, h, 'F');
+      sD(_RPT.line); doc.setLineWidth(0.2); doc.rect(M, _y, w, h, 'S');
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); sT(color || _RPT.txt);
+      doc.text(lines, M+4, _y+6);
+      _y += h + 6;
+      return _y;
+    },
+    // Lista de marcadores — para o resumo executivo.
+    bullets(items, color){
+      const w = W - 2*M; const col = color || _RPT.blueLt;
+      (items||[]).filter(Boolean).forEach(t => {
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5);
+        const lines = doc.splitTextToSize(String(t), w - 12);
+        this.ensure(lines.length * 4.3 + 3);
+        sF(col); doc.circle(M+2.5, _y-1.2, 1.1, 'F');
+        sT(_RPT.txt); doc.text(lines, M+7, _y);
+        _y += lines.length * 4.3 + 2.5;
+      });
+      _y += 4;
+      return _y;
+    },
     // Painel de gráfico ocupando a largura toda. A altura sai da proporção
     // do canvas, então nunca distorce.
     chartFull(label, color, cv, maxH){
@@ -5488,41 +5554,93 @@ function pdfIndividual() {
   const gk = DB.goleiras.find(g=>g.id===gkId);
   if (!window.jspdf) { toast('Biblioteca PDF não carregada','error'); return; }
   const R = _pdfReport('Relatório Individual', gk.nome);
+
   const scouts = _mergeScouts(DB.scouts.filter(s=>s.goalkeeperId===gkId));
-  const avg = avgPerformance(gkId); const { label } = classifyPerf(avg);
+  const sum = k => scouts.reduce((acc,s)=>acc+(+s[k]||0),0);
+  const avg = avgPerformance(gkId); const cls = classifyPerf(avg);
+  const def  = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
+  const gols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
+  const distC = sum('dpc')+sum('dmc'), distE = sum('dpe')+sum('dme'), distT = distC+distE;
+  const taxaDef  = (def+gols) ? def/(def+gols) : null;
+  const taxaDist = distT ? distC/distT : null;
+
+  const safe = (fn, dflt) => { try { return fn(); } catch(e) { return dflt; } };
+  const rating = safe(()=>computeGKRating(gkId, false), { score:null });
+  const gsaa   = safe(()=>computeGSAAFromScouts(gkId), { shots:0 });
+  const igd    = safe(()=>computeIGD(gkId), { score:null });
+  const acwr   = safe(()=>_tpACWR(gkId), { ratio:null });
+  const mod    = gk.modalidade === 'beach' ? 'beach' : 'futsal';
+  const naipe  = gk.naipe === 'masculino' ? 'masculino' : 'feminino';
+  const ref    = safe(()=>gkBench(mod)[naipe], { saveRate:null, dist:null });
+
+  // ── Capa da atleta + indicadores ──
+  R.athleteHero(gk, [gk.equipe, gk.categoria, mod==='beach'?'Beach Soccer':'Futsal'].filter(Boolean).join(' · '));
+  R.kpiRow([
+    { label:'Nota média', value: avg!=null ? avg.toFixed(1) : '—', sub: avg!=null ? cls.label : 'sem dados', color:_RPT.blueLt },
+    { label:'GK Rating', value: rating.score!=null ? rating.score : '—', sub: rating.score!=null ? (rating.tier||'')+' · '+(rating.games||0)+' jogos' : 'sem dados', color:_RPT.green },
+    { label:'% de defesa', value: taxaDef!=null ? Math.round(taxaDef*100)+'%' : '—', sub: ref.saveRate!=null ? 'ref. '+Math.round(ref.saveRate*100)+'%' : '', color:_RPT.cyan },
+    { label:'Gols evitados', value: gsaa.shots ? (gsaa.gsaa>=0?'+':'')+gsaa.gsaa : '—', sub: gsaa.shots ? gsaa.shots+' finalizações' : 'sem dados', color: (gsaa.gsaa||0)>=0 ? _RPT.green : _RPT.red },
+  ]);
+
+  // ── Resumo executivo ──
+  const bul = [];
+  if (scouts.length) bul.push(scouts.length + ' partida(s) com scout' + (avg!=null ? ', nota média ' + avg.toFixed(1) + ' (' + cls.label.toLowerCase() + ')' : '') + '.');
+  if (taxaDef != null && ref.saveRate != null) {
+    const dif = Math.round((taxaDef - ref.saveRate) * 100);
+    bul.push('Taxa de defesa de ' + Math.round(taxaDef*100) + '%, ' +
+      (dif >= 0 ? dif + ' pontos ACIMA' : Math.abs(dif) + ' pontos abaixo') +
+      ' da referência para ' + naipe + ' no ' + (mod==='beach'?'beach soccer':'futsal') + ' (' + Math.round(ref.saveRate*100) + '%).');
+  }
+  if (gsaa.shots) bul.push('Gols evitados: ' + (gsaa.gsaa>=0?'+':'') + gsaa.gsaa + ' em relação ao esperado — sofreu ' + gsaa.goals + ' em ' + gsaa.shots + ' finalizações enfrentadas.');
+  if (taxaDist != null && ref.dist != null) {
+    const dd = Math.round((taxaDist - ref.dist) * 100);
+    bul.push('Precisão de distribuição de ' + Math.round(taxaDist*100) + '% (' + (dd>=0? '+'+dd : dd) + ' vs. referência).');
+  }
+  const zonas = { 'alta esquerda':sum('dae'), 'alta direita':sum('dad'), 'baixa esquerda':sum('dbe'), 'baixa direita':sum('dbd'), 'central':sum('dc') };
+  const zTop = Object.entries(zonas).sort((x,y)=>y[1]-x[1])[0];
+  if (zTop && zTop[1] > 0) bul.push('Zona de maior volume de defesas: ' + zTop[0] + ' (' + zTop[1] + ').');
+  if (acwr.ratio != null) bul.push('Carga de treino (ACWR) em ' + acwr.ratio + ' — ' + acwr.status + '.');
+  if (bul.length) { R.section('Resumo Executivo', _RPT.blueLt); R.bullets(bul); }
+
+  // ── Ficha ──
   R.section('Ficha da Atleta');
   R.table({ head: [['Dado','Valor']], body: [
     ['Nome', gk.nome],['Equipe', gk.equipe||'—'],['Categoria', gk.categoria||'—'],
-    ['Modalidade', gk.modalidade==='beach'?'Beach Soccer':'Futsal'],
+    ['Modalidade', mod==='beach'?'Beach Soccer':'Futsal'],
     ['Naipe', gk.naipe ? (gk.naipe==='masculino'?'Masculino':'Feminino') : '—'],
     ['Altura', gk.altura?gk.altura+' cm':'—'],['Peso', gk.peso?gk.peso+' kg':'—'],
-    ['Pé dominante', gk.pe||'—'],['Performance média', avg!==null?avg+' ('+label+')':'sem dados'],
-    ['IGD — Índice Global', (()=>{ const i=computeIGD(gk.id); return i.score!=null? i.score+' / 100' : 'sem dados'; })()],
+    ['Pé dominante', gk.pe||'—'],['Performance média', avg!==null?avg+' ('+cls.label+')':'sem dados'],
+    ['IGD — Índice Global', igd.score!=null ? igd.score+' / 100' : 'sem dados'],
     ['Partidas com scout', scouts.length],
   ], columnStyles: { 0: { fontStyle:'bold', textColor:_RPT.blueLt, cellWidth:60 } } });
+
+  // ── GK Rating explicado ──
+  if (rating.score != null && Array.isArray(rating.breakdown) && rating.breakdown.length) {
+    R.section('GK Rating — Como foi calculado', _RPT.green);
+    R.table({ head: [['Componente','Efeito']], body: rating.breakdown.map(b => [
+      b.label + (b.hint ? ' (' + b.hint + ')' : ''),
+      (typeof b.value === 'number' ? (b.kind==='mod' && b.value>=0 ? '+' : '') + Math.round(b.value*10)/10 : String(b.value)),
+    ]).concat([['GK Rating final', rating.score + ' / 100' + (rating.tier ? ' — ' + rating.tier : '')]]),
+      columnStyles: { 0:{ textColor:_RPT.txt }, 1:{ halign:'right', fontStyle:'bold', textColor:_RPT.blueLt } } });
+  }
+
   if (scouts.length) {
-    const sum = (k)=>scouts.reduce((a,s)=>a+(+s[k]||0),0);
+    // ── Estatísticas ──
     R.section('Estatísticas Acumuladas', _RPT.green);
     R.table({ head: [['Métrica','Total']], body: [
       ['Defesas Alta E', sum('dae')],['Defesas Alta D', sum('dad')],
       ['Defesas Baixa E', sum('dbe')],['Defesas Baixa D', sum('dbd')],
       ['Defesa Central', sum('dc')],['Defesa 1×1', sum('d1x1')],['Esquadros', sum('esq')],
       ['Saídas do gol', sum('sai')],['Interceptações', sum('int')],
-      ['Gols sofridos', sum('gda')+sum('gfa')+sum('gpe')+sum('gfl')],
+      ['Gols sofridos', gols],
     ], columnStyles: { 0: { fontStyle:'bold', textColor:_RPT.blueLt } } });
 
     // ── Gráficos ──
-    const def  = sum('dad')+sum('dae')+sum('dbd')+sum('dbe')+sum('dc')+sum('d1x1')+sum('esq');
-    const gols = sum('gda')+sum('gfa')+sum('gpe')+sum('gfl');
-    const distC = sum('dpc')+sum('dmc'), distE = sum('dpe')+sum('dme');
-    const taxaDist = (distC+distE) > 0 ? distC/(distC+distE) : null;
-
-    // Evolução da nota por partida (ordem cronológica)
     const pts = scouts.map(s => {
       const p = DB.partidas.find(x => x.id === s.partidaId);
       return { p, nota: calcPerformance(s) };
     }).filter(x => x.p && x.nota != null)
-      .sort((a,b) => String(a.p.data||'').localeCompare(String(b.p.data||'')))
+      .sort((x,y) => String(x.p.data||'').localeCompare(String(y.p.data||'')))
       .map(x => ({ label: (x.p.adversario||'—').slice(0,9), value: x.nota }));
 
     if (pts.length >= 2 || def + gols > 0) R.section('Gráficos', _RPT.cyan);
@@ -5549,7 +5667,40 @@ function pdfIndividual() {
           ], gols, 'sofridos') } : null
       );
     }
+
+    // ── Parecer técnico ──
+    const parecer = safe(()=>_gerarParecer(avg||0, taxaDef, taxaDist, def, gols, sum('d1x1'), sum('int'), 0, 0), null);
+    if (parecer) { R.section('Parecer Técnico', _RPT.amber); R.paragraph(parecer); }
   }
+
+  // ── Carga de treino ──
+  if (acwr.ratio != null) {
+    R.section('Carga de Treino', _RPT.cyan);
+    R.table({ body: [
+      ['Carga aguda (7 dias)', acwr.acute],
+      ['Carga crônica (28 dias)', acwr.chronic],
+      ['ACWR (aguda / crônica)', acwr.ratio],
+      ['Leitura', acwr.status],
+    ], columnStyles: { 0:{ fontStyle:'bold', textColor:_RPT.blueLt } } });
+  }
+
+  // ── Lesões ──
+  const les = safe(()=>DB.lesoes.filter(l=>l.goalkeeperId===gkId), []);
+  if (les.length) {
+    R.section('Histórico de Lesões', _RPT.red);
+    R.table({ head:[['Data','Tipo','Local','Status']],
+      body: les.slice(0,12).map(l=>[ l.data?formatDate(l.data):'—', l.tipo||'—', l.local||l.regiao||'—', l.status||'—' ]) });
+  }
+
+  // ── Plano individual ──
+  const pid = safe(()=>DB.pid.filter(p=>p.goalkeeperId===gkId), []);
+  if (pid.length) {
+    R.section('Plano Individual de Desenvolvimento', _RPT.green);
+    R.table({ head:[['Objetivo','Prazo','Status']],
+      body: pid.slice(0,12).map(p=>[ p.objetivo||p.titulo||'—', p.prazo?formatDate(p.prazo):'—', p.status||'—' ]),
+      columnStyles:{ 0:{ cellWidth:95 } } });
+  }
+
   R.finish('gkhub_'+gk.nome.replace(/\s/g,'_')+'_'+_rptDate()+'.pdf');
   logReport({ type: 'individual', title: 'Relatório Individual — ' + gk.nome, athlete: gk.nome, athleteId: gk.id });
   toast('PDF gerado!','success');
@@ -12747,7 +12898,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v160';
+const APP_VERSION = 'v161';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
