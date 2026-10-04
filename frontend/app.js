@@ -8411,7 +8411,9 @@ async function mcCompartilharRelatorio() {
 
 // ── PDF Profissional ─────────────────────────────────────────
 function mcExportarRelatorioPDF() {
-  try { _mcExportarRelatorioPDFImpl(); } catch(e) { console.error('PDF error:',e); toast('Erro ao gerar PDF: '+e.message,'error'); }
+  // O detalhe técnico fica no console (diagnóstico); ao usuário vai uma
+  // mensagem útil — expor e.message não ajuda o técnico e revela interno.
+  try { _mcExportarRelatorioPDFImpl(); } catch(e) { console.error('PDF error:',e); toast('Não foi possível gerar o PDF. Tente de novo; se persistir, exporte um backup e avise o suporte.','error'); }
 }
 function _mcExportarRelatorioPDFImpl() {
   const { jsPDF }=window.jspdf;
@@ -13012,7 +13014,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v162';
+const APP_VERSION = 'v163';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
