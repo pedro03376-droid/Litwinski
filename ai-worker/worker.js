@@ -3,12 +3,63 @@
  * Devolve { analysis: { overallScore, strengths[], attentionPoints[],
  *          evolutionNotes[], trainingSuggestions[] } }.
  * Tenta vários modelos automaticamente (resistente às mudanças do Google).
- * Rotas: GET /health · GET /models (lista os modelos da sua conta) · POST /insights
- * Secret: GEMINI_API_KEY · (opcional) GEMINI_MODEL
+ * Rotas: GET /health · GET /models (requer DEBUG_TOKEN) · POST /insights
+ * Secrets: GEMINI_API_KEY · (opcional) DEBUG_TOKEN · (opcional) GEMINI_MODEL
+ * Binding opcional: KV "RL" (limite de uso por IP que sobrevive a reinícios).
+ *
+ * PROTEÇÕES (o endpoint gasta a cota paga da Gemini):
+ *  - só aceita chamadas vindas das origens do GK Hub;
+ *  - corpo limitado a 64 KB;
+ *  - limite por IP (RATE_MAX pedidos por RATE_WINDOW segundos);
+ *  - nunca devolve a mensagem de erro crua do Google ao cliente.
  */
-const ALLOW_ORIGIN = 'https://pedro03376-droid.github.io';
-function cors(){return{'Access-Control-Allow-Origin':ALLOW_ORIGIN,'Access-Control-Allow-Methods':'POST, GET, OPTIONS','Access-Control-Allow-Headers':'Content-Type'};}
-function json(o,s){return new Response(JSON.stringify(o),{status:s||200,headers:{'Content-Type':'application/json',...cors()}});}
+const ALLOW_ORIGINS = [
+  'https://pedro03376-droid.github.io',
+  'http://localhost:8080',
+  'http://127.0.0.1:8080',
+];
+const MAX_BODY = 64 * 1024;   // 64 KB
+const RATE_MAX = 20;          // pedidos...
+const RATE_WINDOW = 3600;     // ...por hora, por IP
+
+function pickOrigin(request) {
+  const o = request.headers.get('Origin') || '';
+  return ALLOW_ORIGINS.includes(o) ? o : null;
+}
+function cors(origin) {
+  return {
+    'Access-Control-Allow-Origin': origin || ALLOW_ORIGINS[0],
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
+  };
+}
+function json(o, s, origin) {
+  return new Response(JSON.stringify(o), {
+    status: s || 200,
+    headers: { 'Content-Type': 'application/json', 'X-Content-Type-Options': 'nosniff', ...cors(origin) },
+  });
+}
+
+// Limite por IP. Usa o KV "RL" quando existir; sem ele, cai para uma contagem
+// na memória do isolate — mais fraca, mas ainda segura contra loop acidental.
+const _mem = new Map();
+async function rateLimited(env, ip) {
+  const now = Math.floor(Date.now() / 1000);
+  const bucket = 'rl:' + ip + ':' + Math.floor(now / RATE_WINDOW);
+  if (env && env.RL) {
+    try {
+      const n = parseInt((await env.RL.get(bucket)) || '0', 10) + 1;
+      await env.RL.put(bucket, String(n), { expirationTtl: RATE_WINDOW + 60 });
+      return n > RATE_MAX;
+    } catch (e) { /* KV indisponível: não bloqueia o usuário legítimo */ }
+  }
+  const n = (_mem.get(bucket) || 0) + 1;
+  _mem.set(bucket, n);
+  if (_mem.size > 5000) _mem.clear();
+  return n > RATE_MAX;
+}
+
 function buildPrompt(ctx){
   return 'Você é um analista técnico de goleiros(as) de Futsal e Beach Soccer, especialista em ciência do esporte. '
     + 'Analise os DADOS (JSON) e produza uma avaliação PRESCRITIVA e específica. Use, quando presentes: '
@@ -55,22 +106,49 @@ async function callModel(model, key, prompt){
 
 export default {
   async fetch(request, env){
-    if (request.method === 'OPTIONS') return new Response(null,{headers:cors()});
+    const origin = pickOrigin(request);
     const url = new URL(request.url);
-    const key = env.GEMINI_API_KEY;
-    if (url.pathname === '/health') return json({status:'ok',service:'gkhub-ai'});
-    if (url.pathname === '/models'){
-      if(!key) return json({error:'no_key'});
-      try{ const r=await fetch('https://generativelanguage.googleapis.com/v1beta/models?key='+key); const d=await r.json();
-        if(d&&d.error) return json({error:'gemini_error',detail:String(d.error.message||'').slice(0,300)});
-        const names=(d.models||[]).filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace('models/',''));
-        return json({count:names.length,models:names});
-      }catch(e){ return json({error:'fetch_failed',detail:String(e).slice(0,200)}); }
+
+    if (request.method === 'OPTIONS') {
+      if (!origin) return new Response(null, { status: 403 });
+      return new Response(null, { headers: cors(origin) });
     }
-    if (request.method !== 'POST') return json({error:'method_not_allowed'},405);
-    let body={}; try{ body=await request.json(); }catch(e){}
-    const context = body.context || body || {};
-    if (!key) return json({analysis:null,error:'no_key'});
+
+    // /health não revela nada e serve de ping para o app.
+    if (url.pathname === '/health') return json({status:'ok',service:'gkhub-ai'}, 200, origin);
+
+    // /models é diagnóstico: expõe a configuração da conta, então fica atrás
+    // de um segredo (npx wrangler secret put DEBUG_TOKEN).
+    if (url.pathname === '/models'){
+      const tok = url.searchParams.get('token') || '';
+      if (!env.DEBUG_TOKEN || tok !== env.DEBUG_TOKEN) return json({error:'not_found'}, 404, origin);
+      const key = env.GEMINI_API_KEY;
+      if(!key) return json({error:'no_key'}, 500, origin);
+      const names = await listLiveModels(key);
+      return json({count:names.length,models:names}, 200, origin);
+    }
+
+    if (request.method !== 'POST') return json({error:'method_not_allowed'},405,origin);
+
+    // A partir daqui gasta cota paga: exige origem conhecida.
+    if (!origin) return json({error:'forbidden'}, 403, null);
+
+    const ip = request.headers.get('CF-Connecting-IP') || 'desconhecido';
+    if (await rateLimited(env, ip)) {
+      return json({analysis:null,error:'rate_limited',
+        message:'Muitas análises em pouco tempo. Tente de novo mais tarde.'}, 429, origin);
+    }
+
+    const len = parseInt(request.headers.get('Content-Length') || '0', 10);
+    if (len > MAX_BODY) return json({error:'payload_too_large'}, 413, origin);
+    const raw = await request.text();
+    if (raw.length > MAX_BODY) return json({error:'payload_too_large'}, 413, origin);
+
+    let body={}; try{ body=JSON.parse(raw); }catch(e){}
+    const context = (body && body.context) || body || {};
+    const key = env.GEMINI_API_KEY;
+    if (!key) return json({analysis:null,error:'no_key'}, 500, origin);
+
     // Tenta o modelo configurado (se houver) e depois uma lista de candidatos.
     const candidates=[];
     if(env.GEMINI_MODEL) candidates.push(env.GEMINI_MODEL);
@@ -87,11 +165,16 @@ export default {
     };
     // 1) caminho rápido: modelos fixos conhecidos
     let hit = await tryList(candidates);
-    if (hit) return json(hit);
+    if (hit) return json(hit, 200, origin);
     // 2) auto-cura: descobre os modelos REAIS da conta e tenta de novo
     const live = await listLiveModels(key);
     hit = await tryList(live);
-    if (hit) return json(hit);
-    return json({analysis:null,error:'all_models_failed',detail:last,tried});
+    if (hit) return json(hit, 200, origin);
+
+    // O detalhe do Google pode conter o nome do projeto, cota e configuração:
+    // fica no log do Worker (npx wrangler tail), não na resposta.
+    console.log('gemini_falhou', JSON.stringify({ tried, last }));
+    return json({analysis:null,error:'all_models_failed',
+      message:'A análise por IA está indisponível no momento.'}, 502, origin);
   }
 };

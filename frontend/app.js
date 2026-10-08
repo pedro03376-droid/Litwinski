@@ -379,7 +379,8 @@ function renderClube() {
   try { renderSubCard(); } catch (e) {}
 }
 function clbUploadEscudo(input) {
-  const f = input.files && input.files[0]; if (!f) return;
+  const f = input.files && input.files[0];
+  if (!_fileGuard(f)) { input.value = ''; return; }
   const r = new FileReader();
   r.onload = () => {
     // Abre o recortador (arrastar/zoom) para ajustar o escudo antes de salvar.
@@ -1614,12 +1615,12 @@ function renderFiltroCompeticoes() {
   const chips = [{ label: 'Todas', value: '' }, ...comps.map(c => ({ label: c, value: c }))];
   container.innerHTML = chips.map(c => {
     const ativo = filtroCompeticao === c.value;
-    return `<button onclick="filtroCompeticao='${c.value.replace(/'/g,"\\'")}';renderFiltroCompeticoes();renderPartidas();"
+    return `<button onclick="filtroCompeticao='${_escJs(c.value)}';renderFiltroCompeticoes();renderPartidas();"
       style="padding:5px 14px;border-radius:20px;border:1px solid ${ativo ? 'var(--primary)' : 'var(--border)'};
              background:${ativo ? 'rgba(0,212,255,.15)' : 'var(--card)'};
              color:${ativo ? 'var(--primary)' : 'var(--muted)'};
              font-size:12px;font-weight:${ativo ? 600 : 400};cursor:pointer;transition:all .2s;white-space:nowrap;">
-      ${c.label}${c.value ? ` <span style="opacity:.6;font-size:11px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
+      ${_esc(c.label)}${c.value ? ` <span style="opacity:.6;font-size:11px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
     </button>`;
   }).join('');
 }
@@ -3416,7 +3417,7 @@ function cropZoomStep(dir) {
 
 function handleFotoUpload(input) {
   const file = input.files[0];
-  if (!file) return;
+  if (!_fileGuard(file)) { input.value = ''; return; }
   const reader = new FileReader();
   reader.onload = e => openCropModal(e.target.result, 'modal');
   reader.readAsDataURL(file);
@@ -3428,7 +3429,7 @@ function perfilEditarFoto() {
 }
 function handlePerfilFotoUpload(input) {
   const file = input.files[0];
-  if (!file) return;
+  if (!_fileGuard(file)) { input.value = ''; return; }
   const gkId = document.getElementById('perfil-select')?.value;
   if (!gkId) { toast('Selecione um(a) goleiro(a) primeiro', 'error'); return; }
   const reader = new FileReader();
@@ -7146,7 +7147,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
             <div style="font-size:11px;color:var(--muted);letter-spacing:1px;font-weight:600;">NOTA FINAL</div>
           </div>
           <div style="flex:1;">
-            <div style="font-size:18px;font-weight:800;">${gk?.nome||'—'}</div>
+            <div style="font-size:18px;font-weight:800;">${_esc(gk?.nome||'—')}</div>
             <div style="font-size:22px;font-weight:800;color:${nivelColor};margin-top:2px;">${nivel}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:4px;">${gkSegs.map(s=>s.periodoLabel).join(' + ')} · Sequência máx: ${mcMaxStreak} def.</div>
             ${(sum('ca')||sum('cv'))?`<div style="font-size:11px;margin-top:4px;">${sum('ca')?`<span style="color:#F5C542;font-weight:700;">🟨 ${sum('ca')}</span>`:''} ${sum('cv')?`<span style="color:#EF4444;font-weight:700;margin-left:6px;">🟥 ${sum('cv')} (expulsão)</span>`:''}</div>`:''}
@@ -7165,7 +7166,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
         ${_mcGoalHTML({dae:sum('dae'),dad:sum('dad'),dbe:sum('dbe'),dbd:sum('dbd'),dc:sum('dc')}, gk?.modalidade==='beach'?'beach':'futsal')}
 
         <div style="background:rgba(255,255,255,.03);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:var(--text);">
-          ${gk?.nome||'A goleira'} encerrou a partida com classificação <strong>${nivel}</strong> e nota <strong>${nota.toFixed(1)}/10</strong>.
+          ${_esc(gk?.nome||'A goleira')} encerrou a partida com classificação <strong>${nivel}</strong> e nota <strong>${nota.toFixed(1)}/10</strong>.
           ${taxaDef!==null?`Taxa de defesa de <strong>${(taxaDef*100).toFixed(0)}%</strong>.`:''}
           ${mcMaxStreak>=3?`Melhor sequência defensiva de <strong>${mcMaxStreak} defesas consecutivas</strong>.`:''}
           ${mcMaxSemGolSec>60?`Ficou <strong>${mcFormatTime(mcMaxSemGolSec)}</strong> sem sofrer gols.`:''}
@@ -7708,7 +7709,8 @@ function _penResize(file, cb) {
   reader.readAsDataURL(file);
 }
 function penFotoUpload(input) {
-  const f = input.files && input.files[0]; if (!f) return;
+  const f = input.files && input.files[0];
+  if (!_fileGuard(f)) { input.value = ''; return; }
   // Abre o recortador (arrastar + zoom) para ajustar o enquadramento.
   const reader = new FileReader();
   reader.onload = e => { if (typeof openCropModal === 'function') openCropModal(e.target.result, 'penbat'); };
@@ -9072,6 +9074,32 @@ function _randToken() {
 function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Escapa um texto que vai DENTRO de uma string JS em atributo (onclick="f('…')").
+function _escJs(s) {
+  return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;')
+                  .replace(/</g,'\\x3C').replace(/>/g,'\\x3E').replace(/[\r\n]/g,'');
+}
+// Porteiro de upload: o accept="image/*" é só dica visual — o usuário pode
+// escolher qualquer arquivo. Checa tipo e tamanho ANTES de ler, para não
+// travar o celular com um arquivo de dezenas de MB.
+const _UPLOAD_MAX_MB = 12;
+function _fileGuard(f, opts) {
+  const o = opts || {};
+  if (!f) return false;
+  const maxMB = o.maxMB || _UPLOAD_MAX_MB;
+  if (f.size > maxMB * 1024 * 1024) {
+    toast('Arquivo muito grande (' + (f.size / 1048576).toFixed(1) + ' MB). O limite é ' + maxMB + ' MB.', 'error');
+    return false;
+  }
+  if (o.image !== false) {
+    const t = String(f.type || '').toLowerCase();
+    if (!t.startsWith('image/') || /svg/.test(t)) {
+      toast('Envie uma imagem (JPG, PNG ou WebP).', 'error');
+      return false;
+    }
+  }
+  return true;
+}
 // Iniciais de um nome (ex.: "Ana Souza" → "AS") — usadas quando não há foto.
 function _gkInitials(nome) {
   const parts = String(nome || '').trim().split(/\s+/).filter(Boolean);
@@ -9963,7 +9991,8 @@ function onbNext() { _onbCapture(); if (_onb.step === 1 && !_onb.nome) { toast('
 function onbBack() { _onbCapture(); _onb.step--; renderOnb(); }
 function onbSkip() { localStorage.setItem('gkhub_onboarded', '1'); closeModal('onb-modal'); }
 function onbUploadEscudo(input) {
-  const f = input.files && input.files[0]; if (!f) return;
+  const f = input.files && input.files[0];
+  if (!_fileGuard(f)) { input.value = ''; return; }
   _onbCapture();
   const r = new FileReader();
   r.onload = () => { if (typeof openCropModal === 'function') openCropModal(r.result, 'onbescudo'); };
@@ -11623,7 +11652,9 @@ async function exportBackupSecure() {
   } catch (e) { toast('Não foi possível gerar o backup protegido.', 'error'); }
 }
 function importBackupFile(input) {
-  const f = input.files && input.files[0]; if (!f) return;
+  const f = input.files && input.files[0];
+  // Backup é JSON: 80 MB já é muito acima de um clube grande com fotos.
+  if (!_fileGuard(f, { image: false, maxMB: 80 })) { input.value = ''; return; }
   if (!confirm('Importar vai SOBRESCREVER os dados atuais deste navegador com o backup. Deseja continuar?')) { input.value = ''; return; }
   const r = new FileReader();
   r.onload = async () => {
@@ -12433,7 +12464,7 @@ function saveProfile() {
 }
 function handleProfilePhoto(input) {
   const file = input.files[0];
-  if (!file) return;
+  if (!_fileGuard(file)) { input.value = ''; return; }
   const reader = new FileReader();
   reader.onload = e => {
     const img = new Image();
@@ -13014,7 +13045,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v163';
+const APP_VERSION = 'v164';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
