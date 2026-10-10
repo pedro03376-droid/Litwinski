@@ -1558,6 +1558,44 @@
 
         </div>
       </div>
+
+      <!-- Planilhas: o PDF é para ler e compartilhar; a planilha é para o
+           técnico fazer as contas dele. -->
+      <div class="card" style="max-width:680px;margin-top:20px;">
+        <div class="card-header"><span class="card-title">Exportar para Planilha</span></div>
+        <p style="color:var(--muted);font-size:13px;margin-bottom:16px;">
+          Arquivos <b>.csv</b> prontos para abrir no Excel, Google Planilhas ou LibreOffice —
+          com acentos corretos e números que entram em média e gráfico.
+          Use quando quiser fazer suas próprias contas ou cruzar com outros dados.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;">
+            <div style="min-width:0;">
+              <div style="font-weight:600;font-size:14px;">Scouts (recomendada)</div>
+              <div style="color:var(--muted);font-size:12px;">Uma linha por scout, já com data, adversário e competição ao lado — além de totais, taxa de defesa e precisão da distribuição já calculados</div>
+            </div>
+            <button class="btn btn-primary btn-sm" style="flex-shrink:0;" onclick="exportCsvScouts()">Baixar .csv</button>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;">
+            <div style="min-width:0;">
+              <div style="font-weight:600;font-size:14px;">Partidas</div>
+              <div style="color:var(--muted);font-size:12px;">Histórico de jogos com placar, resultado e defesas</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="exportCsvPartidas()">Baixar .csv</button>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border:1px solid var(--border);border-radius:10px;">
+            <div style="min-width:0;">
+              <div style="font-weight:600;font-size:14px;">Goleiros(as)</div>
+              <div style="color:var(--muted);font-size:12px;">Elenco com dados físicos e o resumo de cada um(a)</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="exportCsvGoleiras()">Baixar .csv</button>
+          </div>
+
+        </div>
+      </div>
     </div>
 
     <!-- ══ USUÁRIO / PERFIL ══ -->

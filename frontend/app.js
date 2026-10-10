@@ -335,14 +335,153 @@ function renderAuditoria() {
       <td>${_esc(a.description || '')}</td>
     </tr>`).join('');
 }
-function exportAuditCsv() {
-  const rows = [['Data', 'Hora', 'Usuário', 'Módulo', 'Descrição']].concat(
-    DB.auditlog.map(a => [a.date, a.time, a.user, a.module, (a.description || '').replace(/"/g, '""')]));
-  const csv = rows.map(r => r.map(c => `"${c ?? ''}"`).join(',')).join('\n');
-  const blob = new Blob([csv], { type: 'text/csv' });
+/* ── PLANILHAS (CSV) ──────────────────────────────────────────────────
+   Feito para abrir no Excel em português do Brasil, que é onde o técnico
+   trabalha. Três detalhes decidem se o arquivo abre certo ou vira uma
+   coluna só de caracteres estranhos:
+
+   1. Separador PONTO E VÍRGULA. O Excel em pt-BR usa a vírgula como
+      separador decimal, então um CSV separado por vírgula joga tudo numa
+      coluna só. (O export da Auditoria tinha esse defeito.)
+   2. BOM no começo do arquivo. Sem ele o Excel lê como Latin-1 e "Goleira
+      Mônica" vira "Goleira MÃ´nica".
+   3. Números com VÍRGULA decimal, senão 7.5 é lido como texto e não entra
+      em média nem em gráfico.                                            */
+function _csvValor(v) {
+  if (v === null || v === undefined) return '""';
+  if (typeof v === 'number') return '"' + String(v).replace('.', ',') + '"';
+  return '"' + String(v).replace(/"/g, '""') + '"';
+}
+function _csvBaixar(nome, linhas) {
+  const csv = linhas.map(l => l.map(_csvValor).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'gkhub_auditoria.csv'; a.click();
-  URL.revokeObjectURL(url);
+  const a = document.createElement('a');
+  a.href = url; a.download = nome; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+// Data em dd/mm/aaaa: é o formato que o Excel em pt-BR reconhece como data
+// de verdade (dá para ordenar e filtrar por período).
+function _csvData(iso) {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[3] + '/' + m[2] + '/' + m[1] : String(iso);
+}
+const _CSV_SCOUT = [
+  ['dad','Defesas altas direita'], ['dae','Defesas altas esquerda'],
+  ['dbd','Defesas baixas direita'], ['dbe','Defesas baixas esquerda'],
+  ['dc','Defesa central'], ['d1x1','Defesa 1x1'], ['esq','Esquadros'],
+  ['gda','Gols dentro da área'], ['gfa','Gols fora da área'],
+  ['gpe','Gols de pênalti'], ['gfl','Gols de falta'],
+  ['tchmed','Chute de média'], ['tc1x1','Chute 1x1'],
+  ['tchala','Chute de ala'], ['tchst','Chute segunda trave'],
+  ['dpc','Distribuição pé certo'], ['dpe','Distribuição pé errado'],
+  ['dmc','Distribuição mão certa'], ['dme','Distribuição mão errada'],
+  ['int','Interceptações'], ['pose','Posicionamento esquerda'],
+  ['posd','Posicionamento direita'], ['sai','Saídas do gol'],
+];
+const _n = (v) => { const x = parseFloat(v); return isFinite(x) ? x : 0; };
+// Os valores internos (casa, futsal, feminino) vão para a planilha como o
+// técnico os lê na tela, não como o banco os guarda.
+const _CSV_ROTULO = {
+  casa: 'Casa', fora: 'Fora', neutro: 'Neutro',
+  futsal: 'Futsal', beach: 'Beach Soccer',
+  feminino: 'Feminino', masculino: 'Masculino',
+};
+const _lbl = (v) => v ? (_CSV_ROTULO[String(v).toLowerCase()] || v) : '';
+
+function exportCsvGoleiras() {
+  const gks = DB.goleiras;
+  if (!gks.length) { toast('Nenhum(a) goleiro(a) cadastrado(a) para exportar.', 'info'); return; }
+  const partidas = DB.partidas, scouts = DB.scouts;
+  const linhas = [['Nome','Número','Equipe','Categoria','Modalidade','Naipe','Nascimento',
+    'Altura (cm)','Peso (kg)','Pé','Mão','Partidas','Defesas','Gols sofridos','Nota média','Observações']];
+  gks.forEach(g => {
+    const sc = scouts.filter(s => s.goalkeeperId === g.id);
+    const pt = partidas.filter(p => p.goalkeeperId === g.id || p.gk2Id === g.id);
+    const def = sc.reduce((a,s) => a + _n(s.dad)+_n(s.dae)+_n(s.dbd)+_n(s.dbe)+_n(s.dc), 0);
+    const gol = sc.reduce((a,s) => a + _n(s.gda)+_n(s.gfa)+_n(s.gpe)+_n(s.gfl), 0);
+    const notas = sc.map(s => parseFloat(s.nota)).filter(isFinite);
+    linhas.push([g.nome||'', g.num||'', g.equipe||'', g.categoria||'', _lbl(g.modalidade), _lbl(g.naipe),
+      _csvData(g.nascimento), _n(g.altura)||'', _n(g.peso)||'', g.pe||'', g.mao||'',
+      pt.length, def, gol,
+      notas.length ? +(notas.reduce((a,b)=>a+b,0)/notas.length).toFixed(2) : '',
+      (g.obs||'').replace(/\s+/g,' ')]);
+  });
+  _csvBaixar('gkhub_goleiros_' + new Date().toISOString().slice(0,10) + '.csv', linhas);
+  try { logAudit('Dados', 'Exportou a planilha de goleiros(as)'); } catch (e) {}
+  toast(gks.length + ' goleiro(a)s exportados para planilha.', 'success');
+}
+
+function exportCsvPartidas() {
+  const partidas = DB.partidas;
+  if (!partidas.length) { toast('Nenhuma partida registrada para exportar.', 'info'); return; }
+  const gkById = new Map(DB.goleiras.map(g => [g.id, g]));
+  const defPorPartida = new Map();
+  DB.scouts.forEach(s => { if (!s.partidaId) return;
+    defPorPartida.set(s.partidaId, (defPorPartida.get(s.partidaId)||0)
+      + _n(s.dad)+_n(s.dae)+_n(s.dbd)+_n(s.dbe)+_n(s.dc)); });
+  const linhas = [['Data','Hora','Adversário','Competição','Fase','Local',
+    'Goleiro(a)','Goleiro(a) 2º tempo','Gols a favor','Gols sofridos','Resultado','Defesas']];
+  [...partidas].sort((a,b)=>String(a.data||'').localeCompare(String(b.data||''))).forEach(p => {
+    const gf = p.gf ?? p.golsPro, gc = p.gc ?? p.golsContra;
+    const res = (gf == null || gc == null) ? '' : (+gf > +gc ? 'Vitória' : +gf < +gc ? 'Derrota' : 'Empate');
+    linhas.push([_csvData(p.data), p.hora||'', p.adversario||'', p.competicao||'', p.fase||'', _lbl(p.local),
+      gkById.get(p.goalkeeperId)?.nome || '', p.gk2Id ? (gkById.get(p.gk2Id)?.nome || '') : '',
+      gf == null ? '' : _n(gf), gc == null ? '' : _n(gc), res, defPorPartida.get(p.id) || 0]);
+  });
+  _csvBaixar('gkhub_partidas_' + new Date().toISOString().slice(0,10) + '.csv', linhas);
+  try { logAudit('Dados', 'Exportou a planilha de partidas'); } catch (e) {}
+  toast(partidas.length + ' partidas exportadas para planilha.', 'success');
+}
+
+// A planilha mais útil: uma linha por scout, já com o contexto da partida ao
+// lado. É a tabela que dá para girar numa dinâmica do Excel sem precisar
+// cruzar arquivo nenhum.
+function exportCsvScouts() {
+  const scouts = DB.scouts;
+  if (!scouts.length) { toast('Nenhum scout registrado para exportar.', 'info'); return; }
+  const gkById = new Map(DB.goleiras.map(g => [g.id, g]));
+  const ptById = new Map(DB.partidas.map(p => [p.id, p]));
+  const linhas = [[
+    'Data','Adversário','Competição','Local','Goleiro(a)','Modalidade','Período',
+    ..._CSV_SCOUT.map(c => c[1]),
+    'Total de defesas','Total de gols sofridos','Taxa de defesa (%)',
+    'Distribuições certas','Distribuições erradas','Precisão da distribuição (%)','Nota',
+  ]];
+  const ordenados = [...scouts].sort((a,b) => {
+    const da = ptById.get(a.partidaId)?.data || a.data || '';
+    const db = ptById.get(b.partidaId)?.data || b.data || '';
+    return String(da).localeCompare(String(db));
+  });
+  ordenados.forEach(s => {
+    const p = ptById.get(s.partidaId), g = gkById.get(s.goalkeeperId);
+    const def = _n(s.dad)+_n(s.dae)+_n(s.dbd)+_n(s.dbe)+_n(s.dc);
+    const gol = _n(s.gda)+_n(s.gfa)+_n(s.gpe)+_n(s.gfl);
+    const distC = _n(s.dpc)+_n(s.dmc), distE = _n(s.dpe)+_n(s.dme);
+    const nota = parseFloat(s.nota);
+    linhas.push([
+      _csvData(p?.data || s.data), p?.adversario || '', p?.competicao || '', _lbl(p?.local),
+      g?.nome || '', _lbl(g?.modalidade || s.modalidade), s.periodo ?? '',
+      ..._CSV_SCOUT.map(c => _n(s[c[0]])),
+      def, gol,
+      (def + gol) ? +((def / (def + gol)) * 100).toFixed(1) : '',
+      distC, distE,
+      (distC + distE) ? +((distC / (distC + distE)) * 100).toFixed(1) : '',
+      isFinite(nota) ? +nota.toFixed(2) : '',
+    ]);
+  });
+  _csvBaixar('gkhub_scouts_' + new Date().toISOString().slice(0,10) + '.csv', linhas);
+  try { logAudit('Dados', 'Exportou a planilha de scouts'); } catch (e) {}
+  toast(scouts.length + ' scouts exportados para planilha.', 'success');
+}
+
+function exportAuditCsv() {
+  // Mesmo formato das demais planilhas (antes saía com vírgula e sem BOM, o
+  // que juntava tudo numa coluna e estragava os acentos no Excel pt-BR).
+  const linhas = [['Data', 'Hora', 'Usuário', 'Módulo', 'Descrição']].concat(
+    DB.auditlog.map(a => [a.date || '', a.time || '', a.user || '', a.module || '', a.description || '']));
+  _csvBaixar('gkhub_auditoria_' + new Date().toISOString().slice(0,10) + '.csv', linhas);
   toast('Auditoria exportada.', 'success');
 }
 
@@ -13346,7 +13485,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v169';
+const APP_VERSION = 'v170';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
