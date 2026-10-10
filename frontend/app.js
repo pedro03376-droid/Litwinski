@@ -86,11 +86,27 @@ async function _photosBoot() {
 // ═══════════════════════════════════════════════════════════
 // DATA STORE
 // ═══════════════════════════════════════════════════════════
+// Cache de leitura. O JSON.parse de uma coleção grande custa caro e helpers
+// como _modalidadeOf/_naipeOf são chamados milhares de vezes num render só
+// (medido: 4.688 leituras de goleiras na página executivo).
+// A chave do cache é a PRÓPRIA string guardada no localStorage: se qualquer
+// coisa gravar por fora (importar backup, trocar de clube, baixar da nuvem),
+// a string muda e o cache erra sozinho. Não tem como servir dado velho.
+const _dbCache = new Map();
 const DB = {
   load(key) {
-    let v; try { v = JSON.parse(localStorage.getItem('gkhub_'+key) || '[]'); } catch { return []; }
-    if (_PHOTO_FIELD[key]) v = _phResolveArr(v, _PHOTO_FIELD[key]);   // ref "idb:<id>" -> dataURL
-    return v;
+    const raw = localStorage.getItem('gkhub_' + key) || '[]';
+    let c = _dbCache.get(key);
+    if (!c || c.raw !== raw) {
+      let v; try { v = JSON.parse(raw); } catch { return []; }
+      c = { raw, val: v };
+      _dbCache.set(key, c);
+    }
+    // Coleções com foto: _phResolveArr já devolve um array novo a cada chamada
+    // (e precisa rodar sempre, porque o cache de fotos hidrata depois do boot).
+    if (_PHOTO_FIELD[key]) return _phResolveArr(c.val, _PHOTO_FIELD[key]);
+    // Demais: cópia rasa, para quem ordenar ou mexer na lista não afetar o cache.
+    return Array.isArray(c.val) ? c.val.slice() : c.val;
   },
   save(key, data) {
     // Fotos vão pro IndexedDB; no localStorage guarda só a referência.
@@ -1639,12 +1655,19 @@ function renderPartidas() {
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>Nenhuma partida encontrada.</p></div></td></tr>`;
     return;
   }
+  // Índices montados UMA vez: sem eles, cada linha varria a lista inteira de
+  // scouts e de goleiras (240 partidas × 960 scouts = 230 mil comparações).
+  const gkById = new Map(goleiras.map(g => [g.id, g]));
+  const defPorPartida = new Map();
+  DB.scouts.forEach(s => {
+    const k = s.partidaId; if (!k) return;
+    defPorPartida.set(k, (defPorPartida.get(k) || 0)
+      + (+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0));
+  });
   tbody.innerHTML = [...partidas].sort((a,b) => (b.data||'').localeCompare(a.data||'')).map(p => {
-    const gk  = goleiras.find(g => g.id === p.goalkeeperId);
-    const gk2 = p.gk2Id ? goleiras.find(g => g.id === p.gk2Id) : null;
-    const scouts = DB.scouts.filter(s => s.partidaId === p.id);
-    const totalDef = scouts.reduce((acc, s) =>
-      acc + (+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0), 0);
+    const gk  = gkById.get(p.goalkeeperId);
+    const gk2 = p.gk2Id ? gkById.get(p.gk2Id) : null;
+    const totalDef = defPorPartida.get(p.id) || 0;
     const res = _resultPill(p.gf, p.gc);
     let gkCell = gk ? _esc(gk.nome) : '—';
     if (gk2) {
@@ -13250,7 +13273,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v165';
+const APP_VERSION = 'v166';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
