@@ -1337,7 +1337,12 @@
       display: inline-flex; align-items: center;
       font-size: 12px; font-weight: 800; line-height: 1;
       padding: 4px 9px; border-radius: 20px; white-space: nowrap;
-      color: var(--pill, var(--muted));
+      /* O texto clareia 30% em relação ao fundo tingido. Sem isso o pill de
+         derrota fica em 3.9:1, abaixo do mínimo AA de 4.5:1 — e no celular,
+         onde a linha vira card de fundo mais claro, a margem some de vez:
+         com 20% de clareamento dava 4.44:1, perdendo por 0,06.
+         Com 30%, o pior caso dos três resultados nos dois fundos é 5.09:1. */
+      color: color-mix(in srgb, var(--pill, var(--muted)) 70%, white);
       background: color-mix(in srgb, var(--pill, var(--muted)) 15%, transparent);
       border: 1px solid color-mix(in srgb, var(--pill, var(--muted)) 35%, transparent);
     }
@@ -1539,7 +1544,9 @@
     @media (hover: hover) and (pointer: fine) {
       .dash-period-btn:hover{ border-color: var(--primary-text); color: var(--primary-text); }
     }
-    .dash-period-btn.active { background: var(--primary); border-color: var(--primary-text); color: #fff; font-weight: 600; }
+    /* Azul mais fundo que o --primary: branco sobre #4F8DF7 dá 3.24:1, abaixo
+       do mínimo AA. Sobre #2F63C9 dá 5.60:1 e o botão continua azul de marca. */
+    .dash-period-btn.active { background: #2F63C9; border-color: var(--primary-text); color: #fff; font-weight: 600; }
 
     /* ════════════════════════════════════════════════════════
        REFINEMENT LAYER · 2026.2  (visual-only, additive)

@@ -425,12 +425,12 @@
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <span style="font-size:12px;font-weight:600;color:var(--muted);">Competição:</span>
-            <select class="form-select" id="dash-comp" style="padding:5px 10px;font-size:12px;width:auto;min-width:150px;" onchange="setDashComp()"><option value="">Todas</option></select>
+            <select class="form-select" id="dash-comp" aria-label="Filtrar o painel por competição" style="padding:5px 10px;font-size:12px;width:auto;min-width:150px;" onchange="setDashComp()"><option value="">Todas</option></select>
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto;flex-wrap:wrap;">
-            <input type="date" id="dash-from" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
+            <input type="date" id="dash-from" aria-label="Data inicial do período" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
             <span style="font-size:12px;color:var(--muted);">até</span>
-            <input type="date" id="dash-to" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
+            <input type="date" id="dash-to" aria-label="Data final do período" class="form-input" style="padding:5px 10px;font-size:12px;width:140px;" onchange="setDashCustomPeriod()">
           </div>
         </div>
       </div>
@@ -564,7 +564,7 @@
           <input class="search-input" id="notif-search" type="text" placeholder="Buscar notificação…" oninput="renderNotificacoes()">
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <select class="form-select" id="notif-filter" style="width:auto;padding:8px 12px;" onchange="renderNotificacoes()">
+          <select class="form-select" id="notif-filter" aria-label="Filtrar notificações" style="width:auto;padding:8px 12px;" onchange="renderNotificacoes()">
             <option value="">Todas</option><option value="unread">Não lidas</option>
             <option value="match">Partidas</option><option value="scout">Scouts</option>
             <option value="pdf">Relatórios</option><option value="alert">Alertas</option><option value="goal">Metas</option>
@@ -583,7 +583,7 @@
           <input class="search-input" id="rep-search" type="text" placeholder="Buscar relatório…" oninput="renderCentralRelatorios()">
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <select class="form-select" id="rep-filter" style="width:auto;padding:8px 12px;" onchange="renderCentralRelatorios()">
+          <select class="form-select" id="rep-filter" aria-label="Filtrar relatórios" style="width:auto;padding:8px 12px;" onchange="renderCentralRelatorios()">
             <option value="">Todos os tipos</option><option value="individual">Individual</option>
             <option value="geral">Geral</option><option value="partidas">Partidas</option>
             <option value="competicao">Competição</option><option value="analise">Análise IA</option><option value="ia">Insights IA</option><option value="treinos">Treinos</option>
@@ -615,12 +615,12 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="tp-grid">
         <div class="card">
           <div class="card-header"><span class="card-title"><svg class=ic><use href=#i-bank></use></svg> Identidade</span></div>
-          <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Nome do clube</label><input class="form-input" id="clb-nome" placeholder="Ex.: Associação Atlética"></div>
+          <div class="form-group" style="margin-bottom:12px;"><label class="form-label" for="clb-nome">Nome do clube</label><input class="form-input" id="clb-nome" placeholder="Ex.: Associação Atlética"></div>
           <div class="form-grid">
-            <div class="form-group"><label class="form-label">Estado</label><select class="form-select" id="clb-estado" onchange="_loadCidades(this.value, true)"><option value="">— UF —</option></select></div>
-            <div class="form-group"><label class="form-label">Cidade</label><input class="form-input" id="clb-cidade" list="clb-cidades-list" placeholder="Selecione o estado primeiro"><datalist id="clb-cidades-list"></datalist></div>
-            <div class="form-group"><label class="form-label">País</label><input class="form-input" id="clb-pais" value="Brasil"></div>
-            <div class="form-group"><label class="form-label">Nome exibido (topo/PDF)</label><input class="form-input" id="clb-display"></div>
+            <div class="form-group"><label class="form-label" for="clb-estado">Estado</label><select class="form-select" id="clb-estado" onchange="_loadCidades(this.value, true)"><option value="">— UF —</option></select></div>
+            <div class="form-group"><label class="form-label" for="clb-cidade">Cidade</label><input class="form-input" id="clb-cidade" list="clb-cidades-list" placeholder="Selecione o estado primeiro"><datalist id="clb-cidades-list"></datalist></div>
+            <div class="form-group"><label class="form-label" for="clb-pais">País</label><input class="form-input" id="clb-pais" value="Brasil"></div>
+            <div class="form-group"><label class="form-label" for="clb-display">Nome exibido (topo/PDF)</label><input class="form-input" id="clb-display"></div>
           </div>
         </div>
         <div class="card">
@@ -636,8 +636,8 @@
             </div>
           </div>
           <div class="form-grid">
-            <div class="form-group"><label class="form-label">Cor primária</label><input type="color" class="form-input" id="clb-cor1" value="#3B82F6" style="height:42px;padding:4px;"></div>
-            <div class="form-group"><label class="form-label">Cor secundária</label><input type="color" class="form-input" id="clb-cor2" value="#1D4ED8" style="height:42px;padding:4px;"></div>
+            <div class="form-group"><label class="form-label" for="clb-cor1">Cor primária</label><input type="color" class="form-input" id="clb-cor1" value="#3B82F6" style="height:42px;padding:4px;"></div>
+            <div class="form-group"><label class="form-label" for="clb-cor2">Cor secundária</label><input type="color" class="form-input" id="clb-cor2" value="#1D4ED8" style="height:42px;padding:4px;"></div>
           </div>
         </div>
       </div>
@@ -651,8 +651,8 @@
       <div class="card" style="margin-top:20px;">
         <div class="card-header"><span class="card-title"><svg class=ic><use href=#i-gear></use></svg> Preferências</span></div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Escala de notas (máx.)</label><input type="number" class="form-input" id="clb-escala" value="10" min="5" max="100"></div>
-          <div class="form-group"><label class="form-label">Tempo padrão de treino (min)</label><input type="number" class="form-input" id="clb-treino-min" value="60" min="0"></div>
+          <div class="form-group"><label class="form-label" for="clb-escala">Escala de notas (máx.)</label><input type="number" class="form-input" id="clb-escala" value="10" min="5" max="100"></div>
+          <div class="form-group"><label class="form-label" for="clb-treino-min">Tempo padrão de treino (min)</label><input type="number" class="form-input" id="clb-treino-min" value="60" min="0"></div>
         </div>
         <div style="font-weight:700;font-size:13px;margin:18px 0 10px;">Pesos do IGD <span style="font-weight:400;color:var(--muted);font-size:12px;">— total é normalizado automaticamente</span></div>
         <div id="clb-igd-weights" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;"></div>
@@ -699,7 +699,7 @@
         <div class="card-header"><span class="card-title"><svg class=ic><use href=#i-lock></use></svg> Privacidade e LGPD</span></div>
         <p style="color:var(--muted);font-size:13px;margin-bottom:12px;">Como o sistema trata dados de atletas (inclusive menores de idade). Marque o consentimento no cadastro do(a) goleiro(a). Aqui você exerce os direitos do titular:</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          <select class="form-select" id="lgpd-gk" style="width:auto;min-width:200px;"></select>
+          <select class="form-select" id="lgpd-gk" aria-label="Atleta para exportar ou apagar os dados" style="width:auto;min-width:200px;"></select>
           <button class="btn btn-secondary btn-sm" onclick="exportAthleteData()"><svg class=ic><use href=#i-download-simple></use></svg> Exportar dados da atleta</button>
           <button class="btn btn-secondary btn-sm" style="color:#ef4444;" onclick="forgetAthlete()"><svg class=ic><use href=#i-trash></use></svg> Apagar dados (direito ao esquecimento)</button>
           <button class="btn btn-secondary btn-sm" onclick="openLegal()"><svg class=ic><use href=#i-file-text></use></svg> Política & Termos</button>
@@ -734,8 +734,8 @@
     <div id="page-pid" class="page">
       <div class="card-header" style="margin-bottom:16px;">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <label class="form-label" style="margin:0;">Goleiro(a):</label>
-          <select class="form-select" id="pid-gk-select" style="width:220px;" onchange="renderPID()"></select>
+          <label class="form-label" style="margin:0;" for="pid-gk-select">Goleiro(a):</label>
+          <select class="form-select" id="pid-gk-select" aria-label="Goleiro(a) do plano individual" style="width:220px;" onchange="renderPID()"></select>
         </div>
         <button class="btn btn-primary" onclick="openPidForm()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Novo objetivo</button>
       </div>
@@ -794,12 +794,12 @@
       <div class="card" id="mc-setup-card" style="margin-bottom:12px;">
         <div class="resp-2col" style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end;">
           <div class="form-group" style="margin:0;">
-            <label class="form-label">Partida</label>
-            <select class="form-select" id="mc-partida" onchange="mcOnPartidaChange()"><option value="">Selecionar…</option></select>
+            <label class="form-label" for="mc-partida">Partida</label>
+            <select class="form-select" id="mc-partida" aria-label="Partida do Match Center" onchange="mcOnPartidaChange()"><option value="">Selecionar…</option></select>
           </div>
           <div class="form-group" style="margin:0;">
-            <label class="form-label">Goleiro(a) em Campo</label>
-            <select class="form-select" id="mc-goleira" onchange="mcSyncModalidadeFromGk()"><option value="">Selecionar…</option></select>
+            <label class="form-label" for="mc-goleira">Goleiro(a) em Campo</label>
+            <select class="form-select" id="mc-goleira" aria-label="Goleiro(a) em campo" onchange="mcSyncModalidadeFromGk()"><option value="">Selecionar…</option></select>
           </div>
           <div style="display:flex;gap:8px;align-items:flex-end;">
             <button class="btn btn-success" id="mc-btn-timer" onclick="mcToggleTimer()" style="white-space:nowrap;">▶ Iniciar</button>
@@ -945,7 +945,7 @@
             <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;">🟨 Disciplina</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
               <button onclick="mcEvento('ca','Cartão Amarelo','card')" style="padding:12px;border-radius:10px;border:2px solid rgba(245,197,66,.6);background:rgba(245,197,66,.12);color:#F5C542;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--font);">🟨 Amarelo</button>
-              <button onclick="mcEvento('cv','Cartão Vermelho (expulsão)','card')" style="padding:12px;border-radius:10px;border:2px solid rgba(239,68,68,.6);background:rgba(239,68,68,.12);color:#EF4444;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--font);">🟥 Vermelho</button>
+              <button onclick="mcEvento('cv','Cartão Vermelho (expulsão)','card')" style="padding:12px;border-radius:10px;border:2px solid rgba(239,68,68,.6);background:rgba(239,68,68,.12);color:#F87171;font-weight:800;font-size:13px;cursor:pointer;font-family:var(--font);">🟥 Vermelho</button>
             </div>
           </div>
           <!-- Mapa de Eventos -->
@@ -1023,7 +1023,7 @@
       <div class="card-header" style="margin-bottom:12px;">
         <div class="search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input class="search-input" id="search-partidas" type="text" placeholder="Buscar partida…" oninput="renderPartidas()">
+          <input class="search-input" id="search-partidas" aria-label="Buscar partidas por adversário ou competição" type="text" placeholder="Buscar partida…" oninput="renderPartidas()">
         </div>
         <button class="btn btn-primary" onclick="openModal('modal-partida')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1115,9 +1115,9 @@
           <div class="card" id="h2h-card" style="margin-top:16px;">
             <div class="card-header"><span class="card-title">Comparar duas goleiras</span></div>
             <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
-              <select class="form-select" id="h2h-a" style="width:auto;min-width:140px;" onchange="renderH2H()"></select>
+              <select class="form-select" id="h2h-a" aria-label="Goleiro(a) A da comparação direta" style="width:auto;min-width:140px;" onchange="renderH2H()"></select>
               <span style="color:var(--muted);font-weight:700;font-size:12px;">vs</span>
-              <select class="form-select" id="h2h-b" style="width:auto;min-width:140px;" onchange="renderH2H()"></select>
+              <select class="form-select" id="h2h-b" aria-label="Goleiro(a) B da comparação direta" style="width:auto;min-width:140px;" onchange="renderH2H()"></select>
             </div>
             <div id="h2h-body"></div>
           </div>
@@ -1143,7 +1143,7 @@
             <!-- Modalidade -->
             <div style="display:flex;flex-direction:column;gap:4px;">
               <span style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Modalidade</span>
-              <select class="form-select" id="hm-modalidade" style="min-width:130px;" onchange="hmModalidadeChange()">
+              <select class="form-select" id="hm-modalidade" aria-label="Modalidade do heatmap" style="min-width:130px;" onchange="hmModalidadeChange()">
                 <option value="futsal">Futsal</option>
                 <option value="beach">Beach Soccer</option>
               </select>
@@ -1151,28 +1151,28 @@
             <!-- Goleira -->
             <div style="display:flex;flex-direction:column;gap:4px;">
               <span style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Goleiro(a)</span>
-              <select class="form-select" id="heatmap-gk" style="min-width:160px;" onchange="hmGkChange()">
+              <select class="form-select" id="heatmap-gk" aria-label="Goleiro(a) do heatmap" style="min-width:160px;" onchange="hmGkChange()">
                 <option value="">Todas</option>
               </select>
             </div>
             <!-- Temporada -->
             <div style="display:flex;flex-direction:column;gap:4px;">
               <span style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Temporada</span>
-              <select class="form-select" id="hm-filter-temporada" style="min-width:110px;" onchange="hmFilterChange()">
+              <select class="form-select" id="hm-filter-temporada" aria-label="Filtrar o heatmap por temporada" style="min-width:110px;" onchange="hmFilterChange()">
                 <option value="">Todas</option>
               </select>
             </div>
             <!-- Competição -->
             <div style="display:flex;flex-direction:column;gap:4px;">
               <span style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Competição</span>
-              <select class="form-select" id="hm-filter-comp" style="min-width:150px;" onchange="hmFilterChange()">
+              <select class="form-select" id="hm-filter-comp" aria-label="Filtrar o heatmap por competição" style="min-width:150px;" onchange="hmFilterChange()">
                 <option value="">Todas</option>
               </select>
             </div>
             <!-- Adversário -->
             <div style="display:flex;flex-direction:column;gap:4px;">
               <span style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;">Adversário</span>
-              <select class="form-select" id="hm-filter-adv" style="min-width:150px;" onchange="hmFilterChange()">
+              <select class="form-select" id="hm-filter-adv" aria-label="Filtrar o heatmap por adversário" style="min-width:150px;" onchange="hmFilterChange()">
                 <option value="">Todos</option>
               </select>
             </div>
@@ -1248,7 +1248,7 @@
       <div class="card" style="max-width:400px;margin-bottom:20px;">
         <div class="card-header" style="margin-bottom:0;">
           <span class="card-title">Perfil do(a) Goleiro(a)</span>
-          <select class="form-select" id="perfil-gk-select" style="width:220px;" onchange="renderPerfil()">
+          <select class="form-select" id="perfil-gk-select" aria-label="Escolher o goleiro ou goleira" style="width:220px;" onchange="renderPerfil()">
             <option value="">Selecione um(a) goleiro(a)…</option>
           </select>
         </div>
@@ -1302,9 +1302,9 @@
         <div class="card" id="perfil-clips-card" style="margin-bottom:20px;display:none;">
           <div class="card-header"><span class="card-title"><svg class=ic><use href=#i-film-slate></use></svg> Clipes de vídeo</span><span style="font-size:11px;color:var(--muted);">defesas, gols e lances</span></div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px;">
-            <div style="flex:2;min-width:160px;"><label class="form-label" style="font-size:11px;">Link do vídeo (YouTube, etc.)</label><input class="form-input" id="clip-url" type="url" placeholder="https://…"></div>
-            <div style="width:90px;"><label class="form-label" style="font-size:11px;">Minuto</label><input class="form-input" id="clip-min" type="number" min="0" placeholder="0"></div>
-            <div style="width:130px;"><label class="form-label" style="font-size:11px;">Tipo</label>
+            <div style="flex:2;min-width:160px;"><label class="form-label" style="font-size:11px;" for="clip-url">Link do vídeo (YouTube, etc.)</label><input class="form-input" id="clip-url" type="url" placeholder="https://…"></div>
+            <div style="width:90px;"><label class="form-label" style="font-size:11px;" for="clip-min">Minuto</label><input class="form-input" id="clip-min" type="number" min="0" placeholder="0"></div>
+            <div style="width:130px;"><label class="form-label" style="font-size:11px;" for="clip-tag">Tipo</label>
               <select class="form-select" id="clip-tag"><option>Defesa</option><option>Gol sofrido</option><option>1×1</option><option>Reposição</option><option>Saída</option><option>Pênalti</option><option>Outro</option></select>
             </div>
             <button class="btn btn-primary btn-sm" onclick="addPerfilClip()">Adicionar</button>
@@ -1398,12 +1398,12 @@
         <div class="card-header"><span class="card-title">Comparação Entre Goleiros(as)</span></div>
         <div class="form-grid">
           <div class="form-group">
-            <label class="form-label" style="color:var(--primary);">Goleiro(a) A</label>
-            <select class="form-select" id="comp-gk1" onchange="renderComparacao()"><option value="">Selecionar…</option></select>
+            <label class="form-label" style="color:var(--primary);" for="comp-gk1">Goleiro(a) A</label>
+            <select class="form-select" id="comp-gk1" aria-label="Primeiro goleiro(a) da comparação" onchange="renderComparacao()"><option value="">Selecionar…</option></select>
           </div>
           <div class="form-group">
-            <label class="form-label" style="color:var(--warning);">Goleiro(a) B</label>
-            <select class="form-select" id="comp-gk2" onchange="renderComparacao()"><option value="">Selecionar…</option></select>
+            <label class="form-label" style="color:var(--warning);" for="comp-gk2">Goleiro(a) B</label>
+            <select class="form-select" id="comp-gk2" aria-label="Segundo goleiro(a) da comparação" onchange="renderComparacao()"><option value="">Selecionar…</option></select>
           </div>
         </div>
       </div>
@@ -1532,7 +1532,7 @@
           <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;border:1px solid var(--border);border-radius:10px;">
             <div style="flex:1;">
               <div style="font-weight:600;font-size:14px;margin-bottom:8px;">Relatório Individual</div>
-              <select class="form-select" id="pdf-gk-select"><option value="">Selecione um(a) goleiro(a)…</option></select>
+              <select class="form-select" id="pdf-gk-select" aria-label="Goleiro(a) do relatório em PDF"><option value="">Selecione um(a) goleiro(a)…</option></select>
             </div>
             <button class="btn btn-primary btn-sm" style="margin-left:12px;" onclick="pdfIndividual()">Gerar PDF</button>
           </div>
@@ -1542,7 +1542,7 @@
             <div style="font-weight:600;font-size:14px;margin-bottom:4px;">Relatório por Competição</div>
             <div style="color:var(--muted);font-size:12px;margin-bottom:12px;">Partidas, resultados e performance dos(as) goleiros(as) em uma competição específica</div>
             <div style="display:flex;gap:10px;align-items:center;">
-              <select class="form-select" id="pdf-comp-select" style="flex:1;"><option value="">Selecione a competição…</option></select>
+              <select class="form-select" id="pdf-comp-select" aria-label="Competição do relatório em PDF" style="flex:1;"><option value="">Selecione a competição…</option></select>
               <button class="btn btn-primary btn-sm" onclick="pdfCompeticao()">Gerar PDF</button>
             </div>
           </div>
@@ -1616,32 +1616,32 @@
             <div class="card-header"><span class="card-title">Informações Pessoais</span></div>
             <div class="form-grid">
               <div class="form-group">
-                <label class="form-label">Nome completo</label>
+                <label class="form-label" for="up-nome">Nome completo</label>
                 <input class="form-input" id="up-nome" type="text" placeholder="Seu nome">
               </div>
               <div class="form-group">
-                <label class="form-label">E-mail</label>
+                <label class="form-label" for="up-email">E-mail</label>
                 <input class="form-input" id="up-email" type="email" placeholder="email@exemplo.com">
               </div>
               <div class="form-group">
-                <label class="form-label">Telefone</label>
+                <label class="form-label" for="up-telefone">Telefone</label>
                 <input class="form-input" id="up-telefone" type="tel" placeholder="(11) 99999-9999">
               </div>
               <div class="form-group">
-                <label class="form-label">Cargo / Função</label>
+                <label class="form-label" for="up-cargo">Cargo / Função</label>
                 <input class="form-input" id="up-cargo" type="text" placeholder="Ex: Preparador de Goleiros(as)">
               </div>
               <div class="form-group">
-                <label class="form-label">Clube</label>
+                <label class="form-label" for="up-clube">Clube</label>
                 <input class="form-input" id="up-clube" type="text" placeholder="Nome do clube">
               </div>
               <div class="form-group">
-                <label class="form-label">Categoria</label>
+                <label class="form-label" for="up-categoria">Categoria</label>
                 <input class="form-input" id="up-categoria" type="text" placeholder="Ex: Sub-20, Profissional">
               </div>
             </div>
             <div class="form-group" style="margin-top:4px;">
-              <label class="form-label">Biografia profissional</label>
+              <label class="form-label" for="up-bio">Biografia profissional</label>
               <textarea class="form-input form-textarea" id="up-bio" rows="3" placeholder='Ex: "Preparador de goleiras do Leoas da Serra Sub-20. 8 anos de experiência em futsal feminino."'></textarea>
             </div>
             <button class="btn btn-primary" style="margin-top:4px;" onclick="saveProfile()">
@@ -1773,7 +1773,7 @@
           <div class="card">
             <div class="card-header"><span class="card-title">Sistema</span></div>
             <div class="form-group">
-              <label class="form-label">Página inicial</label>
+              <label class="form-label" for="pref-home">Página inicial</label>
               <select class="form-select" id="pref-home" onchange="savePreferences()">
                 <option value="dashboard">Dashboard</option>
                 <option value="goleiras">Goleiros(as)</option>
@@ -1783,7 +1783,7 @@
               </select>
             </div>
             <div class="form-group" style="margin-top:12px;">
-              <label class="form-label">Categoria padrão</label>
+              <label class="form-label" for="pref-categoria">Categoria padrão</label>
               <input class="form-input" id="pref-categoria" type="text" placeholder="Ex: Sub-20" onchange="savePreferences()">
             </div>
             <div class="form-group" style="margin-top:12px;">
@@ -1810,15 +1810,15 @@
           <div class="card">
             <div class="card-header"><span class="card-title">Alterar Senha</span></div>
             <div class="form-group">
-              <label class="form-label">Senha atual</label>
+              <label class="form-label" for="sec-pass-old">Senha atual</label>
               <input class="form-input" id="sec-pass-old" type="password" placeholder="Senha atual" autocomplete="current-password">
             </div>
             <div class="form-group" style="margin-top:12px;">
-              <label class="form-label">Nova senha</label>
+              <label class="form-label" for="sec-pass-new">Nova senha</label>
               <input class="form-input" id="sec-pass-new" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password">
             </div>
             <div class="form-group" style="margin-top:12px;">
-              <label class="form-label">Confirmar nova senha</label>
+              <label class="form-label" for="sec-pass-confirm">Confirmar nova senha</label>
               <input class="form-input" id="sec-pass-confirm" type="password" placeholder="Repita a nova senha" autocomplete="new-password">
             </div>
             <button class="btn btn-primary" style="margin-top:8px;" onclick="changePassword()">
@@ -1897,11 +1897,11 @@
         <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:28px;width:100%;max-width:380px;box-shadow:0 24px 80px rgba(0,0,0,.5);">
           <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">Adicionar membro ao clube</h3>
           <div class="form-group" style="margin-bottom:12px;">
-            <label class="form-label">Email do usuário</label>
+            <label class="form-label" for="add-member-email">Email do usuário</label>
             <input class="form-input" id="add-member-email" type="email" placeholder="email@clube.com" />
           </div>
           <div class="form-group" style="margin-bottom:16px;">
-            <label class="form-label">Função</label>
+            <label class="form-label" for="add-member-role">Função</label>
             <select class="form-input" id="add-member-role">
               <option value="coach">Preparador / Treinador</option>
               <option value="viewer">Visualizador</option>
@@ -1992,31 +1992,31 @@
           </div>
         </div>
         <div class="form-group full">
-          <label class="form-label">Nome completo *</label>
+          <label class="form-label" for="gk-nome">Nome completo *</label>
           <input class="form-input" id="gk-nome" type="text" placeholder="Ex: Ana Silva">
         </div>
         <div class="form-group">
-          <label class="form-label">Data de nascimento</label>
+          <label class="form-label" for="gk-nasc">Data de nascimento</label>
           <input class="form-input" id="gk-nasc" type="date">
         </div>
         <div class="form-group">
-          <label class="form-label">Número (camisa)</label>
+          <label class="form-label" for="gk-num">Número (camisa)</label>
           <input class="form-input" id="gk-num" type="number" placeholder="1">
         </div>
         <div class="form-group">
-          <label class="form-label">Altura (cm)</label>
+          <label class="form-label" for="gk-altura">Altura (cm)</label>
           <input class="form-input" id="gk-altura" type="number" placeholder="175">
         </div>
         <div class="form-group">
-          <label class="form-label">Peso (kg)</label>
+          <label class="form-label" for="gk-peso">Peso (kg)</label>
           <input class="form-input" id="gk-peso" type="number" placeholder="70">
         </div>
         <div class="form-group">
-          <label class="form-label">Equipe</label>
+          <label class="form-label" for="gk-equipe">Equipe</label>
           <input class="form-input" id="gk-equipe" type="text" placeholder="Nome do clube">
         </div>
         <div class="form-group">
-          <label class="form-label">Categoria</label>
+          <label class="form-label" for="gk-categoria">Categoria</label>
           <select class="form-select" id="gk-categoria">
             <option value="">Selecionar…</option>
             <option>Sub-13</option><option>Sub-15</option><option>Sub-17</option>
@@ -2024,14 +2024,14 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Modalidade</label>
+          <label class="form-label" for="gk-modalidade">Modalidade</label>
           <select class="form-select" id="gk-modalidade">
             <option value="futsal">Futsal</option>
             <option value="beach">Beach Soccer</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Naipe</label>
+          <label class="form-label" for="gk-naipe">Naipe</label>
           <select class="form-select" id="gk-naipe">
             <option value="">Selecionar…</option>
             <option value="feminino">Feminino</option>
@@ -2039,21 +2039,21 @@
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Pé dominante</label>
+          <label class="form-label" for="gk-pe">Pé dominante</label>
           <select class="form-select" id="gk-pe">
             <option value="">Selecionar…</option>
             <option>Direito</option><option>Esquerdo</option><option>Ambidestro</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Mão dominante</label>
+          <label class="form-label" for="gk-mao">Mão dominante</label>
           <select class="form-select" id="gk-mao">
             <option value="">Selecionar…</option>
             <option>Direita</option><option>Esquerda</option>
           </select>
         </div>
         <div class="form-group full">
-          <label class="form-label">Observações</label>
+          <label class="form-label" for="gk-obs">Observações</label>
           <textarea class="form-textarea" id="gk-obs" placeholder="Notas gerais sobre o(a) goleiro(a)…"></textarea>
         </div>
         <div class="form-group full" style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:10px;padding:12px;">
@@ -2081,27 +2081,27 @@
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group">
-          <label class="form-label">Data *</label>
+          <label class="form-label" for="match-data">Data *</label>
           <input class="form-input" id="match-data" type="date">
         </div>
         <div class="form-group">
-          <label class="form-label">Horário</label>
+          <label class="form-label" for="match-hora">Horário</label>
           <input class="form-input" id="match-hora" type="time">
         </div>
         <div class="form-group full">
-          <label class="form-label">Adversário *</label>
+          <label class="form-label" for="match-adv">Adversário *</label>
           <input class="form-input" id="match-adv" type="text" placeholder="Ex: Equipe ABC">
         </div>
         <div class="form-group">
-          <label class="form-label">Competição</label>
+          <label class="form-label" for="match-comp">Competição</label>
           <input class="form-input" id="match-comp" type="text" placeholder="Ex: Campeonato Estadual">
         </div>
         <div class="form-group">
-          <label class="form-label">Fase</label>
+          <label class="form-label" for="match-fase">Fase</label>
           <input class="form-input" id="match-fase" type="text" placeholder="Ex: Semifinal">
         </div>
         <div class="form-group">
-          <label class="form-label">Local</label>
+          <label class="form-label" for="match-local">Local</label>
           <input class="form-input" id="match-local" type="text" placeholder="Ex: Ginásio Municipal">
         </div>
         <!-- Goleiras -->
@@ -2115,11 +2115,11 @@
           </div>
           <div class="form-grid" style="margin-bottom:0;">
             <div class="form-group">
-              <label class="form-label" id="lbl-gk1">Goleiro(a)</label>
+              <label class="form-label" id="lbl-gk1" for="match-goleira">Goleiro(a)</label>
               <select class="form-select" id="match-goleira"><option value="">Selecionar…</option></select>
             </div>
             <div class="form-group" id="grupo-periodo1" style="display:none;">
-              <label class="form-label">Período jogado</label>
+              <label class="form-label" for="match-periodo1">Período jogado</label>
               <input class="form-input" id="match-periodo1" type="text" placeholder="Ex: 1º Tempo" value="1º Tempo">
             </div>
           </div>
@@ -2127,26 +2127,26 @@
           <div id="secao-gk2" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">
             <div class="form-grid" style="margin-bottom:0;">
               <div class="form-group">
-                <label class="form-label">2ª Goleiro(a)</label>
+                <label class="form-label" for="match-gk2">2ª Goleiro(a)</label>
                 <select class="form-select" id="match-gk2"><option value="">Selecionar…</option></select>
               </div>
               <div class="form-group">
-                <label class="form-label">Período jogado</label>
+                <label class="form-label" for="match-periodo2">Período jogado</label>
                 <input class="form-input" id="match-periodo2" type="text" placeholder="Ex: 2º Tempo" value="2º Tempo">
               </div>
             </div>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Gols a favor</label>
+          <label class="form-label" for="match-gf">Gols a favor</label>
           <input class="form-input" id="match-gf" type="number" min="0" value="0">
         </div>
         <div class="form-group">
-          <label class="form-label">Gols sofridos</label>
+          <label class="form-label" for="match-gc">Gols sofridos</label>
           <input class="form-input" id="match-gc" type="number" min="0" value="0">
         </div>
         <div class="form-group full">
-          <label class="form-label">Observações</label>
+          <label class="form-label" for="match-obs">Observações</label>
           <textarea class="form-textarea" id="match-obs" placeholder="Notas sobre a partida…"></textarea>
         </div>
       </div>
@@ -2168,13 +2168,13 @@
     <div class="modal-body" style="padding:16px 20px;">
       <div class="form-grid" style="margin-bottom:12px;gap:10px;">
         <div class="form-group">
-          <label class="form-label">Goleiro(a) *</label>
+          <label class="form-label" for="scout-goleira">Goleiro(a) *</label>
           <select class="form-select" id="scout-goleira" onchange="scoutSyncModalidadeFromGk()">
             <option value="">Selecionar…</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Partida</label>
+          <label class="form-label" for="scout-partida">Partida</label>
           <select class="form-select" id="scout-partida">
             <option value="">Selecionar…</option>
           </select>
@@ -2195,44 +2195,44 @@
           </select>
         </div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label" id="lbl-dad">Defesas Altas Dir.</label><input class="form-input" id="s-dad" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label" id="lbl-dae">Defesas Altas Esq.</label><input class="form-input" id="s-dae" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label" id="lbl-dbd">Defesas Baixas Dir.</label><input class="form-input" id="s-dbd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label" id="lbl-dbe">Defesas Baixas Esq.</label><input class="form-input" id="s-dbe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label" id="lbl-dc">Defesa Central</label><input class="form-input" id="s-dc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label" id="lbl-d1x1">Defesa 1×1</label><input class="form-input" id="s-d1x1" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label" id="lbl-esq">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dad" for="s-dad">Defesas Altas Dir.</label><input class="form-input" id="s-dad" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dae" for="s-dae">Defesas Altas Esq.</label><input class="form-input" id="s-dae" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dbd" for="s-dbd">Defesas Baixas Dir.</label><input class="form-input" id="s-dbd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dbe" for="s-dbe">Defesas Baixas Esq.</label><input class="form-input" id="s-dbe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dc" for="s-dc">Defesa Central</label><input class="form-input" id="s-dc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-d1x1" for="s-d1x1">Defesa 1×1</label><input class="form-input" id="s-d1x1" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-esq" for="s-esq">Esquadros</label><input class="form-input" id="s-esq" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
       <div id="tab-gols" class="tab-content scout-tabs">
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Gols Dentro da Área</label><input class="form-input" id="s-gda" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Gols Fora da Área</label><input class="form-input" id="s-gfa" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Gols Penalti</label><input class="form-input" id="s-gpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Gols Falta</label><input class="form-input" id="s-gfl" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-gda">Gols Dentro da Área</label><input class="form-input" id="s-gda" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-gfa">Gols Fora da Área</label><input class="form-input" id="s-gfa" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-gpe">Gols Penalti</label><input class="form-input" id="s-gpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-gfl">Gols Falta</label><input class="form-input" id="s-gfl" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
         <div style="margin:14px 0 10px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;border-top:1px solid var(--border);padding-top:12px;">Tipo de Chute</div>
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Chute de Média</label><input class="form-input" id="s-tchmed" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">1×1</label><input class="form-input" id="s-tc1x1" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Chute de Ala</label><input class="form-input" id="s-tchala" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Segunda Trave</label><input class="form-input" id="s-tchst" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-tchmed">Chute de Média</label><input class="form-input" id="s-tchmed" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-tc1x1">1×1</label><input class="form-input" id="s-tc1x1" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-tchala">Chute de Ala</label><input class="form-input" id="s-tchala" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-tchst">Segunda Trave</label><input class="form-input" id="s-tchst" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
       <div id="tab-distrib" class="tab-content scout-tabs">
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Distribuição Pé Certo</label><input class="form-input" id="s-dpc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Distribuição Pé Errado</label><input class="form-input" id="s-dpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label" id="lbl-dmc">Distribuição Mão Certa</label><input class="form-input" id="s-dmc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label" id="lbl-dme">Distribuição Mão Errada</label><input class="form-input" id="s-dme" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-dpc">Distribuição Pé Certo</label><input class="form-input" id="s-dpc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-dpe">Distribuição Pé Errado</label><input class="form-input" id="s-dpe" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dmc" for="s-dmc">Distribuição Mão Certa</label><input class="form-input" id="s-dmc" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" id="lbl-dme" for="s-dme">Distribuição Mão Errada</label><input class="form-input" id="s-dme" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
         </div>
       </div>
       <div id="tab-outros" class="tab-content scout-tabs">
         <div class="form-grid">
-          <div class="form-group"><label class="form-label">Interceptações</label><input class="form-input" id="s-int" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Posicionamento Esq.</label><input class="form-input" id="s-pose" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Posicionamento Dir.</label><input class="form-input" id="s-posd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
-          <div class="form-group"><label class="form-label">Saídas do Gol</label><input class="form-input" id="s-sai" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-int">Interceptações</label><input class="form-input" id="s-int" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-pose">Posicionamento Esq.</label><input class="form-input" id="s-pose" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-posd">Posicionamento Dir.</label><input class="form-input" id="s-posd" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
+          <div class="form-group"><label class="form-label" for="s-sai">Saídas do Gol</label><input class="form-input" id="s-sai" type="number" min="0" value="0" oninput="atualizarNotaPreview()"></div>
           <div class="form-group full">
             <label class="form-label" style="display:flex;align-items:center;gap:8px;">
               Substituir nota automática

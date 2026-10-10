@@ -390,7 +390,7 @@ function renderClube() {
   const w = igdWeights();
   const wrap = document.getElementById('clb-igd-weights');
   if (wrap) wrap.innerHTML = Object.keys(IGD_DIM_LABEL).map(k => `
-    <div class="form-group"><label class="form-label">${IGD_DIM_LABEL[k]}</label>
+    <div class="form-group"><label class="form-label" for="clb-w-${k}">${IGD_DIM_LABEL[k]}</label>
       <input type="number" class="form-input" id="clb-w-${k}" value="${w[k]}" min="0" max="100"></div>`).join('');
   try { renderSubCard(); } catch (e) {}
 }
@@ -1028,7 +1028,7 @@ function renderLesoes() {
     <tbody>${rows.map(l => `<tr>
       <td><strong>${_esc(gkName(l.gkId))}</strong></td><td>${_esc(l.regiao || '—')}</td><td>${_esc(l.tipo || '—')}</td>
       <td>${formatDate(l.data)}</td><td>${_esc(l.gravidade || '—')}</td>
-      <td><select class="form-select" style="padding:4px 8px;font-size:12px;color:${LESAO_STATUS_COLOR[l.status]};" onchange="updateLesaoStatus('${l.id}',this.value)">${Object.keys(LESAO_STATUS).map(s => `<option value="${s}"${s === l.status ? ' selected' : ''}>${LESAO_STATUS[s]}</option>`).join('')}</select></td>
+      <td><select class="form-select" aria-label="Situação da lesão" style="padding:4px 8px;font-size:12px;color:${LESAO_STATUS_COLOR[l.status] || 'var(--text)'};" onchange="updateLesaoStatus('${l.id}',this.value)">${Object.keys(LESAO_STATUS).map(s => `<option value="${s}"${s === l.status ? ' selected' : ''}>${LESAO_STATUS[s]}</option>`).join('')}</select></td>
       <td><button class="btn btn-ghost btn-sm" style="color:#ef4444;" onclick="deleteLesao('${l.id}')">✕</button></td>
     </tr>`).join('')}</tbody></table></div>` : '<div class="empty-state"><p>Nenhuma lesão registrada. Use "Registrar lesão".</p></div>';
 }
@@ -1240,6 +1240,10 @@ function navigate(page) {
   // Recompute scroll-helper visibility after the page renders (charts/data
   // change the height); a couple of delayed passes catch async chart layout.
   if (typeof _updateScrollUI === 'function') { setTimeout(_updateScrollUI, 120); setTimeout(_updateScrollUI, 600); }
+  // Mesma janela de tempo: só dá para saber se a tabela transborda depois que
+  // ela foi desenhada.
+  setTimeout(() => _tabelasRolaveisAcessiveis(document.getElementById('page-' + page)), 140);
+  setTimeout(() => _tabelasRolaveisAcessiveis(document.getElementById('page-' + page)), 620);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1636,7 +1640,7 @@ function renderFiltroCompeticoes() {
              background:${ativo ? 'rgba(0,212,255,.15)' : 'var(--card)'};
              color:${ativo ? 'var(--primary)' : 'var(--muted)'};
              font-size:12px;font-weight:${ativo ? 600 : 400};cursor:pointer;transition:all .2s;white-space:nowrap;">
-      ${_esc(c.label)}${c.value ? ` <span style="opacity:.6;font-size:11px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
+      ${_esc(c.label)}${c.value ? ` <span style="opacity:.85;font-size:11px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
     </button>`;
   }).join('');
 }
@@ -1932,7 +1936,7 @@ function renderScouts() {
     const { label, cls } = classifyPerf(nota);
     const isManual = (s.notaManual !== undefined) ? s.notaManual : (s.nota && !isNaN(parseFloat(s.nota)));
     const notaHtml = nota !== null
-      ? `<span class="badge ${cls}" title="${isManual ? 'Nota manual' : 'Calculada automaticamente'}">${nota} <small style="opacity:.7">${label}</small></span>`
+      ? `<span class="badge ${cls}" title="${isManual ? 'Nota manual' : 'Calculada automaticamente'}">${nota} <small>${label}</small></span>`
       : '<span style="color:var(--muted)">—</span>';
     return `<tr>
       <td data-label="Goleiro(a)"><strong>${gk ? _esc(gk.nome) : '—'}</strong></td>
@@ -7207,7 +7211,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
             <div style="font-size:18px;font-weight:800;">${_esc(gk?.nome||'—')}</div>
             <div style="font-size:22px;font-weight:800;color:${nivelColor};margin-top:2px;">${nivel}</div>
             <div style="font-size:11px;color:var(--muted);margin-top:4px;">${gkSegs.map(s=>s.periodoLabel).join(' + ')} · Sequência máx: ${mcMaxStreak} def.</div>
-            ${(sum('ca')||sum('cv'))?`<div style="font-size:11px;margin-top:4px;">${sum('ca')?`<span style="color:#F5C542;font-weight:700;">🟨 ${sum('ca')}</span>`:''} ${sum('cv')?`<span style="color:#EF4444;font-weight:700;margin-left:6px;">🟥 ${sum('cv')} (expulsão)</span>`:''}</div>`:''}
+            ${(sum('ca')||sum('cv'))?`<div style="font-size:11px;margin-top:4px;">${sum('ca')?`<span style="color:#F5C542;font-weight:700;">🟨 ${sum('ca')}</span>`:''} ${sum('cv')?`<span style="color:#F87171;font-weight:700;margin-left:6px;">🟥 ${sum('cv')} (expulsão)</span>`:''}</div>`:''}
           </div>
         </div>
 
@@ -7941,7 +7945,7 @@ function renderPenaltis() {
     <div class="card" style="margin-bottom:16px;">
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
         <span class="card-title" style="flex-shrink:0;">🥅 Pênaltis — Adversário</span>
-        <select class="form-select" style="min-width:160px;margin-left:auto;" onchange="_penSetEquipe(this.value)">${eqOpts}</select>
+        <select class="form-select" aria-label="Equipe adversária" style="min-width:160px;margin-left:auto;" onchange="_penSetEquipe(this.value)">${eqOpts}</select>
         <button class="btn btn-secondary btn-sm" onclick="gerarFichaPenaltis()"><svg class=ic><use href=#i-printer></use></svg> Ficha (PDF)</button>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-top:8px;">Prepare a disputa: registre como os adversários batem e como a goleira deles cai. Visão de frente para o gol.</div>
@@ -7994,8 +7998,8 @@ function _penRenderBatedores() {
         <input id="pen-bat-equipe" class="form-input" placeholder="Equipe adversária" value="${_esc(_pf('pen-bat-equipe', _penEquipe))}" oninput="_penForm['pen-bat-equipe']=this.value">
         <input id="pen-bat-jogador" class="form-input" placeholder="Batedor (nome)" value="${_esc(_pf('pen-bat-jogador'))}" oninput="_penForm['pen-bat-jogador']=this.value">
         <input id="pen-bat-num" class="form-input" placeholder="Nº (opcional)" value="${_esc(_pf('pen-bat-num'))}" oninput="_penForm['pen-bat-num']=this.value">
-        <select id="pen-bat-pe" class="form-select" onchange="_penForm['pen-bat-pe']=this.value"><option value="">Pé —</option><option value="D" ${_pf('pen-bat-pe')==='D'?'selected':''}>Destro</option><option value="E" ${_pf('pen-bat-pe')==='E'?'selected':''}>Canhoto</option></select>
-        <select id="pen-bat-pais" class="form-select" style="grid-column:1/-1;" onchange="_penForm['pen-bat-pais']=this.value"><option value="">País —</option>${Object.keys(_PEN_PAISES).map(pz => `<option value="${pz}" ${_pf('pen-bat-pais')===pz?'selected':''}>${_PEN_PAISES[pz]} ${pz}</option>`).join('')}</select>
+        <select id="pen-bat-pe" class="form-select" aria-label="Pé dominante do batedor" onchange="_penForm['pen-bat-pe']=this.value"><option value="">Pé —</option><option value="D" ${_pf('pen-bat-pe')==='D'?'selected':''}>Destro</option><option value="E" ${_pf('pen-bat-pe')==='E'?'selected':''}>Canhoto</option></select>
+        <select id="pen-bat-pais" class="form-select" aria-label="País do batedor" style="grid-column:1/-1;" onchange="_penForm['pen-bat-pais']=this.value"><option value="">País —</option>${Object.keys(_PEN_PAISES).map(pz => `<option value="${pz}" ${_pf('pen-bat-pais')===pz?'selected':''}>${_PEN_PAISES[pz]} ${pz}</option>`).join('')}</select>
       </div>
       <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">Toque no gol onde ele costuma bater:</div>
       <div style="max-width:300px;margin:0 auto 8px;">${_penGoalSVG([], true)}</div>
@@ -9130,6 +9134,22 @@ function _randToken() {
 
 function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// Tabela que rola na horizontal só é rolável com mouse ou dedo: quem navega
+// pelo teclado não alcança as colunas escondidas. Dar tabindex="0" à caixa
+// que rola resolve (vira parada de tabulação e aceita as setas). Só nas que
+// REALMENTE transbordam, para não encher a navegação de paradas inúteis.
+function _tabelasRolaveisAcessiveis(raiz) {
+  try {
+    (raiz || document).querySelectorAll('.table-wrap').forEach(el => {
+      const rola = el.scrollWidth > el.clientWidth + 1;
+      // Só tabindex: pôr role="region" criaria vários marcos com o mesmo
+      // nome na mesma página, o que atrapalha mais do que ajuda quem usa
+      // leitor de tela (foi o que a própria auditoria apontou na 1ª tentativa).
+      if (rola && !el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+      else if (!rola && el.getAttribute('tabindex') === '0') el.removeAttribute('tabindex');
+    });
+  } catch (e) {}
 }
 // Escapa um texto que vai DENTRO de uma string JS em atributo (onclick="f('…')").
 function _escJs(s) {
@@ -12203,7 +12223,7 @@ function _subApplyCode(raw) {
   return { ok: true, plan: sub.plan, until: sub.paidUntil };
 }
 const _SUB_META = {
-  trial:    { lbl: 'Teste grátis', col: '#3B82F6' },
+  trial:    { lbl: 'Teste grátis', col: '#6BA3FF' },   // #3B82F6 dava 3.9:1 no fundo escuro; este dá 5.7:1
   ativo:    { lbl: 'Ativo',        col: '#10B981' },
   expirado: { lbl: 'Expirado',     col: '#EF4444' },
 };
@@ -13326,7 +13346,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v168';
+const APP_VERSION = 'v169';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
