@@ -2,7 +2,11 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://www.gstatic.com https://www.googleapis.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://*.workers.dev https://gkhub-backend.onrender.com https://servicodados.ibge.gov.br; frame-src https://gkhub-4717d.firebaseapp.com https://accounts.google.com;">
+  <!-- As bibliotecas agora são servidas por nós (vendor/), então cdnjs e
+       jsdelivr saíram de script-src e connect-src: nenhum código de
+       terceiro pode mais ser executado nem contatado. object-src 'none' e
+       base-uri 'self' bloqueiam dois vetores clássicos de injeção. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.googleapis.com https://apis.google.com; object-src 'none'; base-uri 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.gstatic.com https://*.workers.dev https://gkhub-backend.onrender.com https://servicodados.ibge.gov.br; frame-src https://gkhub-4717d.firebaseapp.com https://accounts.google.com;">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>GK Hub — Goalkeeper Performance Platform</title>
   <!-- PWA -->
@@ -20,13 +24,19 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet" />
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <!-- Firebase SDK -->
+<!-- Bibliotecas servidas pelo PRÓPRIO site (pasta vendor/), não por CDN de
+       terceiros. Um script de terceiro roda com acesso total aos dados das
+       atletas e à sessão do técnico: se a CDN for comprometida, nós somos
+       comprometidos junto, e não temos como perceber. Todas MIT; versões em
+       vendor/README.md. -->
+  <script src="vendor/chart.umd.js"></script>
+  <script src="vendor/jspdf.umd.min.js"></script>
+  <script src="vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="vendor/qrcode.min.js"></script>
+  <script src="vendor/html2canvas.min.js"></script>
+  <!-- Firebase SDK: fica no gstatic de propósito. É o mesmo Google que já
+       guarda os dados no Firebase, então servir daqui não acrescenta
+       ninguém novo em quem precisamos confiar — e evita quebrar o login. -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>

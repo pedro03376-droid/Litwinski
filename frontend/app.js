@@ -10008,12 +10008,31 @@ function setCloudStatus(connected, label) {
    espaço (/clubs/<código>/...), então dados de clubes diferentes
    NUNCA se misturam. Membros do mesmo clube usam o MESMO código.
    ═══════════════════════════════════════════════════════════ */
+// Código de clube novo. Esta string é a CREDENCIAL que dá acesso aos dados do
+// elenco, então usa o gerador criptográfico do navegador — o mesmo já usado
+// no segredo do 2FA e no sal do backup. Math.random() não serve aqui: é
+// previsível a partir de saídas observadas, e o app espalha saídas dele nos
+// ids de goleiras e partidas, que vão para a nuvem.
+// São 128 bits em base36 (~25 caracteres), contra os ~31 bits de antes.
+// Códigos JÁ existentes não mudam: trocar órfãoria os dados na nuvem.
+function _novoCodigoClube() {
+  try {
+    const b = crypto.getRandomValues(new Uint8Array(16));
+    let s = '';
+    for (const x of b) s += x.toString(36).padStart(2, '0');
+    return 'c' + s;
+  } catch (e) {
+    // Navegador sem WebCrypto (muito antigo): mantém o comportamento antigo
+    // em vez de impedir a pessoa de usar o app.
+    return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+}
 function _cloudClubKey() {
   let k = localStorage.getItem('gkhub_club_key');
   if (!k) {
     k = (typeof _activeWorkspaceId !== 'undefined' && _activeWorkspaceId)
       ? ('ws_' + _activeWorkspaceId)
-      : ('c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8));
+      : _novoCodigoClube();
     localStorage.setItem('gkhub_club_key', k);
   }
   return k;
@@ -10162,7 +10181,7 @@ function switchClub(key) {
 function criarClube() {
   const nome = (prompt('Nome do novo clube:') || '').trim();
   if (!nome) return;
-  const key = 'clb_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const key = _novoCodigoClube();   // mesma credencial forte do clube inicial
   _clubRegister(key, nome);
   const cur = localStorage.getItem('gkhub_club_key') || '';
   if (cur) _snapshotClub(cur);
@@ -13307,7 +13326,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v167';
+const APP_VERSION = 'v168';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

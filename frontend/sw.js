@@ -1,4 +1,4 @@
-const CACHE = 'gkhub-v167';
+const CACHE = 'gkhub-v168';
 
 const PRECACHE = [
   './',
@@ -9,12 +9,14 @@ const PRECACHE = [
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png',
-  'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap',
-  'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',
+  'https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap',
+  // Bibliotecas próprias (vendor/): além de mais seguras que CDN de
+  // terceiros, agora funcionam offline de verdade — vêm do mesmo servidor.
+  './vendor/chart.umd.js',
+  './vendor/jspdf.umd.min.js',
+  './vendor/jspdf.plugin.autotable.min.js',
+  './vendor/qrcode.min.js',
+  './vendor/html2canvas.min.js',
 ];
 
 // ── Install: pre-cache static assets ──────────────────────
