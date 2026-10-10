@@ -2,8 +2,38 @@ name = "gkhub-ai"
 main = "worker.js"
 compatibility_date = "2024-11-01"
 
-# A chave da Gemini NÃO vai aqui (é secreta). Defina com:
-#   npx wrangler secret put GEMINI_API_KEY
-# (opcional) modelo:
+# Mostra os logs no painel da Cloudflare (útil quando a IA falha: o motivo
+# real vai para o log, não para a resposta).
+[observability]
+enabled = true
+
+# ─────────────────────────────────────────────────────────────────────
+# SEGREDOS — nunca vão neste arquivo, que está no git.
+#
+#   npx wrangler secret put GEMINI_API_KEY     (obrigatório)
+#   npx wrangler secret put DEBUG_TOKEN        (opcional: libera /models)
+#
+# VARIÁVEL opcional (não é segredo), se quiser fixar o modelo:
 # [vars]
 # GEMINI_MODEL = "gemini-2.0-flash"
+#
+# ─────────────────────────────────────────────────────────────────────
+# LIMITE DE USO POR IP — opcional, mas recomendado.
+#
+# Sem isto o worker conta os pedidos na memória, que no Cloudflare é por
+# região e some a cada reinício: segura engano, não segura abuso.
+# Com o KV, a contagem é compartilhada e sobrevive a reinícios.
+#
+# Para ativar, rode UMA vez:
+#
+#   npx wrangler kv namespace create RL
+#
+# O comando imprime um id. Cole-o abaixo e DESCOMENTE as três linhas:
+#
+# [[kv_namespaces]]
+# binding = "RL"
+# id = "cole-o-id-aqui"
+#
+# Atenção: descomentar com um id errado (ou inexistente) faz o deploy
+# FALHAR. Se não for usar agora, deixe comentado — o worker funciona.
+# ─────────────────────────────────────────────────────────────────────
