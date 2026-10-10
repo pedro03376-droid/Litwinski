@@ -1641,6 +1641,30 @@ function renderFiltroCompeticoes() {
   }).join('');
 }
 
+/* Paginação das tabelas longas. Medido: o tempo de abrir Partidas e Scout
+   cresce em linha reta com o número de linhas (~1,1ms por linha no celular),
+   porque o custo é o navegador DESENHAR a tabela — o JavaScript já é rápido.
+   Em vez de encher a tela com 240 linhas que ninguém lê de uma vez, mostra as
+   primeiras e deixa o técnico pedir mais. Nada é escondido: o rodapé diz
+   quantas existem no total e o filtro continua valendo sobre tudo. */
+const _PG_STEP = 50;
+let _pgPartidas = _PG_STEP, _pgPartidasKey = null;
+let _pgScouts   = _PG_STEP, _pgScoutsKey   = null;
+function maisPartidas() { _pgPartidas += _PG_STEP; renderPartidas(); }
+function maisScouts()   { _pgScouts   += _PG_STEP; renderScouts(); }
+// Rodapé "mostrando X de Y" + botão, dentro do próprio tbody.
+function _pgRodape(mostrando, total, colspan, fn) {
+  if (total <= mostrando) {
+    return total > _PG_STEP
+      ? `<tr><td colspan="${colspan}" style="text-align:center;padding:12px;color:var(--muted);font-size:12px;">${total} registro(s) — todos exibidos</td></tr>`
+      : '';
+  }
+  return `<tr><td colspan="${colspan}" style="text-align:center;padding:14px;">
+    <button class="btn btn-secondary btn-sm" onclick="${fn}()">Mostrar mais ${Math.min(_PG_STEP, total - mostrando)}</button>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px;">Mostrando ${mostrando} de ${total}</div>
+  </td></tr>`;
+}
+
 function renderPartidas() {
   renderFiltroCompeticoes();
   const q = (document.getElementById('search-partidas')?.value || '').toLowerCase();
@@ -1664,7 +1688,12 @@ function renderPartidas() {
     defPorPartida.set(k, (defPorPartida.get(k) || 0)
       + (+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0));
   });
-  tbody.innerHTML = [...partidas].sort((a,b) => (b.data||'').localeCompare(a.data||'')).map(p => {
+  // Mudou a busca ou o filtro? Volta para a primeira página.
+  const pgKey = q + '\u0000' + filtroCompeticao;
+  if (pgKey !== _pgPartidasKey) { _pgPartidasKey = pgKey; _pgPartidas = _PG_STEP; }
+  const ordenadas = [...partidas].sort((a,b) => (b.data||'').localeCompare(a.data||''));
+  const visiveis = ordenadas.slice(0, _pgPartidas);
+  tbody.innerHTML = visiveis.map(p => {
     const gk  = gkById.get(p.goalkeeperId);
     const gk2 = p.gk2Id ? gkById.get(p.gk2Id) : null;
     const totalDef = defPorPartida.get(p.id) || 0;
@@ -1697,7 +1726,7 @@ function renderPartidas() {
         </div>
       </td>
     </tr>`;
-  }).join('');
+  }).join('') + _pgRodape(visiveis.length, ordenadas.length, 8, 'maisPartidas');
 }
 
 function verRelatorioPartida(pId) {
@@ -1887,9 +1916,14 @@ function renderScouts() {
     tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><p>Nenhum scout registrado.</p></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = scouts.map(s => {
-    const gk = goleiras.find(g => g.id === s.goalkeeperId);
-    const pt = partidas.find(p => p.id === s.partidaId);
+  if (_pgScoutsKey !== scouts.length) { _pgScoutsKey = scouts.length; _pgScouts = _PG_STEP; }
+  const visiveis = scouts.slice(0, _pgScouts);
+  // Índices montados uma vez, no lugar de varrer as listas a cada linha.
+  const gkById = new Map(goleiras.map(g => [g.id, g]));
+  const ptById = new Map(partidas.map(p => [p.id, p]));
+  tbody.innerHTML = visiveis.map(s => {
+    const gk = gkById.get(s.goalkeeperId);
+    const pt = ptById.get(s.partidaId);
     const totalDef = (+s.dad||0)+(+s.dae||0)+(+s.dbd||0)+(+s.dbe||0)+(+s.dc||0);
     const totalGols = (+s.gda||0)+(+s.gfa||0)+(+s.gpe||0)+(+s.gfl||0);
     const totalDist = (+s.dpc||0)+(+s.dpe||0)+(+s.dmc||0)+(+s.dme||0);
@@ -1918,7 +1952,7 @@ function renderScouts() {
         </div>
       </td>
     </tr>`;
-  }).join('');
+  }).join('') + _pgRodape(visiveis.length, scouts.length, 11, 'maisScouts');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -13273,7 +13307,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v166';
+const APP_VERSION = 'v167';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
