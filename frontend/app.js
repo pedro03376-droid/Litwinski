@@ -9753,14 +9753,76 @@ async function switchWorkspace(teamId, teamName) {
 
 
 /* ── Club Members ────────────────────────────────────── */
+// Liga a aprovação: quem clica vira o DONO do clube na nuvem. É definitivo —
+// as regras do Firebase não deixam trocar o dono depois.
+async function ativarAprovacaoClube() {
+  const u = _me();
+  if (!u || !u.uid) { toast('Entre com sua conta Google para ativar a aprovação.', 'error'); return; }
+  const seg = _cloudClubSeg();
+  if (!confirm('Ativar a aprovação de acesso deste clube?\n\n'
+    + '• Você passa a ser o responsável e ninguém mais entra sem a sua liberação.\n'
+    + '• Quem JÁ está no clube continua dentro, sem interrupção.\n'
+    + '• Isso é permanente: o responsável não pode ser trocado depois.')) return;
+  try {
+    await rtdbPut('/clubOwners/' + seg, u.uid);
+    const dono = await rtdbGet('/clubOwners/' + seg);
+    if (dono !== u.uid) { toast('Este clube já tem um responsável definido.', 'error'); _membershipEnsuredFor = null; await loadClubMembers(); return; }
+    _clubAccess = { seg, owner: u.uid, isOwner: true, approved: true, pending: false };
+    await _putClubPerson(seg, u);
+    toast('Aprovação ativada. Novos acessos passam por você.', 'success');
+    try { logAudit('Clube', 'Ativou a aprovação de acesso ao clube'); } catch (e) {}
+    loadClubMembers();
+  } catch (e) { toast('Não foi possível ativar agora. Tente de novo.', 'error'); }
+}
+async function aprovarMembro(uid) {
+  try {
+    await rtdbPut('/clubMembers/' + _cloudClubSeg() + '/' + uid, true);
+    toast('Acesso liberado.', 'success');
+    try { logAudit('Clube', 'Liberou o acesso de um membro'); } catch (e) {}
+    loadClubMembers();
+  } catch (e) { toast('Não foi possível liberar. Tente de novo.', 'error'); }
+}
+async function recusarMembro(uid) {
+  if (!confirm('Recusar este pedido de acesso?')) return;
+  try {
+    await rtdbDelete('/clubPeople/' + _cloudClubSeg() + '/' + uid);
+    toast('Pedido recusado.', 'info');
+    loadClubMembers();
+  } catch (e) { toast('Não foi possível recusar. Tente de novo.', 'error'); }
+}
+async function revogarMembro(uid) {
+  const u = _me();
+  if (u && uid === u.uid) { toast('Você é o responsável: não dá para remover o próprio acesso.', 'error'); return; }
+  if (!confirm('Remover o acesso desta pessoa?\n\nEla deixa de ver e de sincronizar os dados do clube. Os dados que já estão no aparelho dela continuam lá.')) return;
+  const seg = _cloudClubSeg();
+  try {
+    await rtdbDelete('/clubMembers/' + seg + '/' + uid);
+    await rtdbDelete('/clubPeople/' + seg + '/' + uid);
+    toast('Acesso removido.', 'info');
+    try { logAudit('Clube', 'Removeu o acesso de um membro'); } catch (e) {}
+    loadClubMembers();
+  } catch (e) { toast('Não foi possível remover. Tente de novo.', 'error'); }
+}
+function _pessoaLinha(uid, p, acoes) {
+  const nome = (p && p.nome) || (p && p.email) || 'Conta sem nome';
+  const mail = (p && p.email) ? p.email : uid;
+  return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border);flex-wrap:wrap;">'
+    + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(nome) + '</div>'
+      + '<div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + _esc(mail) + '</div>'
+    + '</div>' + acoes + '</div>';
+}
+
 async function loadClubMembers() {
-  // Multiusuário agora é pela NUVEM (Firebase), via código do clube — não há
-  // mais servidor central de membros. Mostra como compartilhar com a comissão.
+  // Multiusuário é pela NUVEM (Firebase), via código do clube. Este cartão
+  // mostra o código e, quando a aprovação está ligada, quem entrou e quem
+  // está esperando liberação.
   const container = document.getElementById('club-members-list');
   if (!container) return;
   let code = '';
   try { code = (typeof _cloudClubKey === 'function') ? _cloudClubKey() : ''; } catch (e) {}
-  container.innerHTML =
+
+  const codigoHtml =
     '<div style="font-size:13px;color:var(--muted);line-height:1.6;">' +
       'Para trabalhar em equipe, compartilhe o <strong>código do clube</strong> com a sua comissão. ' +
       'Quem entrar com o mesmo código vê e sincroniza os mesmos dados.' +
@@ -9769,9 +9831,74 @@ async function loadClubMembers() {
       '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap;">' +
         '<code style="font-size:13px;background:var(--bg);padding:6px 10px;border-radius:8px;border:1px solid var(--border);word-break:break-all;">' + _esc(code) + '</code>' +
         '<button class="btn btn-secondary btn-sm" onclick="copyClubKey && copyClubKey()">Copiar código</button>' +
-      '</div>' : '') +
-    '<div style="font-size:11px;color:var(--muted);margin-top:8px;">Em <strong>Config. do Clube → Código do clube</strong> também dá para entrar em outro código.</div>';
-  return;
+      '</div>' : '');
+
+  const u = _me();
+  const seg = (typeof _cloudClubSeg === 'function') ? _cloudClubSeg() : '';
+  if (!u || !u.uid || !rtdbUrl) {
+    container.innerHTML = codigoHtml +
+      '<div style="font-size:11px;color:var(--muted);margin-top:10px;">Entre com a sua conta Google para controlar quem tem acesso ao clube.</div>';
+    return;
+  }
+
+  let owner = null;
+  try { owner = await rtdbGet('/clubOwners/' + seg); } catch (e) {}
+
+  // Aprovação desligada: oferece ligar.
+  if (!owner) {
+    container.innerHTML = codigoHtml +
+      '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">' +
+        '<div style="font-size:13px;font-weight:700;margin-bottom:4px;">Controle de acesso: <span style="color:var(--warning);">desligado</span></div>' +
+        '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:10px;">' +
+          'Hoje, <b>qualquer pessoa com o código entra sozinha</b> e passa a ver todos os dados do elenco. ' +
+          'Ao ligar a aprovação, você vira o responsável e nenhum acesso novo acontece sem a sua liberação. ' +
+          'Quem já está dentro continua dentro.' +
+        '</div>' +
+        '<button class="btn btn-primary btn-sm" onclick="ativarAprovacaoClube()">Exigir aprovação para entrar</button>' +
+      '</div>';
+    return;
+  }
+
+  const souDono = owner === u.uid;
+  if (!souDono) {
+    const aprovado = _clubAccess.approved;
+    container.innerHTML = codigoHtml +
+      '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;font-size:12px;color:var(--muted);line-height:1.6;">' +
+        (aprovado
+          ? 'Controle de acesso <b>ligado</b>. Seu acesso está liberado. Novos membros precisam ser aprovados pelo responsável do clube.'
+          : '<span style="color:var(--warning);"><b>Seu acesso está aguardando aprovação</b> do responsável do clube.</span> Até lá, seus registros ficam só neste aparelho.') +
+      '</div>';
+    return;
+  }
+
+  // Sou o dono: lista pendentes e membros.
+  let pessoas = {}, membros = {};
+  try { pessoas = (await rtdbGet('/clubPeople/' + seg)) || {}; } catch (e) {}
+  try { membros = (await rtdbGet('/clubMembers/' + seg)) || {}; } catch (e) {}
+  const uids = Object.keys(pessoas);
+  const pendentes = uids.filter(id => membros[id] !== true);
+  const ativos    = uids.filter(id => membros[id] === true);
+  // Membros antigos que entraram antes de existir o cartão de identificação.
+  const semFicha  = Object.keys(membros).filter(id => membros[id] === true && !pessoas[id]);
+
+  container.innerHTML = codigoHtml +
+    '<div style="margin-top:14px;border-top:1px solid var(--border);padding-top:12px;">' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">Controle de acesso: <span style="color:var(--success,#22c55e);">ligado</span> · você é o responsável</div>' +
+
+      (pendentes.length
+        ? '<div style="font-size:12px;font-weight:700;color:var(--warning);margin-bottom:2px;">Aguardando sua liberação (' + pendentes.length + ')</div>'
+          + pendentes.map(id => _pessoaLinha(id, pessoas[id],
+              '<button class="btn btn-primary btn-sm" onclick="aprovarMembro(\'' + _escJs(id) + '\')">Liberar</button>'
+            + ' <button class="btn btn-secondary btn-sm" onclick="recusarMembro(\'' + _escJs(id) + '\')">Recusar</button>')).join('')
+        : '<div style="font-size:12px;color:var(--muted);">Nenhum pedido de acesso pendente.</div>') +
+
+      '<div style="font-size:12px;font-weight:700;margin-top:14px;margin-bottom:2px;">Com acesso (' + (ativos.length + semFicha.length) + ')</div>' +
+      ativos.map(id => _pessoaLinha(id, pessoas[id], id === u.uid
+        ? '<span style="font-size:11px;color:var(--muted);">você (responsável)</span>'
+        : '<button class="btn btn-secondary btn-sm" style="color:#ef4444;" onclick="revogarMembro(\'' + _escJs(id) + '\')">Remover</button>')).join('') +
+      semFicha.map(id => _pessoaLinha(id, null,
+        '<button class="btn btn-secondary btn-sm" style="color:#ef4444;" onclick="revogarMembro(\'' + _escJs(id) + '\')">Remover</button>')).join('') +
+    '</div>';
 }
 
 function closeAddMemberModal() {
@@ -9839,20 +9966,90 @@ function _cloudClubSeg() { return String(_cloudClubKey()).replace(/[.#$/\[\]]/g,
 function _cloudNS() { return 'clubs/' + _cloudClubSeg(); }
 function _cp(sub) { return '/' + _cloudNS() + sub; } // caminho na nuvem com o namespace do clube
 
-// Registra que ESTE usuário é membro do clube atual: /clubMembers/<clube>/<uid> = true.
-// É o que permite às regras do Firebase liberarem o acesso só para membros do clube,
-// sem trancar ninguém para fora (cada um só grava a própria associação).
+/* ── CONTROLE DE ACESSO AO CLUBE ──────────────────────────────────────
+   Dois estados, e o clube escolhe em qual fica:
+
+   SEM DONO (padrão, como sempre foi): quem tem o código entra sozinho —
+   grava /clubMembers/<clube>/<uid> = true e passa a sincronizar.
+
+   COM DONO (o dono clica em "Exigir aprovação"): /clubOwners/<clube>
+   guarda o uid do dono e as regras passam a aceitar só a escrita DELE em
+   clubMembers. Quem chega fica pendente até ser aprovado.
+
+   Em nenhum dos dois casos o app local para de funcionar: sem aprovação,
+   os dados ficam no aparelho e o aviso explica isso.                     */
+let _clubAccess = { seg: null, owner: null, isOwner: false, approved: false, pending: false };
+function _me() {
+  try { return (typeof _firebaseAuth !== 'undefined' && _firebaseAuth) ? _firebaseAuth.currentUser : null; }
+  catch (e) { return null; }
+}
+// Cartão de identificação do usuário no clube (nome e email da conta Google),
+// para o dono saber QUEM está pedindo acesso em vez de ver um uid cru.
+async function _putClubPerson(seg, u) {
+  try {
+    await rtdbPut('/clubPeople/' + seg + '/' + u.uid,
+      { nome: String(u.displayName || '').slice(0, 120), email: String(u.email || '').slice(0, 200), ts: Date.now() });
+  } catch (e) {}
+}
 let _membershipEnsuredFor = null;
 async function _ensureClubMembership() {
   if (!rtdbUrl) return;
-  const u = (typeof _firebaseAuth !== 'undefined' && _firebaseAuth) ? _firebaseAuth.currentUser : null;
+  const u = _me();
   if (!u || !u.uid) return;
   const seg = _cloudClubSeg();
   if (_membershipEnsuredFor === seg) return;
-  try {
-    await rtdbPut('/clubMembers/' + seg + '/' + u.uid, true);
+
+  let owner = null;
+  try { owner = await rtdbGet('/clubOwners/' + seg); } catch (e) { owner = null; }
+
+  if (!owner) {
+    // Clube sem dono: comportamento de sempre — entra direto.
+    try {
+      await rtdbPut('/clubMembers/' + seg + '/' + u.uid, true);
+      _clubAccess = { seg, owner: null, isOwner: false, approved: true, pending: false };
+      _membershipEnsuredFor = seg;
+      _putClubPerson(seg, u);
+    } catch (e) {}
+    return;
+  }
+
+  if (owner === u.uid) {
+    try { await rtdbPut('/clubMembers/' + seg + '/' + u.uid, true); } catch (e) {}
+    _clubAccess = { seg, owner, isOwner: true, approved: true, pending: false };
     _membershipEnsuredFor = seg;
-  } catch (e) { /* silencioso: nunca bloqueia o app */ }
+    _putClubPerson(seg, u);
+    return;
+  }
+
+  // Clube com dono e eu não sou ele: só sincronizo se já fui aprovado.
+  let aprovado = false;
+  try { aprovado = (await rtdbGet('/clubMembers/' + seg + '/' + u.uid)) === true; } catch (e) {}
+  _clubAccess = { seg, owner, isOwner: false, approved: aprovado, pending: !aprovado };
+  if (aprovado) { _membershipEnsuredFor = seg; _putClubPerson(seg, u); return; }
+  // Pendente: deixa o pedido registrado para o dono ver e avisa o usuário.
+  await _putClubPerson(seg, u);
+  try { _renderAccessBanner(); } catch (e) {}
+}
+// Faixa de aviso quando o acesso à nuvem ainda não foi liberado.
+let _accessToastShown = false;
+function _renderAccessBanner() {
+  const alvo = document.getElementById('page-clube') || document.querySelector('.page.active');
+  if (!alvo) return;
+  document.getElementById('club-access-banner')?.remove();
+  if (!_clubAccess.pending) return;
+  // Avisa na hora: o usuário não deve descobrir que não sincroniza só quando
+  // abrir a página do clube.
+  if (!_accessToastShown) {
+    _accessToastShown = true;
+    try { toast('Acesso ao clube aguardando aprovação do responsável. Seus dados ficam neste aparelho até lá.', 'info'); } catch (e) {}
+  }
+  const el = document.createElement('div');
+  el.id = 'club-access-banner';
+  el.style.cssText = 'background:rgba(245,197,66,.12);border:1px solid rgba(245,197,66,.35);border-radius:12px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.6;';
+  el.innerHTML = '<strong>Acesso ao clube aguardando aprovação.</strong><br>'
+    + 'O responsável pelo clube precisa liberar o seu acesso. Até lá, tudo que você registrar '
+    + 'fica salvo <b>neste aparelho</b> e não é enviado para a nuvem — nada se perde.';
+  alvo.prepend(el);
 }
 function _renderClubKey() { const el = document.getElementById('club-key-display'); if (el) el.textContent = _cloudClubKey(); }
 function copyClubKey() { const k = _cloudClubKey(); if (navigator.clipboard) navigator.clipboard.writeText(k); toast('Código copiado. Compartilhe só com a sua comissão.', 'success'); }
@@ -12257,7 +12454,15 @@ async function cloudSyncNow() {
     if (active === 'pid') renderPID();
     if (active === 'notificacoes') renderNotificacoes();
     updateNotifBadge();
-  } catch (e) { toast(e.message==="PERMISSAO" ? "Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho." : 'Falha na sincronização.', 'error'); }
+  } catch (e) {
+    let msg = 'Falha na sincronização.';
+    if (e.message === 'PERMISSAO') {
+      msg = _clubAccess.pending
+        ? 'Seu acesso ao clube ainda não foi liberado pelo responsável. Seus dados continuam salvos neste aparelho.'
+        : 'Sincronização bloqueada pelas regras do Firebase (veja as instruções). Seus dados continuam salvos neste aparelho.';
+    }
+    toast(msg, 'error');
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -13045,7 +13250,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v164';
+const APP_VERSION = 'v165';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

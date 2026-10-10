@@ -50,13 +50,38 @@
       }
     },
 
+    "_comentario_acesso": "clubOwners define o DONO de cada clube. Enquanto um clube NAO tem dono, tudo funciona como antes: quem tem o codigo entra sozinho. Assim que o dono ativa a aprovacao (reivindica a posse), so ELE libera novos membros.",
+
+    "clubOwners": {
+      "$club": {
+        ".read": "auth != null",
+        ".write": "auth != null && !data.exists() && newData.val() === auth.uid && (!root.child('clubMembers').child($club).exists() || root.child('clubMembers').child($club).child(auth.uid).val() === true)",
+        ".validate": "newData.isString() && newData.val().length <= 128"
+      }
+    },
+
     "clubMembers": {
       "$club": {
         ".read": "auth != null && data.child(auth.uid).val() === true",
         "$uid": {
-          ".read":     "auth != null && auth.uid === $uid",
-          ".write":    "auth != null && auth.uid === $uid",
+          ".read":  "auth != null && (auth.uid === $uid || root.child('clubOwners').child($club).val() === auth.uid)",
+          ".write": "auth != null && (root.child('clubOwners').child($club).val() === auth.uid || (auth.uid === $uid && !root.child('clubOwners').child($club).exists()))",
           ".validate": "newData.isBoolean()"
+        }
+      }
+    },
+
+    "clubPeople": {
+      "$club": {
+        ".read": "auth != null && (root.child('clubOwners').child($club).val() === auth.uid || root.child('clubMembers').child($club).child(auth.uid).val() === true)",
+        "$uid": {
+          ".read":  "auth != null && (auth.uid === $uid || root.child('clubOwners').child($club).val() === auth.uid)",
+          ".write": "auth != null && (auth.uid === $uid || root.child('clubOwners').child($club).val() === auth.uid)",
+          ".validate": "newData.hasChildren(['ts'])",
+          "nome":  { ".validate": "newData.isString() && newData.val().length <= 120" },
+          "email": { ".validate": "newData.isString() && newData.val().length <= 200" },
+          "ts":    { ".validate": "newData.isNumber()" },
+          "$outro": { ".validate": "!newData.isString() || newData.val().length <= 200" }
         }
       }
     },
