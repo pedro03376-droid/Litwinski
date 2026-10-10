@@ -50,8 +50,6 @@
       }
     },
 
-    "_comentario_acesso": "clubOwners define o DONO de cada clube. Enquanto um clube NAO tem dono, tudo funciona como antes: quem tem o codigo entra sozinho. Assim que o dono ativa a aprovacao (reivindica a posse), so ELE libera novos membros.",
-
     "clubOwners": {
       "$club": {
         ".read": "auth != null",
