@@ -9,7 +9,7 @@ para entender o que saiu, por quê, e como trazer de volta.
 ## App Android em Flutter — `mobile/`
 
 **Arquivado em:** outubro de 2026
-**Tag de recuperação:** `arquivo/flutter-2026-10`
+**Commit de recuperação:** `309201f` — o último que ainda contém `mobile/`
 **Tamanho:** 84 arquivos, ~15.200 linhas de Dart, 11 módulos
 (dashboard, goleiros, partidas, performance, relatórios, análise por IA,
 treinos, vídeos, notificações, autenticação, início)
@@ -34,9 +34,18 @@ julgamento sobre a qualidade do código.
 ### Como recuperar
 
 ```sh
-git checkout arquivo/flutter-2026-10 -- mobile/
-git checkout arquivo/flutter-2026-10 -- .github/workflows/build-apk.yml
-git checkout arquivo/flutter-2026-10 -- .github/workflows/flutter-test.yml
+git checkout 309201f -- mobile/
+git checkout 309201f -- .github/workflows/build-apk.yml
+git checkout 309201f -- .github/workflows/flutter-test.yml
+```
+
+O commit `309201f` continua no histórico do repositório — nada depende de
+tag nem de backup externo. Se você preferir um nome mais fácil de lembrar,
+crie a tag e envie com permissão de escrita de tags:
+
+```sh
+git tag arquivo/flutter-2026-10 309201f
+git push origin arquivo/flutter-2026-10
 ```
 
 ### Antes de revivê-lo, considere
