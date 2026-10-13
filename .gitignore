@@ -45,3 +45,8 @@ coverage/
 *.tgz
 *.tar.gz
 __pycache__/
+
+# Cloudflare Worker — estado local do "wrangler dev" (miniflare).
+# São arquivos da máquina de quem roda, não do projeto: cache, KV e D1
+# simulados. Recriados a cada execução.
+.wrangler/
