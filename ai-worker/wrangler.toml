@@ -1,4 +1,9 @@
-name = "gkhub-ai"
+# ATENÇÃO: este nome define a URL (<nome>.<subdominio>.workers.dev) e precisa
+# bater com o Worker que JÁ está no ar — o mesmo endereço que o app chama em
+# _AI_URL_DEFAULT (frontend/app.js). Estava "gkhub-ai", que publicaria num
+# endereço NOVO: o deploy diria sucesso e o app continuaria falando com o
+# Worker antigo, sem nenhuma das proteções nem a correção de modelo.
+name = "snowy-moon-21c7gkhubai"
 main = "worker.js"
 compatibility_date = "2024-11-01"
 
