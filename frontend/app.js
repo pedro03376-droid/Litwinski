@@ -3120,8 +3120,76 @@ function renderDashHero(goleiras, partidas, scouts) {
     ${topHtml}`;
 }
 
+/* ── PRIMEIROS PASSOS ─────────────────────────────────────────────────
+   Um clube recém-criado abre o painel e vê filtros que não filtram nada e
+   cartões de métrica zerados — parece defeito, não sistema novo. Enquanto
+   faltar algum dos três passos que destravam o resto, o painel troca esse
+   vazio por um guia com o que fazer e o botão que faz.                  */
+function _dashPrimeirosPassos() {
+  const alvo = document.getElementById('dash-primeiros-passos');
+  if (!alvo) return false;
+  const temGk = DB.goleiras.length > 0;
+  const temPartida = DB.partidas.length > 0;
+  const temScout = DB.scouts.length > 0;
+  const faltam = !temGk || !temPartida || !temScout;
+  const filtros = document.getElementById('dash-filtros');
+
+  if (!faltam) {                       // clube em uso: nada disso aparece
+    alvo.innerHTML = '';
+    if (filtros) filtros.style.display = '';
+    return false;
+  }
+  // Sem nenhuma partida não há o que filtrar: o filtro só distrai.
+  if (filtros) filtros.style.display = temPartida ? '' : 'none';
+
+  const passo = (ok, n, titulo, desc, rotulo, acao) => `
+    <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;${n < 3 ? 'border-bottom:1px solid var(--border);' : ''}">
+      <div aria-hidden="true" style="flex-shrink:0;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;
+        ${ok ? 'background:rgba(16,185,129,.18);color:#34D399;' : 'background:var(--card-2);color:var(--muted);border:1px solid var(--border);'}">${ok ? '✓' : n}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:700;${ok ? 'color:var(--muted);text-decoration:line-through;' : ''}">${titulo}</div>
+        ${ok ? '' : `<div style="font-size:12px;color:var(--muted);line-height:1.5;margin-top:2px;">${desc}</div>`}
+      </div>
+      ${ok ? '<span style="font-size:11px;color:#34D399;font-weight:700;flex-shrink:0;">feito</span>'
+           : `<button class="btn btn-primary btn-sm" style="flex-shrink:0;" onclick="${acao}">${rotulo}</button>`}
+    </div>`;
+
+  const feitos = [temGk, temPartida, temScout].filter(Boolean).length;
+  alvo.innerHTML = `
+    <div class="card" style="margin-bottom:20px;border:1px solid var(--primary);background:linear-gradient(145deg,rgba(79,141,247,.07),transparent);">
+      <div class="card-header" style="margin-bottom:4px;">
+        <span class="card-title"><svg class=ic><use href=#i-rocket-launch></use></svg> Primeiros passos</span>
+        <span style="font-size:12px;color:var(--muted);font-weight:600;">${feitos} de 3</span>
+      </div>
+      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:6px;">
+        Três passos e o painel começa a mostrar os números do seu elenco.
+        Este guia some sozinho quando terminar.
+      </p>
+      ${passo(temGk, 1, 'Cadastre um(a) goleiro(a)',
+        'Nome e categoria já bastam para começar — o resto dá para completar depois.',
+        'Cadastrar', "navigate('goleiras');setTimeout(()=>{try{openModal('modal-goleira')}catch(e){}},250)")}
+      ${passo(temPartida, 2, 'Registre uma partida',
+        'Adversário, data e quem foi a gol. É o que dá contexto a todo o resto.',
+        'Registrar', "navigate('partidas')")}
+      ${passo(temScout, 3, 'Lance o primeiro scout',
+        'Defesas, gols sofridos e distribuição da partida. A partir daqui o sistema calcula nota, aproveitamento e os gráficos.',
+        'Lançar', "navigate('scout')")}
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:180px;font-size:12px;color:var(--muted);line-height:1.6;">
+          Prefere ver o sistema funcionando antes de digitar o seu elenco?
+          Os dados de exemplo entram marcados como <b>(exemplo)</b> e podem ser apagados depois.
+        </div>
+        <button class="btn btn-secondary btn-sm" style="flex-shrink:0;" onclick="loadSampleData()">
+          <svg class=ic><use href=#i-sparkle></use></svg> Carregar exemplo
+        </button>
+      </div>
+    </div>`;
+  return true;
+}
+
 function refreshDashboard() {
   const goleiras = DB.goleiras;
+  try { _dashPrimeirosPassos(); } catch (e) {}
   _populateDashComp();
   const partidas = DB.partidas.filter(p => {
     if (dashFilterComp && (p.competicao || '') !== dashFilterComp) return false;
@@ -5449,6 +5517,27 @@ function aggScoutsHeatmap() {
   return scouts;
 }
 
+// Faixa de orientação no topo do Heatmap quando não há scout para desenhar.
+function _vazioHeatmap(vazio) {
+  const pag = document.getElementById('page-heatmap');
+  if (!pag) return;
+  document.getElementById('hm-vazio')?.remove();
+  if (!vazio) return;
+  const temGk = DB.goleiras.length > 0;
+  const el = document.createElement('div');
+  el.id = 'hm-vazio';
+  el.className = 'card';
+  el.style.cssText = 'margin-bottom:16px;border:1px solid var(--primary);background:linear-gradient(145deg,rgba(79,141,247,.07),transparent);';
+  el.innerHTML = '<div style="font-size:14px;font-weight:700;margin-bottom:4px;">Ainda não há dados para o mapa</div>'
+    + '<div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px;">'
+    + 'O heatmap mostra <b>de onde vêm os chutes</b> e <b>em que zonas do gol</b> o(a) goleiro(a) defende ou sofre. '
+    + 'Ele se monta a partir dos scouts: ' + (temGk ? 'lance o primeiro e o mapa aparece aqui.'
+        : 'cadastre um(a) goleiro(a) e lance um scout para começar.') + '</div>'
+    + '<button class="btn btn-primary btn-sm" onclick="navigate(\'' + (temGk ? 'scout' : 'goleiras') + '\')">'
+    + (temGk ? 'Lançar scout' : 'Cadastrar goleiro(a)') + '</button>';
+  pag.prepend(el);
+}
+
 function renderHeatmap() {
   populateHmFilters();
   // Segue a modalidade da goleira selecionada (a menos que o usuário escolha manualmente)
@@ -5460,6 +5549,9 @@ function renderHeatmap() {
   }
   const scouts = aggScoutsHeatmap();
   const sum = k => scouts.reduce((a,s)=>a+(+s[k]||0),0);
+  // Sem scout nenhum, o heatmap desenha três quadras zeradas e um monte de
+  // "—": parece defeito. Diz o que falta e leva até lá.
+  _vazioHeatmap(scouts.length === 0);
 
   const defGrid = [
     [sum('dae'), sum('dad'), 0],
@@ -10491,7 +10583,21 @@ function renderOnb() {
 }
 
 // Aviso único: mostra o código do clube e alerta para não usar de outro clube
+// Marca que a pessoa já começou a mexer. O modal de boas-vindas é agendado
+// para 2,5s depois do boot, então sem isto ele pula na frente de alguém que
+// já estava digitando ou navegando — o pior momento possível para interromper.
+let _jaInteragiu = false;
+['pointerdown', 'keydown'].forEach(ev =>
+  window.addEventListener(ev, () => { _jaInteragiu = true; }, { once: true, capture: true }));
+
 function _maybeShowWelcome() {
+  // Já começou a usar? Não rouba a tela. O código do clube continua à mão em
+  // Clube → Código do clube, e o guia de primeiros passos cobre o resto.
+  if (_jaInteragiu && !localStorage.getItem('gkhub_welcome_seen')) {
+    try { localStorage.setItem('gkhub_welcome_seen', '1'); } catch (e) {}
+    try { toast('Dica: o código do seu clube fica em Clube → Código do clube. Compartilhe só com a sua comissão.', 'info'); } catch (e) {}
+    return;
+  }
   if (document.getElementById('twofa-lock')) return;              // aguarda 2FA
   const _ov0 = document.getElementById('auth-overlay');
   if (_ov0 && !_ov0.classList.contains('hidden')) return;        // ainda no login
@@ -12463,19 +12569,35 @@ function _subEnforce() {
   if (_subStatus().state === 'expirado') { openSub(true); return true; }
   return false;
 }
-const LEGAL_VERSION = '2026-10';
+// Canal de atendimento. A Política de Privacidade cita este endereço como o
+// contato do controlador E do encarregado (DPO), então ele não é decoração:
+// é o canal que a LGPD obriga a existir. Fica numa constante só para não
+// haver chance de divergir entre a política e o que a tela mostra.
+const SUPORTE_EMAIL = 'assessoriaphstudios@gmail.com';
+function abrirSuporte(assunto) {
+  const corpo = [
+    '', '', '--- não apague, ajuda a te atender mais rápido ---',
+    'Versão: ' + (typeof APP_VERSION !== 'undefined' ? APP_VERSION : '?'),
+    'Clube: ' + ((clubSettings() || {}).nome || '—'),
+    'Aparelho: ' + navigator.userAgent,
+  ].join('\n');
+  location.href = 'mailto:' + SUPORTE_EMAIL
+    + '?subject=' + encodeURIComponent('GK Hub — ' + (assunto || 'Suporte'))
+    + '&body=' + encodeURIComponent(corpo);
+}
+const LEGAL_VERSION = '2026-10.2';   // revisão: passou a nomear o canal de atendimento (controlador e DPO)
 function _legalHTML() {
   return (
     '<p style="font-size:11px;color:var(--muted);">Versão ' + LEGAL_VERSION + '</p>' +
     '<h3 style="margin:12px 0 6px;">Política de Privacidade</h3>' +
-    '<p><b>Controlador:</b> GK Hub, com contato pelo <b>canal de atendimento informado no aplicativo</b>. O GK Hub é uma plataforma de análise de desempenho de goleiros(as) de futsal e beach soccer.</p>' +
+    '<p><b>Controlador:</b> GK Hub, com contato pelo e-mail <b>' + SUPORTE_EMAIL + '</b>. O GK Hub é uma plataforma de análise de desempenho de goleiros(as) de futsal e beach soccer.</p>' +
     '<p><b>Dados que tratamos:</b> dados do clube; dados de atletas (nome, data de nascimento, dados físicos, posição, foto opcional) e dados de desempenho (scouts, partidas, notas, lesões, plano individual). Não solicitamos dados sensíveis além dos necessários à finalidade esportiva.</p>' +
     '<p><b>Finalidade:</b> registrar e analisar o desempenho esportivo dos(as) atletas para uso da comissão técnica.</p>' +
     '<p><b>Base legal e menores:</b> o tratamento é feito mediante <b>consentimento</b>. Para atletas <b>menores de idade</b>, o consentimento é dado e registrado pelo(a) <b>responsável legal</b> no cadastro do(a) atleta (nome do responsável e data).</p>' +
     '<p><b>Compartilhamento:</b> os dados são armazenados em nuvem (Google Firebase) para sincronização entre dispositivos do clube. Recursos de IA usam a API do Google (Gemini) apenas com dados de desempenho, sem identificar o(a) atleta além do necessário. Não vendemos dados.</p>' +
     '<p><b>Direitos do titular:</b> acesso, correção, <b>portabilidade</b> (exportar em JSON) e <b>eliminação</b> (direito ao esquecimento) — exercidos no próprio app (Clube → Privacidade e LGPD) ou pelo contato acima.</p>' +
     '<p><b>Segurança e retenção:</b> dados isolados por clube; sessão e 2FA nunca saem do aparelho; ações ficam registradas na Auditoria. Os dados são mantidos enquanto o clube usar o serviço e podem ser apagados a qualquer momento pelo titular/responsável.</p>' +
-    '<p><b>Encarregado (DPO):</b> solicitações sobre dados pessoais podem ser feitas pelo canal de atendimento informado no aplicativo.</p>' +
+    '<p><b>Encarregado (DPO):</b> solicitações sobre dados pessoais podem ser feitas pelo e-mail <b>' + SUPORTE_EMAIL + '</b>, que responde em até 15 dias.</p>' +
     '<h3 style="margin:16px 0 6px;">Termos de Uso</h3>' +
     '<p>1. O GK Hub concede uma licença de uso pessoal e intransferível à comissão técnica do clube assinante.</p>' +
     '<p>2. O(a) usuário(a) é responsável pela veracidade dos dados inseridos e por obter o consentimento dos titulares (ou responsáveis, no caso de menores).</p>' +
@@ -13485,7 +13607,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v170';
+const APP_VERSION = 'v171';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
