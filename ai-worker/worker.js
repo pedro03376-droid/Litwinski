@@ -19,7 +19,12 @@ const ALLOW_ORIGINS = [
   'http://127.0.0.1:8080',
 ];
 const MAX_BODY = 64 * 1024;   // 64 KB
-const RATE_MAX = 20;          // pedidos...
+// A cota diária do nível gratuito da Gemini é de 500 pedidos no Flash Lite,
+// repartidos entre TODOS os clubes. Um teto de 20/hora por IP deixaria um
+// único abusador levar ~480 — o dia inteiro. Com 12, um técnico de verdade
+// nunca esbarra (uma rodada rende poucas análises) e o estrago máximo de um
+// IP cai para menos de 300.
+const RATE_MAX = 12;          // pedidos...
 const RATE_WINDOW = 3600;     // ...por hora, por IP
 
 function pickOrigin(request) {
@@ -84,7 +89,10 @@ async function listLiveModels(key){
       .map(m=>m.name.replace('models/',''))
       // evita modelos pesados/experimentais de raciocínio por padrão
       .filter(n=>!/embedding|aqa|vision|thinking/i.test(n));
-    const score=n=>{ let s=0; if(/flash/i.test(n))s-=4; if(/latest/i.test(n))s-=2; if(/2\.5|2\.0/i.test(n))s-=1; if(/pro/i.test(n))s+=1; return s; };
+    // Mesma lógica da lista fixa: "lite" primeiro, porque a cota diária dele é
+    // 25× maior. Sem isto, o auto-reparo encontrava os modelos certos e mesmo
+    // assim escolhia o de 20 pedidos por dia.
+    const score=n=>{ let s=0; if(/lite/i.test(n))s-=8; if(/flash/i.test(n))s-=4; if(/latest/i.test(n))s-=2; if(/pro/i.test(n))s+=2; return s; };
     return names.sort((a,b)=>score(a)-score(b));
   }catch(e){ return []; }
 }
@@ -152,7 +160,19 @@ export default {
     // Tenta o modelo configurado (se houver) e depois uma lista de candidatos.
     const candidates=[];
     if(env.GEMINI_MODEL) candidates.push(env.GEMINI_MODEL);
-    ['gemini-flash-latest','gemini-2.0-flash','gemini-2.0-flash-001','gemini-1.5-flash','gemini-1.5-flash-latest','gemini-pro-latest'].forEach(m=>{if(!candidates.includes(m))candidates.push(m);});
+    // ORDEM IMPORTA, e o motivo é a cota diária do nível gratuito:
+    //   Flash Lite .... 500 pedidos/dia   ← o que sustenta o produto
+    //   Flash ..........  20 pedidos/dia  ← acaba no 20º clique do dia
+    // A análise do GK Hub é um JSON curto a partir de números já calculados:
+    // o Lite dá conta, e troca um ganho de qualidade que ninguém percebe por
+    // 25× mais capacidade. O Flash fica como reserva, não como preferência.
+    // Modelos retirados (2.0, 1.5) saíram da lista: eram os 404 do painel.
+    [
+      'gemini-flash-lite-latest',
+      'gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-2.5-flash-lite',
+      'gemini-flash-latest',
+      'gemini-3.5-flash', 'gemini-2.5-flash',
+    ].forEach(m=>{if(!candidates.includes(m))candidates.push(m);});
     const prompt = buildPrompt(context);
     let last=null; const tried=[];
     const tryList = async (models) => {
