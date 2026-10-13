@@ -12403,12 +12403,15 @@ function _lgpdPopulate() {
    Rascunho jurídico-base em PT-BR. Os campos entre [colchetes] devem ser
    preenchidos pelo responsável pelo negócio e revisados por um advogado. */
 // ═══════════════════════════════════════════════════════════
-// ASSINATURA / COBRANÇA — R$ 99/mês · R$ 990/ano · teste 14 dias
+// ASSINATURA / COBRANÇA — R$ 99/mês · R$ 990/ano · teste 30 dias
 // Local-first: estado em club_settings.sub (sincroniza via /clubinfo).
 // Ativação por CÓDIGO gerado pelo admin (sem backend de pagamento).
 // ═══════════════════════════════════════════════════════════
 const BILLING = {
-  moeda: 'R$', mensal: 99, anual: 990, trialDays: 14,
+  // 30 dias: é o que as telas de cadastro e de login prometem. O código dava
+  // 14 e o clube seria bloqueado na metade do prazo anunciado — divergência
+  // encontrada na auditoria de primeiro uso.
+  moeda: 'R$', mensal: 99, anual: 990, trialDays: 30,
   pixKey: '',        // ← chave PIX do GK Hub (a preencher)
   pixTitular: '',    // ← titular da conta PIX (a preencher)
   _secret: 'gkhub-2026-assinatura',   // salt do checksum (fase pré-lançamento)
@@ -12426,6 +12429,18 @@ function _subInit() {
     const now = Date.now();
     sub = { plan: 'trial', trialStart: now, paidUntil: now + BILLING.trialDays * 864e5, activatedAt: null, usedCodes: [] };
     _subSet(sub);
+    return sub;
+  }
+  // Quem começou o teste quando trialDays era 14 recebeu metade do prazo que
+  // as telas anunciavam. Estende para os 30 prometidos — só para TESTE, só
+  // para ESTENDER, nunca encurta nada e nunca toca em assinatura paga.
+  if (sub.plan === 'trial' && sub.trialStart) {
+    const devido = sub.trialStart + BILLING.trialDays * 864e5;
+    if (devido > (sub.paidUntil || 0)) {
+      sub = { ...sub, paidUntil: devido };
+      _subSet(sub);
+      try { logAudit('Assinatura', 'Período de teste ajustado para ' + BILLING.trialDays + ' dias'); } catch (e) {}
+    }
   }
   return sub;
 }
@@ -13607,7 +13622,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v171';
+const APP_VERSION = 'v172';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
