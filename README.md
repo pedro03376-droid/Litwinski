@@ -25,37 +25,26 @@ Plataforma profissional de acompanhamento, análise e evolução de goleiras de 
 ## Estrutura do Projeto
 
 ```
-gkhub/
-├── backend/               # API NestJS
-│   ├── src/
-│   │   ├── modules/
-│   │   │   ├── auth/            # JWT authentication
-│   │   │   ├── users/           # Gerenciamento de usuários
-│   │   │   ├── teams/           # Equipes
-│   │   │   ├── goalkeepers/     # Goleiras (CRUD + stats + evolução)
-│   │   │   ├── matches/         # Jogos
-│   │   │   ├── scouts/          # Scout de jogo + heatmap
-│   │   │   ├── training/        # Treinos + exercícios
-│   │   │   ├── performance/     # Índices de performance + ranking
-│   │   │   ├── videos/          # Upload vídeos/fotos (Supabase)
-│   │   │   ├── reports/         # Geração de PDFs
-│   │   │   ├── ai-analysis/     # Análise inteligente automática
-│   │   │   ├── notifications/   # Notificações
-│   │   │   ├── import/          # Importação Excel (.xlsx)
-│   │   │   ├── seasons/         # Temporadas
-│   │   │   └── competitions/    # Competições
-│   │   ├── common/              # Guards, filters, interceptors
-│   │   └── config/              # Configurações
-│   └── Dockerfile
-├── mobile/                # App Flutter (mobile + web)
-│   └── lib/
-│       ├── core/          # Theme, Router, Network, Providers
-│       ├── features/      # Módulos por funcionalidade
-│       └── shared/        # Widgets compartilhados
-├── docker/                # Nginx config, SQL init
-├── docker-compose.yml
-└── .env.example
+.
+├── frontend/              # O APP (PWA em JavaScript puro, sem build)
+│   ├── index.html         # Todas as 22 páginas, em um arquivo
+│   ├── app.js             # Lógica, análises e geração de PDF
+│   ├── styles.css         # Tema escuro, design responsivo
+│   ├── sw.js              # Service worker (offline + cache)
+│   ├── manifest.json      # Instalação como aplicativo
+│   └── vendor/            # Bibliotecas servidas por nós (ver vendor/README.md)
+├── ai-worker/             # Função de IA na Cloudflare (Gemini)
+│   ├── worker.js
+│   └── wrangler.toml
+├── scripts/               # Verificações automáticas do frontend
+├── database.rules.json    # Regras do Firebase (referência; publicadas no Console)
+├── ARQUIVADO.md           # O que saiu do projeto e como recuperar
+└── GUIA_GK_HUB.md         # Manual de uso
 ```
+
+**Onde os dados ficam:** no próprio aparelho (localStorage e IndexedDB para
+fotos), sincronizados com o Firebase Realtime Database, isolados por clube em
+`/clubs/<código>`. Não há servidor próprio nem banco de dados para manter.
 
 ---
 
