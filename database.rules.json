@@ -14,7 +14,7 @@
           "pais":    { ".validate": "newData.isString() && newData.val().length <= 60"  },
           "cor1":    { ".validate": "newData.isString() && newData.val().length <= 32"  },
           "cor2":    { ".validate": "newData.isString() && newData.val().length <= 32"  },
-          "escudo":  { ".validate": "newData.isString() && newData.val().length <= 400000" },
+          "escudo":  { ".validate": "newData.isString() && newData.val().length <= 400000 && (newData.val().length === 0 || newData.val().matches(/^data:image\\//))" },
           "$outro":  { ".validate": "!newData.isString() || newData.val().length <= 20000" }
         },
 
@@ -26,8 +26,8 @@
           "$outro": { ".validate": "!newData.isString() || newData.val().length <= 20000" }
         },
 
-        "goleiras":     { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 400000" } } },
-        "pen_fotos":    { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 400000" } } },
+        "goleiras":     { "$id": { ".validate": "newData.hasChildren()", "foto": { ".validate": "!newData.isString() || newData.val().length === 0 || (newData.val().length <= 400000 && newData.val().matches(/^data:image\\//))" }, "$campo": { ".validate": "!newData.isString() || newData.val().length <= 400000" } } },
+        "pen_fotos":    { "$id": { ".validate": "newData.hasChildren()", "foto": { ".validate": "!newData.isString() || newData.val().length === 0 || (newData.val().length <= 400000 && newData.val().matches(/^data:image\\//))" }, "$campo": { ".validate": "!newData.isString() || newData.val().length <= 400000" } } },
         "aianalyses":   { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 100000" } } },
 
         "partidas":     { "$id": { ".validate": "newData.hasChildren()", "$campo": { ".validate": "!newData.isString() || newData.val().length <= 20000" } } },
