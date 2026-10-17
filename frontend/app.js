@@ -347,10 +347,21 @@ function renderAuditoria() {
       Mônica" vira "Goleira MÃ´nica".
    3. Números com VÍRGULA decimal, senão 7.5 é lido como texto e não entra
       em média nem em gráfico.                                            */
+// Injeção de fórmula: o Excel e o Google Planilhas REMOVEM as aspas ao
+// importar e interpretam um campo que começa com = + - @ (ou tabulação) como
+// FÓRMULA. Uma goleira cadastrada como =HYPERLINK("http://...") viraria um
+// link que vaza dados ao ser clicado, e no Windows =cmd|... chega a executar
+// programa. Quem abre o arquivo é o técnico, na máquina dele.
+// A defesa é prefixar com aspa simples: o Excel mostra o texto como está e
+// não calcula nada. Vale só para TEXTO — números seguem intocados, senão
+// deixariam de somar e de virar gráfico, que é o motivo de exportar.
+const _CSV_PERIGO = /^[=+\-@\t\r]/;
 function _csvValor(v) {
   if (v === null || v === undefined) return '""';
   if (typeof v === 'number') return '"' + String(v).replace('.', ',') + '"';
-  return '"' + String(v).replace(/"/g, '""') + '"';
+  let s = String(v);
+  if (_CSV_PERIGO.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g, '""') + '"';
 }
 function _csvBaixar(nome, linhas) {
   const csv = linhas.map(l => l.map(_csvValor).join(';')).join('\r\n');
@@ -6634,15 +6645,20 @@ function mcUpdateLog() {
   const typeColors={def:'rgba(59,130,246,.15)',gol:'rgba(239,68,68,.15)',dist:'rgba(245,158,11,.15)',out:'rgba(16,185,129,.15)',sub:'rgba(245,158,11,.15)','placar-nos':'rgba(16,185,129,.15)','placar-adv':'rgba(239,68,68,.15)',tt:'rgba(167,139,250,.15)',golgk:'rgba(16,185,129,.2)',card:'rgba(245,197,66,.18)'};
   const borderColors={def:'rgba(59,130,246,.4)',gol:'rgba(239,68,68,.4)',dist:'rgba(245,158,11,.4)',out:'rgba(16,185,129,.4)',sub:'rgba(245,158,11,.4)','placar-nos':'rgba(16,185,129,.4)','placar-adv':'rgba(239,68,68,.4)',tt:'rgba(167,139,250,.4)',golgk:'rgba(16,185,129,.6)',card:'rgba(245,197,66,.5)'};
   el.innerHTML=mcLog.slice(0,60).map((e,i)=>{
-    if (e.tipo==='periodo') return `<div style="text-align:center;padding:6px 0;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;">${e.label}</div>`;
+    // Os rótulos são quase todos literais do próprio app, MAS a substituição
+    // de goleiro(a) grava "Entra: <nome>" — nome é texto do usuário. Escapar
+    // aqui, na renderização, cobre essa origem e qualquer outra que venha a
+    // existir, em vez de depender de cada ponto que escreve no log.
+    const lab = _esc(e.label == null ? '' : e.label);
+    if (e.tipo==='periodo') return `<div style="text-align:center;padding:6px 0;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;">${lab}</div>`;
     const icon=MC_TIPO_ICONS[e.key]||MC_ICONS[e.tipo]||'●';
     const bg=typeColors[e.tipo]||'rgba(255,255,255,.05)';
     const bc=borderColors[e.tipo]||'var(--border)';
     const ptBadge=e.periodo?`<span style="font-size:11px;font-weight:700;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;">${e.periodo}T</span>`:'';
-    return `<div class="mc-timeline-item" title="${e.label} @ ${e.time}" style="opacity:${i===0?1:Math.max(0.45,1-i*0.04)}">
+    return `<div class="mc-timeline-item" title="${lab} @ ${_esc(e.time||'')}" style="opacity:${i===0?1:Math.max(0.45,1-i*0.04)}">
       <div class="mc-timeline-icon" style="background:${bg};border:1px solid ${bc};">${icon}</div>
       <div style="flex:1;min-width:0;">
-        <div style="font-weight:${i===0?700:500};font-size:12px;line-height:1.3;">${e.label}</div>
+        <div style="font-weight:${i===0?700:500};font-size:12px;line-height:1.3;">${lab}</div>
         <div style="display:flex;gap:6px;align-items:center;margin-top:2px;">
           <span style="color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums;">${e.time}</span>
           ${ptBadge}
@@ -7588,7 +7604,7 @@ function mcMostrarRelatorioFinal(segs, pId) {
         <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px;">
           <span style="width:40px;flex-shrink:0;">${tempo}</span>
           <span style="width:8px;height:8px;border-radius:50%;background:${typeColors2[e.tipo]||'var(--muted)'};flex-shrink:0;"></span>
-          <span style="flex:1;">${e.label}</span>
+          <span style="flex:1;">${_esc(e.label == null ? '' : e.label)}</span>
           <span style="font-size:11px;background:${e.periodo===1?'rgba(59,130,246,.12)':'rgba(245,158,11,.12)'};color:${e.periodo===1?'var(--primary)':'var(--warning)'};border-radius:3px;padding:1px 4px;font-weight:700;">${e.periodo}T</span>
         </div>`;}).join('')}
     </div>`;
@@ -13192,20 +13208,16 @@ function renderActivityLog() {
 function exportActivityCSV() {
   const log = loadActivityLog();
   if (!log.length) { toast('Nenhuma atividade para exportar', 'info'); return; }
-  const header = 'Data,Hora,Tipo,Atividade';
-  const rows = log.map(l => {
+  // Passa pelo mesmo gerador das demais planilhas: separador ponto e vírgula,
+  // BOM e, principalmente, a proteção contra injeção de fórmula — a atividade
+  // registra texto que veio do usuário.
+  const linhas = [['Data', 'Hora', 'Tipo', 'Atividade']].concat(log.map(l => {
     const d = new Date(l.time);
-    const date = d.toLocaleDateString('pt-BR');
-    const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    const text = (l.text || '').replace(/"/g, '""');
-    return `"${date}","${time}","${l.color || 'primary'}","${text}"`;
-  });
-  const csv = [header, ...rows].join('\n');
-  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url;
-  a.download = `gkhub_atividade_${new Date().toISOString().slice(0,10)}.csv`;
-  a.click(); URL.revokeObjectURL(url);
+    return [d.toLocaleDateString('pt-BR'),
+            d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+            l.color || 'primary', l.text || ''];
+  }));
+  _csvBaixar('gkhub_atividade_' + new Date().toISOString().slice(0, 10) + '.csv', linhas);
   toast('CSV exportado!', 'success');
   if (loadPreferences().notifPdf) _sendNotif('Exportação concluída', 'Histórico de atividade exportado como CSV', 'csv');
 }
@@ -13622,7 +13634,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v172';
+const APP_VERSION = 'v173';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
