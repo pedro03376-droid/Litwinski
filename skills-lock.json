@@ -931,6 +931,12 @@
       "skillPath": "skills/seaborn/SKILL.md",
       "computedHash": "582a9db77900c0d59c96a5f0cf556c5ab44b0fa0813baa3e6c2ed747114d172c"
     },
+    "security-audit": {
+      "source": "cloudflare/security-audit-skill",
+      "sourceType": "github",
+      "skillPath": "skills/security-audit/SKILL.md",
+      "computedHash": "98b97aad2873b3b9a8e064007c25e7827b493ba27fda8bfbdb41dab586767973"
+    },
     "shap": {
       "source": "K-Dense-AI/scientific-agent-skills",
       "sourceType": "github",
