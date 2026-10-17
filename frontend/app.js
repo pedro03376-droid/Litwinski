@@ -535,7 +535,7 @@ function renderClube() {
   if (c.cor1) set('clb-cor1', c.cor1); if (c.cor2) set('clb-cor2', c.cor2);
   _clbEscudo = c.escudo || '';
   const prev = document.getElementById('clb-escudo-prev');
-  if (prev) prev.innerHTML = _clbEscudo ? `<img src="${_clbEscudo}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-bank></use></svg>';
+  if (prev) prev.innerHTML = _clbEscudo ? `<img src="${_imgSrc(_clbEscudo)}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-bank></use></svg>';
   // IGD weight inputs
   const w = igdWeights();
   const wrap = document.getElementById('clb-igd-weights');
@@ -551,7 +551,7 @@ function clbUploadEscudo(input) {
   r.onload = () => {
     // Abre o recortador (arrastar/zoom) para ajustar o escudo antes de salvar.
     if (typeof openCropModal === 'function') openCropModal(r.result, 'escudo');
-    else { _clbEscudo = r.result; const p = document.getElementById('clb-escudo-prev'); if (p) p.innerHTML = `<img src="${_clbEscudo}" style="width:100%;height:100%;object-fit:cover;">`; }
+    else { _clbEscudo = r.result; const p = document.getElementById('clb-escudo-prev'); if (p) p.innerHTML = `<img src="${_imgSrc(_clbEscudo)}" style="width:100%;height:100%;object-fit:cover;">`; }
   };
   r.readAsDataURL(f);
   input.value = '';
@@ -563,7 +563,7 @@ function ajustarEscudo() {
 function _clbSetEscudo(dataUrl) {
   _clbEscudo = dataUrl;
   const p = document.getElementById('clb-escudo-prev');
-  if (p) p.innerHTML = `<img src="${_clbEscudo}" style="width:100%;height:100%;object-fit:cover;">`;
+  if (p) p.innerHTML = `<img src="${_imgSrc(_clbEscudo)}" style="width:100%;height:100%;object-fit:cover;">`;
 }
 function saveClube() {
   const val = (id) => (document.getElementById(id)?.value || '').trim();
@@ -1043,7 +1043,7 @@ function applyClubBranding() {
     const teamOk = c.cor1 && lumX != null && lumX < 0.92;
     const logo = document.getElementById('sidebar-club-logo');
     if (logo) {
-      if (c.escudo) { logo.innerHTML = `<img src="${c.escudo}" style="width:100%;height:100%;object-fit:cover;">`; logo.style.display = ''; }
+      if (c.escudo) { logo.innerHTML = `<img src="${_imgSrc(c.escudo)}" style="width:100%;height:100%;object-fit:cover;">`; logo.style.display = ''; }
       else { logo.innerHTML = ''; logo.style.display = 'none'; }
       logo.style.borderColor = teamOk ? c.cor1 : '';   // anel do escudo na cor do clube
     }
@@ -1055,7 +1055,7 @@ function applyClubBranding() {
     const tName = document.getElementById('topbar-club-name');
     if (tName) tName.textContent = (typeof _clubName === 'function') ? _clubName() : (c.display || c.nome || 'Meu Clube');
     const tLogo = document.getElementById('topbar-club-logo');
-    if (tLogo) { if (c.escudo) { tLogo.innerHTML = `<img src="${c.escudo}">`; tLogo.style.display = ''; } else { tLogo.innerHTML = ''; tLogo.style.display = 'none'; } }
+    if (tLogo) { if (c.escudo) { tLogo.innerHTML = `<img src="${_imgSrc(c.escudo)}">`; tLogo.style.display = ''; } else { tLogo.innerHTML = ''; tLogo.style.display = 'none'; } }
   } catch (e) {}
   // A cor do clube NÃO altera mais a UI global (botões, gráficos, status, notas,
   // texto). Ela vira um token de MARCA (--team) usado só no escudo/logo e no hero.
@@ -3113,7 +3113,7 @@ function renderDashHero(goleiras, partidas, scouts) {
   // Marca do clube sempre presente: escudo se houver, senão as iniciais do
   // clube no círculo, tingidas pela cor do time — âncora visual da identidade.
   const brandInner = logo
-    ? `<img src="${logo}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${_imgSrc(logo)}" style="width:100%;height:100%;object-fit:cover;">`
     : `<span class="avatar-initials" style="font-size:24px;color:var(--team, var(--primary-text));">${_esc(_gkInitials(clube))}</span>`;
   const logoHtml = `<div class="dash-hero-brand">${brandInner}</div>`;
   el.innerHTML = `
@@ -3721,7 +3721,7 @@ function updateFotoPreview(src) {
   const el = document.getElementById('gk-foto-preview');
   if (!el) return;
   el.innerHTML = src
-    ? `<img src="${src}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${_imgSrc(src)}" style="width:100%;height:100%;object-fit:cover;">`
     : `<svg viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="width:36px;height:36px;"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>`;
 }
 function clearFoto() {
@@ -4597,7 +4597,7 @@ function openGkCard(gkId) {
         <!-- Hero: foto grande -->
         <div style="position:relative;height:230px;background:radial-gradient(circle at 50% 25%,#2c5580,#0d2136);overflow:hidden;">
           ${foto
-            ? `<img id="gkcard-photo" src="${foto}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;">`
+            ? `<img id="gkcard-photo" src="${_imgSrc(foto)}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:top center;">`
             : heroFallback}
           <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,24,38,0) 55%,rgba(10,24,38,.95) 100%);"></div>
           <!-- Nota + posição -->
@@ -4897,7 +4897,7 @@ function renderPerfil() {
   // Foto + nome
   const fotoEl = document.getElementById('perfil-foto');
   fotoEl.innerHTML = (gk.foto && String(gk.foto).startsWith('data:image/'))
-    ? `<img src="${gk.foto}" style="width:100%;height:100%;object-fit:cover;">`
+    ? `<img src="${_imgSrc(gk.foto)}" style="width:100%;height:100%;object-fit:cover;">`
     : `<span class="avatar-initials" style="font-size:28px;">${_esc(_gkInitials(gk.nome))}</span>`;
   document.getElementById('perfil-nome').textContent = gk.nome;
   const idade = calcIdade(gk.nasc);
@@ -8218,7 +8218,7 @@ function _penRenderBatedores() {
       ? `Nossa goleira deve cair à <b>${_penColLabel(z.domCol)}</b> — a bola costuma vir <b>${_penRowLabel(z.domRow)}</b> (${domN}/${tot} à ${_penColLabel(z.domCol)}).`
       : '';
     const foto = _penFoto(eq, nome);
-    const avatar = `<div onclick="penFotoClick('${_esc(eq)}','${_esc(nome)}')" title="Adicionar/alterar foto" style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;">${foto ? `<img src="${foto}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-camera></use></svg>'}</div>`;
+    const avatar = `<div onclick="penFotoClick('${_esc(eq)}','${_esc(nome)}')" title="Adicionar/alterar foto" style="width:44px;height:44px;border-radius:8px;overflow:hidden;flex-shrink:0;cursor:pointer;background:var(--bg);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;">${foto ? `<img src="${_imgSrc(foto)}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-camera></use></svg>'}</div>`;
     return `<div class="card" style="margin-bottom:12px;">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
         ${avatar}
@@ -9382,6 +9382,19 @@ function _randToken() {
 function _esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// Fonte segura para <img src>. Escudo e foto são injetados via innerHTML e
+// SINCRONIZAM entre os aparelhos do clube; as regras do Firebase só garantem
+// que são "string de até 400k", não que são imagem. Um membro aprovado pode
+// gravar na nuvem um valor como  x" onerror="..."  que escapa do atributo e
+// executa na tela de qualquer outro membro ao carregar. Aqui só passam imagem
+// embutida (data:image/...) ou https; o resto vira vazio. O resultado ainda é
+// escapado por _esc no ponto de uso, como cinto e suspensório.
+function _imgSrc(v) {
+  const s = String(v == null ? '' : v);
+  if (/^data:image\/(png|jpe?g|webp|gif|avif)[;,]/i.test(s) && s.indexOf('"') < 0) return s;
+  if (/^https:\/\/[^"'<>\s]+$/i.test(s)) return s;
+  return '';
+}
 // Tabela que rola na horizontal só é rolável com mouse ou dedo: quem navega
 // pelo teclado não alcança as colunas escondidas. Dar tabindex="0" à caixa
 // que rola resolve (vira parada de tabulação e aceita as setas). Só nas que
@@ -9445,7 +9458,7 @@ function _resultPill(gf, gc) {
 function _gkAvatarInner(gk, color) {
   gk = gk || {};
   if (gk.foto && String(gk.foto).startsWith('data:image/')) {
-    return `<img src="${gk.foto}" style="width:100%;height:100%;object-fit:cover;">`;
+    return `<img src="${_imgSrc(gk.foto)}" style="width:100%;height:100%;object-fit:cover;">`;
   }
   return `<span class="avatar-initials" style="color:${color || 'var(--text)'};">${_esc(_gkInitials(gk.nome))}</span>`;
 }
@@ -10565,7 +10578,7 @@ function renderOnb() {
       <p style="font-size:13px;color:var(--muted);margin-bottom:14px;">Vamos configurar o seu clube. Leva 1 minuto.</p>
       <div class="form-group" style="margin-bottom:12px;"><label class="form-label">Nome do clube *</label><input class="form-input" id="onb-nome" value="${_esc(_onb.nome)}" placeholder="Ex.: Associação Atlética"></div>
       <div style="display:flex;gap:14px;align-items:center;margin-bottom:6px;">
-        <div style="width:64px;height:64px;border-radius:14px;overflow:hidden;background:var(--card-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;">${_onb.escudo ? `<img src="${_onb.escudo}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-bank></use></svg>'}</div>
+        <div style="width:64px;height:64px;border-radius:14px;overflow:hidden;background:var(--card-2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:26px;">${_onb.escudo ? `<img src="${_imgSrc(_onb.escudo)}" style="width:100%;height:100%;object-fit:cover;">` : '<svg class=ic><use href=#i-bank></use></svg>'}</div>
         <div>
           <label class="btn btn-secondary btn-sm" style="cursor:pointer;">Enviar escudo<input type="file" accept="image/*" style="display:none;" onchange="onbUploadEscudo(this)"></label>
           <div style="display:flex;align-items:center;gap:8px;margin-top:10px;"><label class="form-label" style="margin:0;">Cor:</label><input type="color" id="onb-cor" value="${_onb.cor}" style="width:46px;height:32px;border:none;background:none;"></div>
@@ -13085,11 +13098,11 @@ function handleProfilePhoto(input) {
 }
 function _applyProfilePhoto(dataUrl) {
   const preview = document.getElementById('up-foto-preview');
-  if (preview) preview.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;">`;
+  if (preview) preview.innerHTML = `<img src="${_imgSrc(dataUrl)}" style="width:100%;height:100%;object-fit:cover;">`;
   const avatar = document.getElementById('topbar-user-avatar');
-  if (avatar) avatar.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  if (avatar) avatar.innerHTML = `<img src="${_imgSrc(dataUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
   const udAv = document.getElementById('ud-avatar');
-  if (udAv) udAv.innerHTML = `<img src="${dataUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  if (udAv) udAv.innerHTML = `<img src="${_imgSrc(dataUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
 }
 function _refreshProfileUI(profile) {
   // Header
@@ -13634,7 +13647,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v173';
+const APP_VERSION = 'v174';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
