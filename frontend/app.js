@@ -1343,19 +1343,22 @@ function animateCount(el, target, suffix = '') {
 // ═══════════════════════════════════════════════════════════
 // NAVIGATION
 // ═══════════════════════════════════════════════════════════
+// Títulos da barra de cima. Curtos, para NÃO cortar — a barra já é disputada
+// pelo seletor de clube, busca e status; nomes longos viravam "Scout de ..."
+// e "Perfil do(...", o que parecia defeito. Casam com os rótulos da lateral.
 const pageTitles = {
-  dashboard: 'Dashboard', executivo: 'Dashboard Executivo', goleiras: 'Goleiros(as)',
-  perfil: 'Perfil do(a) Goleiro(a)', comparacao: 'Comparação Entre Goleiros(as)',
-  matchcenter: 'Match Center — Ao Vivo',
-  partidas: 'Partidas', scout: 'Scout de Jogo',
+  dashboard: 'Dashboard', executivo: 'Executivo', goleiras: 'Goleiros(as)',
+  perfil: 'Perfil', comparacao: 'Comparação',
+  matchcenter: 'Match Center',
+  partidas: 'Partidas', scout: 'Scout',
   performance: 'Performance',
   treinos: 'Treinos',
   usuario: 'Meu Perfil',
-  heatmap: 'Heatmap Inteligente', relatorios: 'Relatórios PDF', config: 'Nuvem (Firebase)',
+  heatmap: 'Heatmap', relatorios: 'Relatórios', config: 'Nuvem',
   notificacoes: 'Notificações', 'central-relatorios': 'Central de Relatórios', auditoria: 'Auditoria',
-  clube: 'Configurações do Clube', lesoes: 'Controle de Lesões', pid: 'Plano Individual de Desenvolvimento',
-  penaltis: 'Pênaltis — Scouting do Adversário',
-  periodizacao: 'Planejamento da Temporada'
+  clube: 'Clube', lesoes: 'Lesões', pid: 'Plano Individual',
+  penaltis: 'Pênaltis',
+  periodizacao: 'Planejamento'
 };
 
 function navigate(page) {
@@ -2402,6 +2405,11 @@ function _gkMatchTimeline(gkId, partidas, scouts) {
 }
 
 // Returns insight objects for one goalkeeper (most relevant first).
+// Devolve o markup de um ícone do sprite. Usado onde um emoji era colocado
+// como ícone de interface: mantém a linguagem de traço do resto do app, em
+// vez de um emoji que muda de desenho a cada aparelho.
+function _ico(id) { return '<svg class=ic><use href="#' + id + '"></use></svg>'; }
+
 function gkIntelligence(gkId, partidas, scouts) {
   const line = _gkMatchTimeline(gkId, partidas, scouts);
   const out = [];
@@ -2412,34 +2420,34 @@ function gkIntelligence(gkId, partidas, scouts) {
   if (line.length >= 4) {
     const half = Math.ceil(line.length / 2);
     const delta = +(avg(notas.slice(-half)) - avg(notas.slice(0, half))).toFixed(1);
-    if (delta >= 0.5) out.push({ icon: '📈', level: 'good', title: 'Em evolução', text: `Média subiu ${delta > 0 ? '+' : ''}${delta} pts nas partidas recentes.` });
-    else if (delta <= -0.5) out.push({ icon: '📉', level: 'warn', title: 'Queda de rendimento', text: `Média caiu ${delta} pts. Vale acompanhamento.` });
+    if (delta >= 0.5) out.push({ icon: _ico('i-trend-up'), level: 'good', title: 'Em evolução', text: `Média subiu ${delta > 0 ? '+' : ''}${delta} pts nas partidas recentes.` });
+    else if (delta <= -0.5) out.push({ icon: _ico('i-trend-down'), level: 'warn', title: 'Queda de rendimento', text: `Média caiu ${delta} pts. Vale acompanhamento.` });
   }
 
   // Recent slump: last 3 vs previous 3
   if (line.length >= 6) {
     const d = +(avg(notas.slice(-3)) - avg(notas.slice(-6, -3))).toFixed(1);
-    if (d <= -1) out.push({ icon: '⚠️', level: 'warn', title: 'Alerta de forma', text: `Queda de ${d} pts nos últimos 3 jogos.` });
+    if (d <= -1) out.push({ icon: _ico('i-warning'), level: 'warn', title: 'Alerta de forma', text: `Queda de ${d} pts nos últimos 3 jogos.` });
   }
 
   // Best streak of strong games (nota >= 7)
   let best = 0, cur = 0;
   notas.forEach(n => { if (n >= 7) { cur++; best = Math.max(best, cur); } else cur = 0; });
-  if (best >= 3) out.push({ icon: '🔥', level: 'good', title: 'Boa sequência', text: `${best} jogos seguidos com nota ≥ 7.` });
+  if (best >= 3) out.push({ icon: _ico('i-fire'), level: 'good', title: 'Boa sequência', text: `${best} jogos seguidos com nota ≥ 7.` });
 
   // Trailing clean-sheet streak
   let cs = 0;
   for (let i = line.length - 1; i >= 0; i--) { if (line[i].gc === 0) cs++; else break; }
-  if (cs >= 2) out.push({ icon: '🔒', level: 'good', title: 'Sem sofrer gols', text: `${cs} jogos seguidos sem levar gol.` });
+  if (cs >= 2) out.push({ icon: _ico('i-lock'), level: 'good', title: 'Sem sofrer gols', text: `${cs} jogos seguidos sem levar gol.` });
 
   // Peak of the season
   if (notas.length) {
     const peak = Math.max(...notas);
-    if (peak >= 8.5) out.push({ icon: '⭐', level: 'good', title: 'Pico da temporada', text: `Melhor nota registrada: ${peak}.` });
+    if (peak >= 8.5) out.push({ icon: _ico('i-star'), level: 'good', title: 'Pico da temporada', text: `Melhor nota registrada: ${peak}.` });
   }
 
   // Too few games → follow-up
-  if (line.length > 0 && line.length < 2) out.push({ icon: '🔎', level: 'info', title: 'Poucos dados', text: 'Apenas 1 partida analisada. Registre mais scouts.' });
+  if (line.length > 0 && line.length < 2) out.push({ icon: _ico('i-magnifying-glass'), level: 'info', title: 'Poucos dados', text: 'Apenas 1 partida analisada. Registre mais scouts.' });
 
   return out.map(o => ({ ...o, gkId }));
 }
@@ -3286,13 +3294,13 @@ function refreshDashboard() {
     })[0];
 
     const destaques = [
-      { emoji:'🏆', titulo:'Melhor da Temporada', gk:melhorTemporada,
+      { icon:'i-trophy', titulo:'Melhor da Temporada', gk:melhorTemporada,
         valor: avgPerformance(melhorTemporada?.id), unidade:'pts', color:'var(--warning)' },
-      { emoji:'🥊', titulo:'Mais Defesas', gk:maisDefesas,
+      { icon:'i-shield-check', titulo:'Mais Defesas', gk:maisDefesas,
         valor: gkScoutSum(maisDefesas?.id,['dad','dae','dbd','dbe','dc']), unidade:'def', color:'var(--primary)' },
-      { emoji:'🔒', titulo:'Menos Gols Sofr.', gk:menosGols,
+      { icon:'i-lock', titulo:'Menos Gols Sofr.', gk:menosGols,
         valor: gkScoutSum(menosGols?.id,['gda','gfa','gpe','gfl']), unidade:'gols', color:'var(--success)' },
-      { emoji:'🎯', titulo:'Melhor Distribuição', gk:melhorDist,
+      { icon:'i-target', titulo:'Melhor Distribuição', gk:melhorDist,
         valor: (()=>{ const c=gkScoutSum(melhorDist?.id,['dpc','dmc']); const t=c+gkScoutSum(melhorDist?.id,['dpe','dme']); return t>0?Math.round(c/t*100)+'%':'—'; })(),
         unidade:'precisão', color:'#FFB300' },
       (()=>{
@@ -3318,7 +3326,7 @@ function refreshDashboard() {
         // título continua "Melhor Evolução" (não é "a maior queda").
         const subiu = delta !== null && delta >= 0;
         return {
-          emoji: subiu ? '📈' : '📉',
+          icon: subiu ? 'i-trend-up' : 'i-trend-down',
           titulo: 'Melhor Evolução',
           gk: melhorEvolucao,
           valor: delta === null ? '—' : (delta>=0?'+':'') + delta.toFixed(1),
@@ -3333,7 +3341,7 @@ function refreshDashboard() {
       const foto = _gkAvatarInner(d.gk, d.color);
       return `<div class="destaque-card" onclick="verPerfil('${d.gk.id}')"
         style="--accent:${d.color};--accent-color:${d.color};animation-delay:${i*50}ms;">
-        <span class="destaque-icon">${d.emoji}</span>
+        <span class="destaque-icon" style="color:${d.color};"><svg class=ic><use href="#${d.icon}"></use></svg></span>
         <div class="destaque-label">${d.titulo}</div>
         <div class="destaque-avatar" style="border-color:${d.color};">${foto}</div>
         <div class="destaque-name">${_esc(d.gk.nome.split(' ')[0])}</div>
@@ -6442,9 +6450,17 @@ const MC_TIPO_ICONS = {
   int:'🛡️', sai:'🏃', pose:'📍', posd:'📍', ca:'🟨', cv:'🟥'
 };
 
+// Liga/desliga o badge "AO VIVO" da barra lateral conforme há ou não uma
+// partida em andamento (começou e ainda não foi encerrada/resetada).
+function _mcLiveBadge() {
+  const el = document.getElementById('mc-live-badge');
+  if (el) el.style.display = (typeof mcTimerEverRan !== 'undefined' && mcTimerEverRan) ? '' : 'none';
+}
+
 function mcReset() {
   MC_FIELDS.forEach(f => mcData[f] = 0);
   mcLog = []; mcSeconds = 0; mcRunning = false; mcTimerEverRan = false;
+  try { _mcLiveBadge(); } catch (e) {}
   mcPeriodo = 1; mcPlacar = { nos:0, adv:0 };
   mcGkSegmentos = [];
   mcNotaAtual = 7.0; mcNotaHistory = [];
@@ -6519,6 +6535,7 @@ function mcToggleTimer() {
   } else {
     mcRunning=true;
     mcTimerEverRan=true;
+    try { _mcLiveBadge(); } catch (e) {}
     if (btn) btn.innerHTML='⏸ Pausar';
     if (dot) { dot.style.background='var(--error)'; dot.style.animation='none'; }
     if (btn2t) btn2t.style.display='none';
@@ -13647,7 +13664,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v174';
+const APP_VERSION = 'v175';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
