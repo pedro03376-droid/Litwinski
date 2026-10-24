@@ -343,6 +343,12 @@
       "skillPath": "skills/glycoengineering/SKILL.md",
       "computedHash": "b0854eebb4753fe2340edc8f9a9dd94cd527d72798f96850b65087e390b6f7f7"
     },
+    "google-maps-scraper": {
+      "source": "mahanaicoach/google-maps-scraper-kit",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/google-maps-scraper/SKILL.md",
+      "computedHash": "d3a90acc458d5b6cdd21a292b3a2ce6c9c74642bf08bf422d8dc9877350bb4b6"
+    },
     "gtars": {
       "source": "K-Dense-AI/scientific-agent-skills",
       "sourceType": "github",
