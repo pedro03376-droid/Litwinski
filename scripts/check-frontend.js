@@ -55,5 +55,22 @@ if (requiredIds.every((id) => html.includes('id="' + id + '"'))) ok(`${requiredI
 // 5) html lang set (accessibility/i18n)
 if (/<html[^>]*\blang=/.test(html)) ok('html lang attribute set'); else fail('missing <html lang="...">');
 
+// 6) A politica publica (exigida pela Google Play) nao pode divergir da que
+//    o app mostra. Ja tivemos um descompasso assim: as telas prometiam 30
+//    dias de teste e o codigo dava 14. Aqui o check falha antes de publicar.
+const privPath = path.join(dir, 'privacidade.html');
+if (!fs.existsSync(privPath)) {
+  fail('privacidade.html ausente (a Google Play exige URL publica de politica)');
+} else {
+  const priv = fs.readFileSync(privPath, 'utf8');
+  const appVer = (appJs.match(/const LEGAL_VERSION = '([^']+)'/) || [])[1];
+  const pubVer = (priv.match(/vers\u00e3o <strong>([^<]+)<\/strong>/) || [])[1];
+  if (!appVer) fail('LEGAL_VERSION nao encontrada em app.js');
+  else if (!pubVer) fail('versao nao encontrada em privacidade.html');
+  else if (appVer !== pubVer) fail(`politica divergente: app.js=${appVer} vs privacidade.html=${pubVer}`);
+  else ok(`politica publica na mesma versao do app (${appVer})`);
+  if (!priv.includes('assessoriaphstudios@gmail.com')) fail('privacidade.html sem o canal de atendimento');
+}
+
 console.log(failures ? `\nFRONTEND CHECK FAILED (${failures} issue(s))` : '\nFrontend check passed.');
 process.exit(failures ? 1 : 0);

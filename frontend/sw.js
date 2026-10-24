@@ -1,8 +1,9 @@
-const CACHE = 'gkhub-v175';
+const CACHE = 'gkhub-v176';
 
 const PRECACHE = [
   './',
   './index.html',
+  './privacidade.html',   // precisa abrir mesmo offline (exigência de loja e LGPD)
   './styles.css',
   './app.js',
   './icon.svg',

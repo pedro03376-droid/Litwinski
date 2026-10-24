@@ -136,7 +136,9 @@
       Novo clube? <a onclick="openRegister()">Cadastrar agora — 30 dias grátis</a>
     </div>
     <div style="text-align:center;margin-top:10px;font-size:11px;color:var(--muted);">
-      Ao usar, você aceita os <a onclick="openLegal()" style="cursor:pointer;text-decoration:underline;">Termos e a Política de Privacidade</a>.
+      <!-- Link de verdade (href), não só onclick: a Google Play e a LGPD
+           esperam uma política acessível a quem ainda NÃO entrou no app. -->
+      Ao usar, você aceita os <a href="./privacidade.html" target="_blank" rel="noopener" style="text-decoration:underline;">Termos e a Política de Privacidade</a>.
     </div>
   </div>
 </div>
