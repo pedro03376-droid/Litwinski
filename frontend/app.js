@@ -12462,8 +12462,11 @@ const BILLING = {
   // 14 e o clube seria bloqueado na metade do prazo anunciado — divergência
   // encontrada na auditoria de primeiro uso.
   moeda: 'R$', mensal: 99, anual: 990, trialDays: 30,
-  pixKey: '',        // ← chave PIX do GK Hub (a preencher)
-  pixTitular: '',    // ← titular da conta PIX (a preencher)
+  // Chave ALEATÓRIA, de propósito: ela fica no código, que é público, e uma
+  // chave aleatória não revela CPF, e-mail nem telefone. Pode ser trocada no
+  // banco sem mexer em mais nada aqui.
+  pixKey: '5f98bd98-b6f8-4d40-901e-fa63b5132040',
+  pixTitular: '',    // ← nome do titular (a preencher): é o que o técnico confere antes de pagar
   _secret: 'gkhub-2026-assinatura',   // salt do checksum (fase pré-lançamento)
 };
 function _subDay(ts) { try { return new Date(ts).toISOString().slice(0, 10); } catch (e) { return ''; } }
@@ -13668,7 +13671,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v177';
+const APP_VERSION = 'v178';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
