@@ -1620,6 +1620,12 @@
     /* ── Button system: complete the variants + states ── */
     .btn { min-height: 40px; }
     .btn-sm { min-height: 36px; }
+    /* No celular, 44px. Os botões chegavam a 44 por soma de padding com
+       altura de linha, o que depende da métrica da fonte: a mesma tela
+       media 44 aqui e 43 no servidor de teste. Piso explícito. */
+    @media (max-width: 768px) {
+      .btn, .btn-sm { min-height: 44px; }
+    }
     .btn-secondary {
       background: rgba(255,255,255,.05);
       color: var(--text);
