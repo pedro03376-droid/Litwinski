@@ -12466,7 +12466,9 @@ const BILLING = {
   // chave aleatória não revela CPF, e-mail nem telefone. Pode ser trocada no
   // banco sem mexer em mais nada aqui.
   pixKey: '5f98bd98-b6f8-4d40-901e-fa63b5132040',
-  pixTitular: '',    // ← nome do titular (a preencher): é o que o técnico confere antes de pagar
+  pixTitular: 'Pedro Henrique L. de S.',
+  pixBanco: 'Nubank',
+  pixCidade: 'Lages',   // usado no QR (padrão do Banco Central exige a cidade)
   _secret: 'gkhub-2026-assinatura',   // salt do checksum (fase pré-lançamento)
 };
 function _subDay(ts) { try { return new Date(ts).toISOString().slice(0, 10); } catch (e) { return ''; } }
@@ -12556,13 +12558,91 @@ function renderSubCard() {
       '<button class="btn btn-primary btn-sm" onclick="openSub(false)">' + (st.state === 'expirado' ? '<svg class=ic><use href=#i-credit-card></use></svg> Assinar / Renovar' : '<svg class=ic><use href=#i-credit-card></use></svg> Gerenciar assinatura') + '</button>' +
     '</div>';
 }
+/* ── QR do PIX (BR Code) ──────────────────────────────────────────────
+   Monta o payload no formato EMV do Banco Central. Cada campo é
+   "ID + tamanho em 2 dígitos + valor", e o último é o CRC do que veio
+   antes. Erro aqui significa pagamento que não acontece, então há teste
+   conferindo o CRC contra o vetor padrão e relendo o payload campo a campo.
+
+   Sem valor fixo de propósito: o mesmo QR serve para o plano mensal e o
+   anual, e o técnico confirma a quantia no app do banco.                */
+function _emv(id, valor) {
+  const v = String(valor);
+  return id + String(v.length).padStart(2, '0') + v;
+}
+// CRC-16/CCITT-FALSE: polinômio 0x1021, valor inicial 0xFFFF.
+function _crc16(str) {
+  let crc = 0xFFFF;
+  for (let i = 0; i < str.length; i++) {
+    crc ^= str.charCodeAt(i) << 8;
+    for (let b = 0; b < 8; b++) {
+      crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) : (crc << 1);
+      crc &= 0xFFFF;
+    }
+  }
+  return crc.toString(16).toUpperCase().padStart(4, '0');
+}
+// Bancos lidam mal com acento e minúscula nesses campos; o padrão também
+// limita o tamanho (nome 25, cidade 15).
+function _pixTexto(s, max) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^A-Za-z0-9 .-]/g, '').toUpperCase().trim().slice(0, max);
+}
+function _pixBRCode() {
+  if (!BILLING.pixKey) return '';
+  const conta = _emv('00', 'BR.GOV.BCB.PIX') + _emv('01', BILLING.pixKey);
+  const corpo =
+      _emv('00', '01')                                   // formato do payload
+    + _emv('26', conta)                                  // dados da conta PIX
+    + _emv('52', '0000')                                 // categoria do comerciante
+    + _emv('53', '986')                                  // moeda: BRL
+    + _emv('58', 'BR')                                   // país
+    + _emv('59', _pixTexto(BILLING.pixTitular, 25))      // recebedor
+    + _emv('60', _pixTexto(BILLING.pixCidade, 15))       // cidade
+    + _emv('62', _emv('05', '***'))                      // sem identificador
+    + '6304';                                            // cabeçalho do CRC
+  return corpo + _crc16(corpo);
+}
+function _subCopyBRCode() {
+  try { navigator.clipboard.writeText(_pixBRCode()); toast('Código PIX copiado! Cole no app do banco.', 'success'); }
+  catch (e) { toast('Não foi possível copiar. Use a chave acima.', 'error'); }
+}
+// Desenha o QR depois que o modal existe na tela.
+function _subRenderQR() {
+  const el = document.getElementById('sub-pix-qr');
+  if (!el || typeof QRCode === 'undefined') return;
+  const payload = _pixBRCode();
+  if (!payload) return;
+  el.innerHTML = '';
+  try {
+    new QRCode(el, { text: payload, width: 164, height: 164,
+      colorDark: '#000000', colorLight: '#FFFFFF', correctLevel: QRCode.CorrectLevel.M });
+  } catch (e) { el.style.display = 'none'; }
+}
+
 function _subBodyHTML(gate) {
   const st = _subStatus();
   const meta = _SUB_META[st.state];
+  const quem = [BILLING.pixTitular, BILLING.pixBanco].filter(Boolean).join(' · ');
   const pix = BILLING.pixKey
-    ? ('<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px;"><code style="background:var(--bg);padding:8px 12px;border-radius:8px;font-size:13px;word-break:break-all;">' + _esc(BILLING.pixKey) + '</code>' +
-       '<button class="btn btn-secondary btn-sm" onclick="_subCopyPix()">Copiar chave</button></div>' +
-       (BILLING.pixTitular ? '<div style="font-size:12px;color:var(--muted);margin-top:4px;">Titular: ' + _esc(BILLING.pixTitular) + '</div>' : ''))
+    ? ('<div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;margin-top:8px;">' +
+         // QR primeiro: no celular, apontar a câmera do banco é mais rápido e
+         // erra menos que colar um código de 36 caracteres.
+         '<div style="text-align:center;flex-shrink:0;">' +
+           '<div id="sub-pix-qr" style="background:#fff;padding:8px;border-radius:10px;line-height:0;"></div>' +
+           '<div style="font-size:11px;color:var(--muted);margin-top:6px;">Aponte a câmera do<br>app do seu banco</div>' +
+         '</div>' +
+         '<div style="flex:1;min-width:200px;">' +
+           (quem ? '<div style="font-size:13px;margin-bottom:8px;">Para <b>' + _esc(BILLING.pixTitular) + '</b>' +
+                   (BILLING.pixBanco ? ' <span style="color:var(--muted);">(' + _esc(BILLING.pixBanco) + ')</span>' : '') + '</div>' : '') +
+           '<div style="font-size:12px;color:var(--muted);margin-bottom:4px;">Ou use a chave aleatória:</div>' +
+           '<code style="display:block;background:var(--bg);padding:8px 10px;border-radius:8px;font-size:12px;word-break:break-all;">' + _esc(BILLING.pixKey) + '</code>' +
+           '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">' +
+             '<button class="btn btn-secondary btn-sm" onclick="_subCopyPix()">Copiar chave</button>' +
+             '<button class="btn btn-secondary btn-sm" onclick="_subCopyBRCode()">Copiar código PIX</button>' +
+           '</div>' +
+         '</div>' +
+       '</div>')
     : '<div style="font-size:12px;color:var(--warning);margin-top:6px;">Chave PIX ainda não configurada — fale com o suporte do GK Hub para pagar.</div>';
   const adminBlock = (typeof _isAdmin === 'function' && _isAdmin())
     ? ('<div style="margin-top:18px;border-top:1px dashed var(--border);padding-top:14px;">' +
@@ -12610,6 +12690,7 @@ function openSub(gate) {
   const close = document.getElementById('sub-close'); if (close) close.style.display = gate ? 'none' : 'flex';
   ov.dataset.gate = gate ? '1' : '';
   ov.style.display = 'flex';
+  try { _subRenderQR(); } catch (e) {}   // o QR só pode ser desenhado com o modal já na tela
 }
 function closeSub() { const ov = document.getElementById('sub-block'); if (ov && ov.dataset.gate !== '1') ov.style.display = 'none'; }
 function _subCopyPix() { try { navigator.clipboard.writeText(BILLING.pixKey || ''); toast('Chave PIX copiada!', 'success'); } catch (e) {} }
@@ -13671,7 +13752,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v178';
+const APP_VERSION = 'v179';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;
