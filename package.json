@@ -1,5 +1,8 @@
 {
   "dependencies": {
     "framer-motion": "^12.40.0"
+  },
+  "devDependencies": {
+    "axe-core": "^4.10.2"
   }
 }

@@ -333,7 +333,7 @@
 <main class="main">
   <header class="topbar">
     <div class="topbar-left">
-      <button class="btn btn-ghost btn-sm" id="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none;">
+      <button class="btn btn-ghost btn-sm" id="menu-btn" aria-label="Abrir o menu" onclick="document.getElementById('sidebar').classList.toggle('open')" style="display:none;min-width:44px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
       <span class="topbar-title" id="topbar-title">Dashboard</span>
@@ -475,7 +475,7 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="#22D3EE" stroke-width="2" width="20" height="20"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           </div>
           <div class="stat-label">Média de Performance</div>
-          <div class="stat-value" style="color:#22D3EE;text-shadow:0 0 24px rgba(34,211,238,.35);" id="stat-avg-perf">—</div>
+          <div class="stat-value stat-info" id="stat-avg-perf">—</div>
           <div class="stat-sub">pontuação média</div>
         </div>
       </div><!-- /stats-grid -->
@@ -963,9 +963,9 @@
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
               <span style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;">Mapa de Eventos</span>
               <div style="display:flex;gap:6px;">
-                <button onclick="mcSetMapMode('def')" id="mc-map-def" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid rgba(59,130,246,.4);background:rgba(59,130,246,.15);color:#93C5FD;cursor:pointer;font-family:var(--font);font-weight:700;">DEF</button>
-                <button onclick="mcSetMapMode('gol')" id="mc-map-gol" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:var(--font);font-weight:700;">GOL</button>
-                <button onclick="mcSetMapMode('dist')" id="mc-map-dist" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:var(--font);font-weight:700;">DIST</button>
+                <button onclick="mcSetMapMode('def')" id="mc-map-def" class="mc-map-tab" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid rgba(59,130,246,.4);background:rgba(59,130,246,.15);color:#93C5FD;cursor:pointer;font-family:var(--font);font-weight:700;">DEF</button>
+                <button onclick="mcSetMapMode('gol')" id="mc-map-gol" class="mc-map-tab" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:var(--font);font-weight:700;">GOL</button>
+                <button onclick="mcSetMapMode('dist')" id="mc-map-dist" class="mc-map-tab" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-family:var(--font);font-weight:700;">DIST</button>
               </div>
             </div>
             <div id="mc-event-map" class="mc-field-mini" style="aspect-ratio:2.2/1;max-width:340px;margin:0 auto;"></div>

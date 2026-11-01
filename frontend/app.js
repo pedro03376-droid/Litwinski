@@ -1797,7 +1797,7 @@ function renderFiltroCompeticoes() {
              background:${ativo ? 'rgba(0,212,255,.15)' : 'var(--card)'};
              color:${ativo ? 'var(--primary)' : 'var(--muted)'};
              font-size:12px;font-weight:${ativo ? 600 : 400};cursor:pointer;transition:all .2s;white-space:nowrap;">
-      ${_esc(c.label)}${c.value ? ` <span style="opacity:.85;font-size:11px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
+      ${_esc(c.label)}${c.value ? ` <span style="font-size:11px;">(${todas.filter(p=>(p.competicao||'')=== c.value).length})</span>` : ''}
     </button>`;
   }).join('');
 }
@@ -3306,7 +3306,7 @@ function refreshDashboard() {
         valor: gkScoutSum(menosGols?.id,['gda','gfa','gpe','gfl']), unidade:'gols', color:'var(--success)' },
       { icon:'i-target', titulo:'Melhor Distribuição', gk:melhorDist,
         valor: (()=>{ const c=gkScoutSum(melhorDist?.id,['dpc','dmc']); const t=c+gkScoutSum(melhorDist?.id,['dpe','dme']); return t>0?Math.round(c/t*100)+'%':'—'; })(),
-        unidade:'precisão', color:'#FFB300' },
+        unidade:'precisão', color:'var(--gold)' },
       (()=>{
         // Evolução: delta entre média das últimas vs primeiras partidas.
         // Cor e rótulo seguem o SINAL — evitar "+verde" para uma queda.
@@ -4707,7 +4707,7 @@ function _pgNotaColor(n) {
   if (n == null) return '#94A3B8';
   if (n >= 9) return '#F5C542';
   if (n >= 8) return '#10B981';
-  if (n >= 7) return '#22D3EE';
+  if (n >= 7) return 'var(--info)';
   if (n >= 5) return '#F59E0B';
   return '#EF4444';
 }
@@ -5107,7 +5107,7 @@ function gerarAnalise(gkId) {
   const clDef  = classifyRate(taxaDef, .85, .70, .55);
   const clDist = classifyRate(taxaDist, .80, .65, .50);
   const clNota = avgNota !== null
-    ? (avgNota>=8.5?{label:'Elite',color:'#FFB300'}:avgNota>=7?{label:'Excelente',color:'var(--success)'}:avgNota>=5.5?{label:'Boa',color:'var(--primary)'}:avgNota>=4?{label:'Regular',color:'var(--warning)'}:{label:'Em Desenvolvimento',color:'var(--error)'})
+    ? (avgNota>=8.5?{label:'Elite',color:'var(--gold)'}:avgNota>=7?{label:'Excelente',color:'var(--success)'}:avgNota>=5.5?{label:'Boa',color:'var(--primary)'}:avgNota>=4?{label:'Regular',color:'var(--warning)'}:{label:'Em Desenvolvimento',color:'var(--error)'})
     : {label:'Sem dados',color:'var(--muted)'};
 
   // ── Pontos fortes ────────────────────────────────────────
@@ -9481,7 +9481,12 @@ function _gkAvatarInner(gk, color) {
   if (gk.foto && String(gk.foto).startsWith('data:image/')) {
     return `<img src="${_imgSrc(gk.foto)}" style="width:100%;height:100%;object-fit:cover;">`;
   }
-  return `<span class="avatar-initials" style="color:${color || 'var(--text)'};">${_esc(_gkInitials(gk.nome))}</span>`;
+  // A cor entra como variável, não como `color` direto: no tema escuro ela
+  // precisa clarear para ser legível sobre o círculo (o vermelho puro dava
+  // 4,08:1, abaixo do mínimo — e é justo o cartão de quem CAIU de nível,
+  // o que o treinador mais precisa ler). Quem faz o ajuste é o CSS, que
+  // sabe em qual tema está.
+  return `<span class="avatar-initials" style="--ini:${color || 'var(--text)'};">${_esc(_gkInitials(gk.nome))}</span>`;
 }
 
 /* ═══════════════════════════════════════════════════════════
@@ -12538,7 +12543,7 @@ function _subApplyCode(raw) {
   return { ok: true, plan: sub.plan, until: sub.paidUntil };
 }
 const _SUB_META = {
-  trial:    { lbl: 'Teste grátis', col: '#6BA3FF' },   // #3B82F6 dava 3.9:1 no fundo escuro; este dá 5.7:1
+  trial:    { lbl: 'Teste grátis', col: 'var(--primary-text)' },   // #3B82F6 dava 3.9:1 no fundo escuro; este dá 5.7:1
   ativo:    { lbl: 'Ativo',        col: '#10B981' },
   expirado: { lbl: 'Expirado',     col: '#EF4444' },
 };
@@ -13752,7 +13757,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v179';
+const APP_VERSION = 'v180';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

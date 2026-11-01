@@ -1,0 +1,31 @@
+name: Suite
+
+on:
+  push:
+    paths:
+      - 'frontend/**'
+      - 'scripts/test/**'
+      - 'package.json'
+      - '.github/workflows/suite.yml'
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'scripts/test/**'
+  workflow_dispatch:
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar Playwright, Chromium e axe-core
+        run: |
+          npm i -D playwright@1.56.1 axe-core@4.10.2
+          npx playwright install --with-deps chromium
+
+      - name: Rodar a suíte
+        run: node scripts/test/run-all.js

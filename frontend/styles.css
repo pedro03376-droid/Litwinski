@@ -438,6 +438,7 @@
     .stat-cyan   { color: var(--primary-text); text-shadow: 0 0 24px rgba(59,130,246,.35); }
     .stat-green  { color: var(--success); text-shadow: 0 0 24px rgba(16,185,129,.30); }
     .stat-yellow { color: var(--warning); text-shadow: 0 0 24px rgba(245,158,11,.30); }
+    .stat-info   { color: var(--info);    text-shadow: 0 0 24px rgba(34,211,238,.35); }
     .stat-red    { color: var(--error);   text-shadow: 0 0 24px rgba(239,68,68,.30); }
 
     /* ════════════════════════════════════════════════════════
@@ -955,6 +956,19 @@
     }
     .mc-placar-btn:active { transform: scale(.88); }
 
+    /* No celular esses botões crescem para 44×44. Não é detalhe de estilo:
+       são o +/- do placar, tocados com o jogo correndo, de pé na beira da
+       quadra. A 28px o dedo erra, e errar aqui registra gol que não houve. */
+    @media (max-width: 768px) {
+      .mc-placar-btn { width: 44px; height: 44px; font-size: 20px; }
+      /* body na frente de propósito: a regra própria do #menu-scroll vem
+         depois nesta folha e, com a mesma especificidade, venceria. */
+      body #menu-scroll { width: 44px; height: 44px; }
+      /* Abas do mapa: o padding vem no atributo style do botão, então o
+         tamanho mínimo é o que dá para ajustar daqui. */
+      .mc-map-tab { min-width: 44px; min-height: 44px; }
+    }
+
     /* ── Match Center Enhancements ── */
     .mc-nota-ring {
       width:72px; height:72px; border-radius:50%;
@@ -1296,7 +1310,13 @@
     .avatar-initials {
       font-weight: 800; letter-spacing: .5px; line-height: 1;
       font-size: 18px; user-select: none;
+      /* --ini vem do JS. Clareia 20% para destacar do círculo escuro; sem
+         isso o vermelho ficava em 4,08:1. Com isso, 5,13:1. */
+      color: color-mix(in srgb, var(--ini, var(--text)) 80%, white);
     }
+    /* No tema claro as cores de estado já são escuras: clarear aqui
+       desfaria justamente o ajuste que as tornou legíveis. */
+    body.theme-light .avatar-initials { color: var(--ini, var(--text)); }
     /* Match Center — barra fixa (mobile): tempo · placar · nota sempre visível.
        Oculta no desktop (a barra completa já fica no topo do card). */
     .mc-sticky-bar {
@@ -1837,6 +1857,8 @@
   --primary:   #4F8DF7;
   --primary-d: #3B74E0;
   --primary-text: #9CC0FF;
+  --info:      #22D3EE;
+  --gold:      #FFB300;
   /* Sombras suaves (profundidade sem exagero) */
   --shadow-sm: 0 1px 2px rgba(2,6,23,.25);
   --shadow:    0 6px 20px -8px rgba(2,6,23,.45);
@@ -1856,7 +1878,47 @@ body.theme-light {
   --shadow-sm: 0 1px 2px rgba(15,23,42,.06);
   --shadow:    0 6px 20px -8px rgba(15,23,42,.12);
   --shadow-lg: 0 18px 48px -16px rgba(15,23,42,.18);
+
+  /* ── Cores de estado no tema claro ──────────────────────────────────
+     Estas cores nasceram para TEXTO SOBRE FUNDO ESCURO. No tema claro
+     o mesmo verde #10B981 sobre branco dá 2,5:1 — enxerga-se o borrão,
+     não o número. Aqui elas escurecem o bastante para passar de 4,5:1
+     sobre os três fundos claros do app (#fff, --card-2 e --bg).
+
+     Isso ficou meses sem aparecer porque o tema claro não vem de
+     prefers-color-scheme, e sim da classe .theme-light: a auditoria
+     pedia "modo claro" ao navegador, o app seguia escuro, e a medição
+     aprovava o escuro duas vezes. */
+  --success:   #0B6E4F;   /* 6,25:1 sobre branco */
+  --warning:   #8F5000;   /* 6,33:1 */
+  --error:     #B82121;   /* 6,41:1 */
+  --info:      #0B6478;   /* 6,76:1 */
+  --gold:      #8A5800;   /* 6,04:1 */
+  /* --primary tambem serve de TEXTO em vários lugares (inline, fora do
+     alcance de uma regra CSS). Escurecer o token resolve todos de uma vez
+     e, onde ele é fundo de botão com texto branco, só melhora. */
+  --primary:   #1D4FD7;
+  --primary-d: #163CA8;
 }
+
+/* Pílula de resultado e selo de nota: o texto clareava 30% em relação ao
+   fundo tingido, que é o certo no escuro e exatamente o contrário aqui.
+   No claro ele escurece. */
+body.theme-light .result-pill {
+  color: color-mix(in srgb, var(--pill, var(--muted)) 72%, black);
+}
+body.theme-light .badge-elite     { color: #1A45BE; }
+body.theme-light .badge-excelente { color: var(--success); }
+body.theme-light .badge-boa       { color: var(--warning); }
+body.theme-light .badge-regular   { color: var(--error); }
+
+/* Números grandes do painel: o brilho (text-shadow) só faz sentido no
+   escuro; no claro ele empasta o número contra o cartão branco. */
+body.theme-light .stat-green  { color: var(--success); text-shadow: none; }
+body.theme-light .stat-yellow { color: var(--warning); text-shadow: none; }
+body.theme-light .stat-red    { color: var(--error);   text-shadow: none; }
+body.theme-light .stat-blue   { color: #1A45BE;        text-shadow: none; }
+body.theme-light .stat-info   { color: var(--info);    text-shadow: none; }
 
 /* B — Cards premium: hairline + sombra suave + mais respiro; sem brilho pesado */
 .card {

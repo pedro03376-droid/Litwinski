@@ -12,7 +12,18 @@
 const { chromium } = require('playwright');
 const path = require('path');
 
-const FILE = 'file://' + path.resolve(__dirname, '..', 'frontend', 'index.html');
+const fs = require('fs');
+
+const FRONTEND = path.resolve(__dirname, '..', 'frontend');
+const FILE = 'file://' + path.join(FRONTEND, 'index.html');
+
+// Lido do app.js, nunca escrito a mao: com a versao fixa aqui, o app subiu
+// para 2026-10.2 e este teste passou a rodar com o aviso de aceite na frente.
+// As paginas ainda "apareciam", mas o scroll travava e nada atras do modal
+// estava sendo verificado.
+const LEGAL_VERSION = (fs.readFileSync(path.join(FRONTEND, 'app.js'), 'utf8')
+  .match(/const LEGAL_VERSION = '([^']+)'/) || [])[1];
+if (!LEGAL_VERSION) { console.error('  x nao achei LEGAL_VERSION em app.js'); process.exit(1); }
 const PAGES = ['dashboard', 'executivo', 'goleiras', 'perfil', 'treinos', 'lesoes', 'pid', 'clube', 'notificacoes', 'auditoria'];
 
 let failures = 0;
@@ -25,7 +36,7 @@ async function run() {
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message.split('\n')[0]));
 
-  await page.addInitScript(() => {
+  await page.addInitScript((LEGAL_VERSION) => {
     // Deterministic Chart.js stub so the smoke test never depends on the CDN.
     // The real library (loaded in a browser) simply overwrites this.
     if (!window.Chart) {
@@ -37,8 +48,9 @@ async function run() {
     localStorage.setItem('gkhub_session', JSON.stringify({ token: 't', user: 'CI', expiresAt: Date.now() + 9e11 }));
     // Usuário recorrente já consentido: o gate de aceite (Termos/LGPD) é um
     // fluxo próprio, testado à parte; aqui simulamos quem já aceitou.
-    // (manter em sincronia com LEGAL_VERSION em app.js)
-    localStorage.setItem('gkhub_legal', JSON.stringify({ v: '2026-10', at: '2026-01-01T00:00:00.000Z' }));
+    localStorage.setItem('gkhub_legal', JSON.stringify({ v: LEGAL_VERSION, at: '2026-01-01T00:00:00.000Z' }));
+    localStorage.setItem('gkhub_onboarded', '1');
+    localStorage.setItem('gkhub_welcome_seen', '1');
     localStorage.setItem('gkhub_goleiras', JSON.stringify([
       { id: 'g1', nome: 'Ana CI', equipe: 'Time CI', categoria: 'Sub-17', naipe: 'feminino' },
       { id: 'g2', nome: 'Bia CI', equipe: 'Time CI', categoria: 'Adulto', naipe: 'feminino' },
@@ -50,7 +62,7 @@ async function run() {
     }
     localStorage.setItem('gkhub_partidas', JSON.stringify(pts));
     localStorage.setItem('gkhub_scouts', JSON.stringify(sc));
-  });
+  }, LEGAL_VERSION);
 
   await page.goto(FILE, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(1500);
