@@ -1405,6 +1405,10 @@ function navigate(page) {
 function toast(msg, type = 'info') {
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
+  // Erro interrompe a leitura; o resto espera a vez. Sem isso, quem usa
+  // leitor de tela não fica sabendo que o scout salvou nem que a
+  // sincronização falhou — o aviso é só visual.
+  if (type === 'error') { el.setAttribute('role', 'alert'); }
   el.textContent = msg;
   document.getElementById('toasts').appendChild(el);
   setTimeout(() => el.remove(), 3500);
@@ -13664,7 +13668,7 @@ if ('serviceWorker' in navigator) {
 }
 
 // Versão do app (bate com o cache do Service Worker). Atualize junto com sw.js.
-const APP_VERSION = 'v176';
+const APP_VERSION = 'v177';
 try {
   const _vEl = document.getElementById('app-version');
   if (_vEl) _vEl.textContent = APP_VERSION;

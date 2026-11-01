@@ -75,7 +75,7 @@
       <label>Modalidade</label>
       <input type="text" id="reg-sport" placeholder="Futsal (padrão)" />
     </div>
-    <div id="register-err"></div>
+    <div id="register-err" role="alert"></div>
     <div id="register-success"></div>
     <button class="btn btn-primary" style="width:100%;margin-top:4px;" onclick="submitRegisterClub()" id="reg-btn">
       Criar Conta do Clube
@@ -109,7 +109,7 @@
       <button id="auth-login-btn" onclick="authLogin()"></button>
     </div>
 
-    <div id="auth-err" class="auth-err"></div>
+    <div id="auth-err" class="auth-err" role="alert"></div>
 
     <!-- Google Sign-In (login principal) -->
     <div id="auth-google-section">
@@ -1956,7 +1956,7 @@
               <option value="admin">Administrador</option>
             </select>
           </div>
-          <div id="add-member-err" style="color:var(--error);font-size:12px;margin-bottom:10px;display:none;"></div>
+          <div id="add-member-err" style="color:var(--error);font-size:12px;margin-bottom:10px;display:none;" role="alert"></div>
           <div style="display:flex;gap:10px;">
             <button class="btn btn-primary" style="flex:1;" onclick="submitAddMember()">Adicionar</button>
             <button class="btn btn-ghost" onclick="closeAddMemberModal()">Cancelar</button>
@@ -1989,7 +1989,13 @@
 </main>
 
 <!-- ══ TOAST CONTAINER ══ -->
-<div class="toast-container" id="toasts"></div>
+<!-- Região viva: o container precisa EXISTIR com aria-live antes de receber
+     conteúdo, senão o leitor de tela não anuncia o que chega depois. Sem
+     isto, os 257 avisos do app ("Scout salvo", "Falha na sincronização"…)
+     eram puramente visuais. "polite" não interrompe o que está sendo lido;
+     avisos de erro recebem role="alert" no próprio elemento, que é
+     anunciado na hora. -->
+<div class="toast-container" id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
 
 <!-- ══ AÇÕES RÁPIDAS (FAB) ══ -->
 <div id="fab-menu" class="fab-menu">
