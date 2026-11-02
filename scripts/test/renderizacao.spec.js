@@ -49,6 +49,19 @@ module.exports = async function () {
       }, p);
       ok('com dados: ' + p + ' aparece e tem conteúdo',
          !r.faltando && r.visivel && r.conteudo > 50, JSON.stringify(r));
+
+      // E, tão importante quanto: só ELA aparece. Esta suíte conferia apenas
+      // que a página pedida ficava visível, então um seletor de ID dentro da
+      // media query do celular (#page-matchcenter) venceu o `.page{display:none}`
+      // e o Match Center passou a aparecer em todas as abas — sem que nenhum
+      // teste reclamasse.
+      const vazando = await cheio.page.evaluate((atual) => {
+        return [...document.querySelectorAll('.page')]
+          .filter((el) => el.id !== 'page-' + atual && getComputedStyle(el).display !== 'none')
+          .map((el) => el.id);
+      }, p);
+      ok('com dados: ' + p + ' não deixa outra página visível junto',
+         vazando.length === 0, vazando.join(', '));
     }
     ok('com dados: nenhum erro de JavaScript em 20 páginas',
        cheio.erros.length === 0, cheio.erros.slice(0, 4).join(' | '));
@@ -77,6 +90,29 @@ module.exports = async function () {
     }
     ok('sem dados: nenhum erro de JavaScript em 20 páginas',
        vazio.erros.length === 0, vazio.erros.slice(0, 4).join(' | '));
+    await vazio.page.close();
+
+    // ── No celular ───────────────────────────────────────────────────
+    // O layout do celular tem regras próprias, e foi lá que o Match Center
+    // escapou: a verificação acima, em tela larga, passava.
+    const cel = await abrirApp(browser, {
+      semear: semente({ goleiras: 3, partidas: 8 }),
+      viewport: { width: 390, height: 844 }, reducedMotion: 'reduce',
+    });
+    for (const p of PAGINAS) {
+      await navegar(cel.page, p, 260);
+      const r = await cel.page.evaluate((atual) => {
+        const alvo = document.getElementById('page-' + atual);
+        const outras = [...document.querySelectorAll('.page')]
+          .filter((el) => el.id !== 'page-' + atual && getComputedStyle(el).display !== 'none')
+          .map((el) => el.id);
+        return { visivel: alvo && getComputedStyle(alvo).display !== 'none', outras };
+      }, p);
+      ok('celular: ' + p + ' aparece sozinha',
+         r.visivel && r.outras.length === 0, JSON.stringify(r));
+    }
+    ok('celular: nenhum erro de JavaScript em 20 páginas',
+       cel.erros.length === 0, cel.erros.slice(0, 4).join(' | '));
   } finally {
     await browser.close();
   }

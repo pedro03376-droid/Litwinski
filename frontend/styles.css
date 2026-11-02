@@ -782,7 +782,10 @@
       .mc-counters-grid { grid-template-columns: repeat(2, 1fr) !important; }
       /* #1 Match Center: prioriza os botões de evento no mobile.
          Ordem: setup → grid principal (botões) → contadores → resto. */
-      #page-matchcenter { display: flex; flex-direction: column; }
+      /* O `.active` não é enfeite: sem ele este seletor de ID vence o
+         `.page { display: none }` que esconde as abas inativas, e o Match
+         Center aparecia em TODAS as páginas no celular. */
+      #page-matchcenter.active { display: flex; flex-direction: column; }
       #page-matchcenter > * { order: 5; }
       #mc-sticky-bar { order: 0; }
       #mc-setup-card { order: 1; }
