@@ -2252,3 +2252,94 @@ select.form-select {
 #perf-gk-list, #perf-gk-list > div, #h2h-body, #h2h-card { min-width: 0; }
 #perf-gk-list > div > span,
 #perf-gk-list > div > div { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ════════════════════════════════════════════════════════════════════
+   VIDRO (glass) · barras e botões
+   ────────────────────────────────────────────────────────────────────
+   O efeito nativo do iOS (expo-glass-effect / UIGlassEffect) não existe
+   aqui: este app é um PWA, roda no navegador, não tem camada nativa.
+   O equivalente na web é backdrop-filter, que é o que está abaixo.
+
+   O que faz parecer vidro, e não só borrado, é a SATURAÇÃO: o fundo
+   desfocado continua colorido, como vidro real. Só blur dá plástico.
+
+   Aplicado nas barras e nos botões NEUTROS. Os botões de ação colorida
+   (primário, perigo, FAB) ficam sólidos de propósito: vidro rouba
+   contraste, e justamente o botão que precisa ser achado na hora é o que
+   não pode desbotar.
+   ════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* .76 nao e gosto: a .62 o texto secundario da barra caia para 4,25:1
+     quando o roxo do heatmap passava por tras — medido, nao estimado.
+     A .76 o pior caso real do app fica em 4,92:1, e ainda se ve cor e
+     movimento atraves. Mexer aqui exige medir de novo. */
+  --glass-bg:    rgba(15, 23, 42, .76);
+  --glass-bg-hi: rgba(30, 41, 59, .86);   /* hover/pressionado */
+  --glass-brd:   rgba(255, 255, 255, .12);
+  --glass-luz:   rgba(255, 255, 255, .16); /* fio de luz na borda de cima */
+  --glass-fx:    blur(22px) saturate(180%);
+}
+body.theme-light {
+  --glass-bg:    rgba(255, 255, 255, .76);   /* ver nota no tema escuro */
+  --glass-bg-hi: rgba(255, 255, 255, .90);
+  --glass-brd:   rgba(15, 23, 42, .10);
+  --glass-luz:   rgba(255, 255, 255, .70);
+  --glass-fx:    blur(22px) saturate(170%);
+}
+
+/* Só entra onde o navegador sabe desfocar o fundo. Sem @supports, quem não
+   tem backdrop-filter recebe um fundo semitransparente sobre o conteúdo da
+   página — texto sobre texto, ilegível. */
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+
+  /* ── Barras ─────────────────────────────────────────────────────── */
+  .topbar, .sidebar, .mc-sticky-bar {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-fx);
+    -webkit-backdrop-filter: var(--glass-fx);
+  }
+  /* A borda de cima mais clara que o resto é o que lê como "quina de vidro".
+     É a diferença entre um painel translúcido e uma peça com espessura. */
+  .topbar { border-bottom: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--glass-luz); }
+  .sidebar { border-right: 1px solid var(--glass-brd); }
+  .mc-sticky-bar { border-bottom: 1px solid var(--glass-brd); box-shadow: inset 0 1px 0 var(--glass-luz); }
+
+  /* ── Botões neutros ─────────────────────────────────────────────── */
+  .btn-secondary, .btn-ghost, .btn-icon, .topbar-icon-btn,
+  .dash-period-btn:not(.active) {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-brd);
+    backdrop-filter: var(--glass-fx);
+    -webkit-backdrop-filter: var(--glass-fx);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .btn-secondary:hover, .btn-ghost:hover, .btn-icon:hover, .topbar-icon-btn:hover,
+    .dash-period-btn:not(.active):hover {
+      background: var(--glass-bg-hi);
+      border-color: var(--border-h);
+    }
+  }
+
+  /* Desfocar o fundo custa caro em tela de celular, e o celular é onde o app
+     é usado com o jogo correndo. Nas barras o custo se paga (ficam fixas na
+     tela); numa lista com dezenas de botões, não: cada um vira uma camada
+     que o navegador recompõe a cada rolagem. No celular, vidro só nas barras. */
+  @media (max-width: 768px) {
+    .btn-secondary, .btn-ghost, .btn-icon, .dash-period-btn:not(.active) {
+      backdrop-filter: none; -webkit-backdrop-filter: none;
+    }
+  }
+}
+
+/* Quem pediu menos transparência no sistema recebe superfície sólida.
+   Translucidez é desconforto real para parte das pessoas, não só gosto. */
+@media (prefers-reduced-transparency: reduce) {
+  .topbar, .sidebar, .mc-sticky-bar,
+  .btn-secondary, .btn-ghost, .btn-icon, .topbar-icon-btn,
+  .dash-period-btn:not(.active) {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--card) !important;
+  }
+}

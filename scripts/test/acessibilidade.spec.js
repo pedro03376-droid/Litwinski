@@ -89,6 +89,83 @@ module.exports = async function () {
       await page.close();
     }
 
+    // ── Vidro: o texto da barra sobre o que passa por trás ───────────
+    // O axe lê a cor declarada da barra e para por aí; ele não compõe o que
+    // o backdrop-filter deixa passar. Com a barra a 62% de opacidade o texto
+    // secundário caía para 4,25:1 quando o roxo do heatmap passava atrás —
+    // e o axe aprovava. Aqui o fundo é composto camada a camada, como o
+    // navegador pinta, e o pior caso de todas as páginas tem de passar.
+    const luz = (r, g, b) => {
+      const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const razao = (a, b) => {
+      const x = luz(...a), y = luz(...b);
+      return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+    };
+    const sobre = (fg, a, bg) => fg.map((c, i) => c * a + bg[i] * (1 - a));
+    const lerRgba = (s) => {
+      const m = String(s).match(/[\d.]+/g);
+      return m ? { rgb: m.slice(0, 3).map(Number), a: m.length > 3 ? Number(m[3]) : 1 } : null;
+    };
+
+    for (const tema of ['dark', 'light']) {
+      const { page: pv } = await abrirApp(browser, {
+        semear: semente({ goleiras: 4, partidas: 12, tema }), reducedMotion: 'reduce',
+      });
+      const amb = await pv.evaluate(() => {
+        // A cor tem de ser resolvida PELO navegador. Ler --muted direto do
+        // custom property devolve '#8A97A8', e extrair números de um hex dá
+        // [8, 97, 8] — um verde escuro que nunca esteve na tela. O teste
+        // reprovava o CSS por causa disso.
+        const resolver = (valor) => {
+          const d = document.createElement('span');
+          d.style.color = valor; d.style.display = 'none';
+          document.body.appendChild(d);
+          const c = getComputedStyle(d).color;
+          d.remove();
+          const m = String(c).match(/[\d.]+/g);
+          return m ? m.slice(0, 3).map(Number) : null;
+        };
+        const cs = getComputedStyle(document.body);
+        const barra = String(getComputedStyle(document.querySelector('.topbar')).backgroundColor);
+        const m = barra.match(/[\d.]+/g);
+        const base = String(cs.backgroundColor).match(/[\d.]+/g);
+        return { barra: m.slice(0, 3).map(Number), alfa: m.length > 3 ? Number(m[3]) : 1,
+                 muted: resolver('var(--muted)'),
+                 base: base ? base.slice(0, 3).map(Number) : [0, 0, 0] };
+      });
+
+      let pior = { r: 99, onde: '' };
+      for (const pg of FOCO.concat(['heatmap'])) {
+        await navegar(pv, pg, 220);
+        for (const y of [0, 300, 800, 1600]) {
+          await pv.evaluate((s) => window.scrollTo(0, s), y);
+          await assentar(pv, 160);
+          const pilhas = await pv.evaluate(() => {
+            const o = [];
+            for (const x of [300, 600, 900, 1150]) {
+              o.push(document.elementsFromPoint(x, 32).filter((e) => !e.closest('.topbar'))
+                .map((e) => getComputedStyle(e).backgroundColor)
+                .filter((c) => c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c)));
+            }
+            return o;
+          });
+          for (const camadas of pilhas) {
+            let cor = amb.base.slice();
+            for (const c of camadas.reverse()) {
+              const v = lerRgba(c); if (v) cor = sobre(v.rgb, v.a, cor);
+            }
+            const r = razao(amb.muted, sobre(amb.barra, amb.alfa, cor));
+            if (r < pior.r) pior = { r, onde: pg + ' y=' + y };
+          }
+        }
+      }
+      ok('vidro ' + tema + ': texto secundário da barra legível sobre qualquer fundo',
+         pior.r >= 4.5, pior.r.toFixed(2) + ':1 em ' + pior.onde);
+      await pv.close();
+    }
+
     // ── Região viva: o que o axe não vê ──────────────────────────────
     const { page, erros } = await abrirApp(browser, { reducedMotion: 'reduce' });
 
